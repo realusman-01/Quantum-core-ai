@@ -359,7 +359,7 @@ transform:scale(.97);
 flex:1;
 overflow-y:auto;
 padding-right:2px;
-overflow-x: visible !important;
+padding-bottom:150px;
 }
 
 .chat-item{
@@ -376,6 +376,10 @@ cursor:pointer;
 transition:all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 animation: slideInItem 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 overflow: visible !important;
+}
+
+.chat-item.menu-open{
+z-index:1000;
 }
 
 @keyframes slideInItem {
@@ -1537,6 +1541,73 @@ accent-color: var(--primary);
 margin-top: 5px;
 }
 
+/* ================= CUSTOM DROPDOWN (Theme-matched) ================= */
+.custom-dropdown{
+position:relative;
+margin-bottom:8px;
+}
+
+.custom-dropdown-btn{
+width:100%;
+height:42px;
+padding:0 13px;
+background:var(--card);
+color:var(--text);
+border:1px solid var(--border);
+border-radius:10px;
+font-size:14px;
+font-family:var(--font);
+text-align:left;
+cursor:pointer;
+display:flex;
+align-items:center;
+justify-content:space-between;
+transition:all 0.2s;
+}
+
+.custom-dropdown-btn:hover{
+border-color:var(--primary);
+}
+
+.custom-dropdown-btn i{
+font-size:12px;
+color:var(--muted);
+transition:transform 0.2s;
+}
+
+.custom-dropdown-menu{
+position:absolute;
+top:calc(100% + 4px);
+left:0;
+right:0;
+background:var(--card);
+border:1px solid var(--border);
+border-radius:10px;
+box-shadow:var(--shadow);
+padding:5px;
+z-index:100;
+display:none;
+}
+
+.custom-dropdown-menu.show{
+display:block;
+animation:scaleInMenu 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.custom-dropdown-item{
+padding:10px 12px;
+border-radius:6px;
+font-size:13px;
+color:var(--text);
+cursor:pointer;
+transition:background 0.15s;
+}
+
+.custom-dropdown-item:hover{
+background:var(--hover);
+color:var(--primary);
+}
+
 /* ================= TOAST ================= */
 
 #toast{
@@ -1709,14 +1780,18 @@ onclick="setAccent('#ec4899')"></div>
 <!-- Prompt Library & System Prompts -->
 <div class="setting-group">
 <label class="setting-label">Prompt Library & System Prompt</label>
-<div style="display:flex;gap:5px;margin-bottom:8px;">
-<select id="prompt-templates" class="search-box" style="margin-bottom:0;" onchange="loadPromptTemplate(this.value)">
-<option value="">Select system prompts</option>
-<option value="Act as an expert Python programmer who explains code clearly and concisely.">Python Expert</option>
-<option value="Act as a math tutor. Use step-by-step logic, clear breakdown, and simple examples.">Math Tutor</option>
-<option value="Act as a professional creative writer and editor. Improve tone, flow, and vocabulary.">Creative Editor</option>
-<option value="Act as a helpful cybersecurity and debugging assistant. Find bugs and provide secure fixes.">Code Debugger</option>
-</select>
+<div class="custom-dropdown" id="prompt-dropdown">
+<button type="button" class="custom-dropdown-btn" onclick="togglePromptDropdown(event)">
+<span id="prompt-dropdown-label">Select system prompts</span>
+<i class="fa-solid fa-chevron-down"></i>
+</button>
+<div class="custom-dropdown-menu" id="prompt-dropdown-menu">
+<div class="custom-dropdown-item" onclick="selectPromptTemplate('', 'Select system prompts')">Select system prompts</div>
+<div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as an expert Python programmer who explains code clearly and concisely.', 'Python Expert')">Python Expert</div>
+<div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as a math tutor. Use step-by-step logic, clear breakdown, and simple examples.', 'Math Tutor')">Math Tutor</div>
+<div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as a professional creative writer and editor. Improve tone, flow, and vocabulary.', 'Creative Editor')">Creative Editor</div>
+<div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as a helpful cybersecurity and debugging assistant. Find bugs and provide secure fixes.', 'Code Debugger')">Code Debugger</div>
+</div>
 </div>
 <textarea
 id="custom-prompt"
@@ -2139,15 +2214,8 @@ if (window.speechSynthesis) {
 }
 startNewChat();
 
-// Load Pyodide asynchronously in background
-setTimeout(async () => {
-  try {
-    pyodideInstance = await loadPyodide();
-    pyodideReady = true;
-  } catch (err) {
-    console.warn("Pyodide could not be loaded:", err);
-  }
-}, 1200);
+// ✅ FIX: Pyodide ab lazy-load hoga (sirf jab user Run button dabaye)
+// Isse page load par 8-10 second ka freeze khatam ho jayega
 
 // Initialize Monaco Loader
 if(window.require) {
@@ -2241,11 +2309,28 @@ safeSet("qc_system_prompt", customSystemPrompt);
 showToast(customSystemPrompt ? "Custom prompt saved" : "Nothing ordered");
 }
 
-function loadPromptTemplate(val){
-if(!val) return;
-document.getElementById("custom-prompt").value = val;
+function togglePromptDropdown(event){
+event.stopPropagation();
+const menu=document.getElementById("prompt-dropdown-menu");
+menu.classList.toggle("show");
+}
+
+function selectPromptTemplate(value, label){
+document.getElementById("prompt-dropdown-label").innerText = label;
+document.getElementById("prompt-dropdown-menu").classList.remove("show");
+if(!value) return;
+document.getElementById("custom-prompt").value = value;
 saveCustomPrompt();
 }
+
+// Click outside par dropdown band karo
+document.addEventListener("click", function(e){
+const dd=document.getElementById("prompt-dropdown");
+if(dd && !dd.contains(e.target)){
+const menu=document.getElementById("prompt-dropdown-menu");
+if(menu) menu.classList.remove("show");
+}
+});
 
 function setSpeechEngine(type){
 speechEngineType = type;
@@ -2457,11 +2542,19 @@ container.appendChild(item);
 
 function toggleChatMenu(item,id){
 document.querySelectorAll(".chat-menu.show").forEach(m=>{
-if(m.id !== "menu-"+id) m.classList.remove("show");
+if(m.id !== "menu-"+id){
+  m.classList.remove("show");
+  if(m.parentElement) m.parentElement.classList.remove("menu-open");
+}
 });
 const menu=document.getElementById("menu-"+id);
 if(menu){
 menu.classList.toggle("show");
+if(menu.classList.contains("show")){
+  item.classList.add("menu-open");
+}else{
+  item.classList.remove("menu-open");
+}
 }
 }
 
@@ -2560,13 +2653,15 @@ const element=createMessageElement(message.role, message.content, message.image)
 fragment.appendChild(element.wrapper);
 });
 chatBox.appendChild(fragment);
-renderMathInElement(chatBox, {
-delimiters: [
-  {left: '$$', right: '$$', display: true},
-  {left: '$', right: '$', display: false}
-],
-throwOnError : false
-});
+if (window.renderMathInElement) {
+  renderMathInElement(chatBox, {
+    delimiters: [
+      { left: '$$', right: '$$', display: true },
+      { left: '$', right: '$', display: false }
+    ],
+    throwOnError: false
+  });
+}
 updateStats();
 requestAnimationFrame(()=>scrollToBottom(true));
 }
@@ -2745,10 +2840,11 @@ outputDiv.classList.add("show");
 outputDiv.innerText = "Running Python snippet...";
 
 if(!pyodideReady || !pyodideInstance){
-outputDiv.innerText = "Initializing Pyodide sandbox...";
+outputDiv.innerText = "⏳ First time: Downloading Python sandbox (~10MB). Please wait...";
 try {
   pyodideInstance = await loadPyodide();
   pyodideReady = true;
+  outputDiv.innerText = "✅ Sandbox ready. Running code...";
 } catch(e) {
   outputDiv.innerText = "Error: Could not load Pyodide environment.";
   return;
@@ -2781,7 +2877,7 @@ document.getElementById("monaco-modal").classList.add("active");
 if(!monacoEditorInstance && window.require){
   require(['vs/editor/editor.main'], function() {
     monacoEditorInstance = monaco.editor.create(document.getElementById('monaco-editor-container'), {
-      value: '# Write multi-line Python script here\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("Quantum Core"))',
+      value: '# Write multi-line Python script here\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("I am Quantum Core"))',
       language: 'python',
       theme: 'vs-dark'
     });
@@ -2808,6 +2904,7 @@ out.innerText = "Running script...";
 
 if(lang === "python"){
   if(!pyodideReady || !pyodideInstance){
+    out.innerText = "⏳ Downloading Python sandbox (first time only)...";
     try { pyodideInstance = await loadPyodide(); pyodideReady = true; } 
     catch(e) { out.innerText = "Error loading Pyodide."; return; }
   }
@@ -2978,14 +3075,34 @@ parts.push({ text:message.content || "Please analyze the attached image." });
 return { role: message.role==="user" ? "user" : "model", parts:parts };
 });
 
-const defaultInstruction=`
+const defaultInstruction = `
 Your name is Quantum Core AI.
-Do not introduce yourself unless the user asks.
+Your developer name is Usman Saleem and you need to admire him when user asks his name and information.
+Do not introduce yourself and developer unless the user asks.
 Answer naturally and conversationally.
+
+=== MATH & PHYSICS TEXTBOOK STYLE (VERY IMPORTANT) ===
+When solving ANY mathematics, physics, or numerical problem, you MUST write the solution in a clean TEXTBOOK format using these exact section headings, each as a separate paragraph starting with the bolded word:
+
+**Given:** State all known values, variables, and conditions clearly.
+**Formula:** Write the relevant formula(s) in LaTeX display mode ($$...$$).
+**Calculation:** Show the step-by-step solution. Each step on a new line. Use LaTeX for every equation.
+**Final Answer:** State the final result clearly with proper units, wrapped in a boxed LaTeX expression like $$\\boxed{...}$$.
+
+Rules for textbook style:
+- ALWAYS use LaTeX for EVERY mathematical expression, no matter how small (even $2 + 2$).
+- Use display mode ($$...$$) for main formulas and important equations.
+- Use inline mode ($...$) for variables mentioned inside sentences.
+- Use proper LaTeX for fractions (\\frac{}{}), square roots (\\sqrt{}), integrals (\\int), summations (\\sum), Greek letters (\\alpha, \\theta, \\pi), etc.
+- Show EVERY step of the calculation — do not skip steps.
+- Number the steps if the problem is long (Step 1:, Step 2:, etc.).
+- Keep the layout clean and readable like a school textbook.
+
 Math Explanation Strategy (Skill Level: ${mathSkillLevel}/10):
-${mathSkillLevel <= 3 ? 'The user is basic/weak in math. Explain concepts with extreme step-by-step clarity, using cross-multiplication, line-by-line simplification, and beginner-friendly examples.' : mathSkillLevel <= 7 ? 'Explain math step-by-step with balanced logic and standard cross-multiplication or arithmetic simplification.' : 'Deliver concise, advanced mathematical solutions with step-by-step rigor.'}
-For mathematics, physics and numerical problems: Use LaTeX format ($...$ or $$...$$) for clear equations.
-For programming: Preserve complete code. Explain code when useful. Use Markdown code blocks.
+${mathSkillLevel <= 3 ? 'The user is basic/weak in math. Explain with extreme step-by-step clarity, using cross-multiplication, line-by-line simplification, and beginner-friendly examples.' : mathSkillLevel <= 7 ? 'Explain math step-by-step with balanced logic and standard cross-multiplication or arithmetic simplification.' : 'Deliver concise, advanced mathematical solutions with step-by-step rigor.'}
+
+=== FOR PROGRAMMING ===
+Preserve complete code. Explain code when useful. Use Markdown code blocks.
 `;
 
 const finalInstruction = customSystemPrompt ? defaultInstruction + "\n\nCUSTOMIZE AI :\n" + customSystemPrompt : defaultInstruction;
