@@ -55,22 +55,30 @@ export default async function handler(req, res) {
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
-      return res.status(geminiRes.status).json({ error: 'Gemini error', status: geminiRes.status, details: errText.substring(0, 500) });
+      return res.status(geminiRes.status).json({ 
+        error: 'Gemini error', 
+        status: geminiRes.status, 
+        details: errText.substring(0, 500) 
+      });
     }
+
+    // 🔥 SAFE STREAMING: Body ko buffer karo, phir bhejo
+    const buffer = await geminiRes.arrayBuffer();
+    const uint8Array = new Uint8Array(buffer);
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    const reader = geminiRes.body.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      res.write(value);
-    }
+    res.write(Buffer.from(uint8Array));
     res.end();
+
   } catch (err) {
-    return res.status(502).json({ error: 'Upstream failed: ' + err.message });
+    console.error('Proxy error:', err);
+    return res.status(502).json({ 
+      error: 'Upstream failed: ' + err.message,
+      stack: err.stack ? err.stack.substring(0, 300) : 'no stack'
+    });
   }
 }
