@@ -8,8 +8,32 @@ const MODEL_MAP = {
   core: 'gemini-3.6-flash'
 };
 
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  let lastError;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok) {
+        return response;
+      }
+      if (response.status === 503 || response.status === 429) {
+        lastError = new Error(`Attempt ${attempt + 1} failed: ${response.status}`);
+        const waitTime = Math.pow(2, attempt) * 1000;
+        console.log(`Retrying in ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      return response;
+    } catch (err) {
+      lastError = err;
+      const waitTime = Math.pow(2, attempt) * 1000;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+  throw lastError;
+}
+
 export default async function handler(req, res) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -42,7 +66,7 @@ export default async function handler(req, res) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
   try {
-    const geminiRes = await fetch(url, {
+    const geminiRes = await fetchWithRetry(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents, systemInstruction, generationConfig })
@@ -54,15 +78,12 @@ export default async function handler(req, res) {
       return res.status(geminiRes.status).send(errText);
     }
 
-    // Streaming headers
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    // Web stream to Node.js response
     const reader = geminiRes.body.getReader();
-    
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
