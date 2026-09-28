@@ -3,33 +3,23 @@ export const config = {
   maxDuration: 60
 };
 
-// Fallback Chain: Pehle best model, phir stable models
 const MODEL_CHAIN = {
-  fast: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.6-flash'],
-  core: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.6-flash']
+  fast: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
+  core: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
 };
 
-async function fetchWithRetry(url, options, maxRetries = 2) {
-  let lastError;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, options);
-      if (response.ok) return response;
-      
-      // Agar 503 (busy) ya 429 (quota) aaye toh retry karo
-      if (response.status === 503 || response.status === 429) {
-        lastError = new Error(`Attempt ${attempt + 1} failed: ${response.status}`);
-        // Exponential backoff: 1s, 2s wait
-        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
-        continue;
-      }
-      return response; // Doosre errors ke liye turant return karo
-    } catch (err) {
-      lastError = err;
-      await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
-    }
+// ⚡ Timeout helper - agar 8 second mein jawab nahi, toh cancel
+async function fetchWithTimeout(url, options, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
   }
-  throw lastError;
 }
 
 export default async function handler(req, res) {
@@ -51,21 +41,24 @@ export default async function handler(req, res) {
   const geminiBody = { contents, systemInstruction, generationConfig };
 
   let lastError = null;
+  const startTime = Date.now();
 
-  // Har model ko ek-ek karke try karo
+  // ⚡ Har model ko ek hi baar try karo - no retries, no waiting
   for (const modelName of modelChain) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
     
     try {
-      console.log(`Trying model: ${modelName}`);
-      const geminiRes = await fetchWithRetry(url, {
+      console.log(`⚡ Trying: ${modelName} (elapsed: ${Date.now() - startTime}ms)`);
+      
+      const geminiRes = await fetchWithTimeout(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(geminiBody)
-      });
+      }, 8000);
 
       if (geminiRes.ok) {
-        console.log(`✅ Success with model: ${modelName}`);
+        console.log(`✅ Success: ${modelName} (elapsed: ${Date.now() - startTime}ms)`);
+        
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache, no-transform');
         res.setHeader('Connection', 'keep-alive');
@@ -76,19 +69,47 @@ export default async function handler(req, res) {
         res.write(Buffer.from(new Uint8Array(buffer)));
         return res.end();
       } else {
-        console.warn(`⚠️ Model ${modelName} failed with status ${geminiRes.status}`);
+        // 503/429 ya koi bhi fail → turant agla model, koi wait nahi
+        console.warn(`⚠️ ${modelName} failed: ${geminiRes.status} → trying next...`);
         lastError = new Error(`Model ${modelName} failed: ${geminiRes.status}`);
       }
     } catch (err) {
-      console.error(`❌ Model ${modelName} threw error:`, err.message);
+      // Timeout ya network error → turant agla model
+      console.error(`❌ ${modelName} error: ${err.message} → trying next...`);
       lastError = err;
     }
   }
 
-  // Agar saare models fail ho jayein
-  console.error('All models in the chain failed.');
-  return res.status(502).json({ 
-    error: 'All models failed. Please try again later.',
-    details: lastError ? lastError.message : 'Unknown error'
+  // Sab fail ho gaye toh ek chhota wait + ek final retry
+  console.log(`🔄 All models failed, waiting 2s for one final retry...`);
+  await new Promise(r => setTimeout(r, 2000));
+
+  const primaryModel = modelChain[0];
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${primaryModel}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+
+  try {
+    const finalRes = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(geminiBody)
+    }, 15000);
+
+    if (finalRes.ok) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+
+      const buffer = await finalRes.arrayBuffer();
+      res.write(Buffer.from(new Uint8Array(buffer)));
+      return res.end();
+    }
+  } catch (err) {
+    lastError = err;
+  }
+
+  return res.status(502).json({
+    error: 'All models failed. Please try again.',
+    details: lastError ? lastError.message : 'Unknown'
   });
 }
