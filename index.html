@@ -93,7 +93,6 @@ from { opacity: 0; transform: translateY(4px) scale(0.995); }
 to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* UI Theme Based Alert Animations */
 .ui-alert-anim {
 animation: uiAlertPop 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
@@ -103,7 +102,6 @@ animation: uiAlertPop 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
 100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
 }
 
-/* General Layout Smooth Animations */
 .drawer, .modal-card, .chat-item, .icon-btn, .new-chat, .save-prompt, .export-btn, .danger, #action-btn {
 transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -902,6 +900,17 @@ border-top:1px solid var(--border);
 margin:14px 0;
 }
 
+.msg.bot a{
+color:var(--primary);
+text-decoration:underline;
+text-underline-offset:2px;
+word-break:break-all;
+}
+
+.msg.bot a:hover{
+opacity:0.85;
+}
+
 /* ================= KEY POINTS ================= */
 
 .key-point{
@@ -1482,7 +1491,7 @@ background:var(--danger);
 box-shadow: 0 4px 12px rgba(239,68,68,0.25);
 }
 
-/* NEW STYLES: Live Speech Transcript Overlay Box */
+/* Speech Transcript Overlay Box */
 #speech-transcript-box {
 position: fixed;
 bottom: 120px;
@@ -1505,7 +1514,7 @@ animation: fadeInKey 0.3s ease;
 display: block;
 }
 
-/* NEW STYLES: Monaco Code Playground Modal */
+/* Monaco Code Playground Modal */
 #monaco-modal .modal-card {
 max-width: 850px;
 width: 95%;
@@ -1534,7 +1543,6 @@ overflow-y: auto;
 white-space: pre-wrap;
 }
 
-/* Range Slider Input */
 .range-slider {
 width: 100%;
 accent-color: var(--primary);
@@ -1606,6 +1614,157 @@ transition:background 0.15s;
 .custom-dropdown-item:hover{
 background:var(--hover);
 color:var(--primary);
+}
+
+/* ================= IN-APP BROWSER ================= */
+.inapp-browser{
+position:fixed;
+inset:0;
+background:var(--bg);
+z-index:8000;
+display:none;
+flex-direction:column;
+animation: fadeInBody 0.25s ease;
+}
+
+.inapp-browser.open{
+display:flex;
+}
+
+.inapp-topbar{
+height:52px;
+flex-shrink:0;
+display:flex;
+align-items:center;
+gap:6px;
+padding:0 8px;
+background:var(--card);
+border-bottom:1px solid var(--border);
+}
+
+.inapp-btn{
+width:34px;
+height:34px;
+border:0;
+background:transparent;
+color:var(--text);
+border-radius:8px;
+cursor:pointer;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:15px;
+transition:all 0.2s;
+flex-shrink:0;
+}
+
+.inapp-btn:hover{
+background:var(--hover);
+color:var(--primary);
+}
+
+.inapp-btn:active{
+transform:scale(0.92);
+}
+
+.inapp-url{
+flex:1;
+min-width:0;
+height:34px;
+background:var(--bg);
+border:1px solid var(--border);
+border-radius:8px;
+padding:0 10px;
+font-size:12px;
+color:var(--muted);
+display:flex;
+align-items:center;
+overflow:hidden;
+text-overflow:ellipsis;
+white-space:nowrap;
+font-family:monospace;
+}
+
+.inapp-frame-wrap{
+flex:1;
+position:relative;
+background:#fff;
+}
+
+.inapp-frame{
+width:100%;
+height:100%;
+border:0;
+display:block;
+background:#fff;
+}
+
+.inapp-loader{
+position:absolute;
+inset:0;
+background:var(--bg);
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+gap:12px;
+color:var(--muted);
+font-size:13px;
+z-index:5;
+}
+
+.inapp-loader.hide{
+display:none;
+}
+
+.inapp-blocked{
+position:absolute;
+inset:0;
+background:var(--bg);
+display:none;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+gap:14px;
+padding:30px;
+text-align:center;
+z-index:6;
+}
+
+.inapp-blocked.show{
+display:flex;
+}
+
+.inapp-blocked i{
+font-size:46px;
+color:var(--danger);
+}
+
+.inapp-blocked p{
+color:var(--muted);
+font-size:13.5px;
+line-height:1.5;
+max-width:300px;
+}
+
+.inapp-external-btn{
+background:var(--primary);
+color:white;
+border:0;
+border-radius:10px;
+padding:11px 20px;
+font-weight:650;
+font-size:13px;
+cursor:pointer;
+display:flex;
+align-items:center;
+gap:8px;
+transition:all 0.25s;
+}
+
+.inapp-external-btn:hover{
+transform:translateY(-1px);
+box-shadow:0 4px 12px rgba(37,99,235,0.3);
 }
 
 /* ================= TOAST ================= */
@@ -1729,14 +1888,12 @@ Core
 </div>
 </div>
 
-<!-- FEATURE: Math Skill Level Customization (Level 1-10) -->
 <div class="setting-group">
 <label class="setting-label">Math Expertise Level (<span id="math-level-val">5</span>)</label>
 <input type="range" id="math-level-slider" class="range-slider" min="1" max="10" step="1" value="5" oninput="updateMathLevel(this.value)">
 <div style="font-size:10.5px;color:var(--muted);margin-top:4px;">Level 1 = Basic/Detailed breakdown | Level 10 = Advanced Math</div>
 </div>
 
-<!-- FEATURE 5: AI Temperature Slider -->
 <div class="setting-group">
 <label class="setting-label">AI Temperature / Creativity (<span id="temp-val">0.7</span>)</label>
 <input type="range" id="temp-slider" class="range-slider" min="0" max="1" step="0.1" value="0.7" oninput="updateTemperature(this.value)">
@@ -1856,7 +2013,6 @@ Characters:
 
 </div>
 
-<!-- Cloud Sync / Export Backup Feature -->
 <div class="setting-group">
 
 <label class="setting-label">Cloud Sync & Backup</label>
@@ -1870,7 +2026,6 @@ Characters:
 </button>
 <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSONBackup(event)">
 
-<!-- FEATURE 4: Markdown Export Option -->
 <button class="export-btn" onclick="exportMarkdown()">
 <i class="fa-solid fa-file-lines"></i> Export Markdown (.md)
 </button>
@@ -1911,7 +2066,6 @@ Clear All Conversations
 
 <div class="header-right">
 
-<!-- FEATURE 3: Monaco Code Playground Trigger Button -->
 <button class="icon-btn" onclick="openMonacoModal()" title="Code Sandbox">
 <i class="fa-solid fa-code"></i>
 </button>
@@ -1958,7 +2112,7 @@ title="Scroll to bottom">
 
 </div>
 
-<!-- FEATURE 2: Speech Transcript Live Overlay Floating Box -->
+<!-- Speech Transcript Live Overlay Floating Box -->
 <div id="speech-transcript-box">
 <div style="font-size:10px;font-weight:800;color:var(--primary);margin-bottom:4px;text-transform:uppercase;">
 <i class="fa-solid fa-wave-square"></i> Live Speech Transcript
@@ -2029,13 +2183,12 @@ onclick="toggleLiveVoice()">
 </button>
 </div>
 
-<!-- Token Counter Indicator -->
 <div class="token-counter" id="token-counter" title="Active Context Token Counter">Tokens: ~0</div>
 </div>
 
 </div>
 
-<!-- FEATURE 3: Monaco Code Editor Playground Modal -->
+<!-- Monaco Code Editor Playground Modal -->
 <div id="monaco-modal" class="modal">
 <div class="modal-card">
 <div class="drawer-header" style="margin-bottom:0;">
@@ -2120,6 +2273,45 @@ Save
 
 </div>
 
+<!-- ================= IN-APP BROWSER ================= -->
+<div id="inapp-browser" class="inapp-browser">
+  <div class="inapp-topbar">
+    <button class="inapp-btn" onclick="inappBack()" title="Back">
+      <i class="fa-solid fa-arrow-left"></i>
+    </button>
+    <button class="inapp-btn" onclick="inappForward()" title="Forward">
+      <i class="fa-solid fa-arrow-right"></i>
+    </button>
+    <button class="inapp-btn" onclick="inappRefresh()" title="Refresh">
+      <i class="fa-solid fa-rotate-right"></i>
+    </button>
+    <div class="inapp-url" id="inapp-url">about:blank</div>
+    <button class="inapp-btn" onclick="inappOpenExternal()" title="Open in external browser">
+      <i class="fa-solid fa-arrow-up-right-from-square"></i>
+    </button>
+    <button class="inapp-btn" onclick="closeInappBrowser()" title="Close">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <div class="inapp-frame-wrap">
+    <div class="inapp-loader" id="inapp-loader">
+      <div class="spinner"></div>
+      <span>Loading...</span>
+    </div>
+    <iframe id="inapp-frame" class="inapp-frame" 
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+      referrerpolicy="no-referrer"
+      onload="inappFrameLoaded()"></iframe>
+    <div class="inapp-blocked" id="inapp-blocked">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <p>Is website ne in-app view block kar diya hai.</p>
+      <button class="inapp-external-btn" onclick="inappOpenExternal()">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i> Open in Browser
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 
 <div id="toast"></div>
@@ -2130,8 +2322,6 @@ Save
    QUANTUM CORE
    CORE APPLICATION
 ============================================================ */
-
-// API key ab server par hai — frontend se kabhi expose nahi hogi
 
 /* ============================================================
    STATE
@@ -2194,12 +2384,11 @@ console.warn("Storage unavailable");
 }
 
 /* ============================================================
-   INITIALIZATION & FREEZE OPTIMIZATION
+   INITIALIZATION
 ============================================================ */
 
 window.addEventListener("load", function(){
 
-// Hide splash immediately to prevent freeze issues
 const splash = document.getElementById("splash-screen");
 if(splash){
 splash.classList.add("hide");
@@ -2214,8 +2403,8 @@ if (window.speechSynthesis) {
 }
 startNewChat();
 
-// ✅ FIX: Pyodide ab lazy-load hoga (sirf jab user Run button dabaye)
-// Isse page load par 8-10 second ka freeze khatam ho jayega
+// Pyodide lazy-load (sirf Run button dabane par)
+// Isse page load par freeze khatam ho jayega
 
 // Initialize Monaco Loader
 if(window.require) {
@@ -2323,7 +2512,6 @@ document.getElementById("custom-prompt").value = value;
 saveCustomPrompt();
 }
 
-// Click outside par dropdown band karo
 document.addEventListener("click", function(e){
 const dd=document.getElementById("prompt-dropdown");
 if(dd && !dd.contains(e.target)){
@@ -2764,6 +2952,13 @@ return escapeHTML(text);
 
 const renderer=new marked.Renderer();
 
+// Links ko safely render karo (in-app browser ke liye)
+renderer.link=function({href, text, title}){
+  const safeText = text || href;
+  const titleAttr = title ? ' title="' + escapeHTML(title) + '"' : '';
+  return '<a href="' + escapeHTML(href) + '"' + titleAttr + ' rel="noopener noreferrer">' + safeText + '</a>';
+};
+
 renderer.code=function({text,lang}){
 const language=(lang || "code").toLowerCase().replace(/[^a-z0-9+#-]/g,"");
 let highlighted="";
@@ -2874,15 +3069,35 @@ sys.stderr = io.StringIO()
 
 function openMonacoModal(){
 document.getElementById("monaco-modal").classList.add("active");
-if(!monacoEditorInstance && window.require){
+setTimeout(function(){
+  const container = document.getElementById("monaco-editor-container");
+  if(!container) return;
+
+  if(monacoEditorInstance){
+    monacoEditorInstance.layout();
+    return;
+  }
+
+  if(!window.require){
+    container.innerHTML = '<div style="padding:20px;color:#f87171;font-family:monospace;">Monaco Editor load nahi ho paya. Internet check karo aur page refresh karo.</div>';
+    return;
+  }
+
   require(['vs/editor/editor.main'], function() {
-    monacoEditorInstance = monaco.editor.create(document.getElementById('monaco-editor-container'), {
-      value: '# Write multi-line Python script here\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("I am Quantum Core"))',
-      language: 'python',
-      theme: 'vs-dark'
-    });
+    try {
+      monacoEditorInstance = monaco.editor.create(container, {
+        value: '# Write multi-line Python script here\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("Quantum Core"))',
+        language: 'python',
+        theme: 'vs-dark',
+        automaticLayout: true,
+        fontSize: 14,
+        minimap: { enabled: false }
+      });
+    } catch(err){
+      container.innerHTML = '<div style="padding:20px;color:#f87171;font-family:monospace;">Monaco error: ' + err.message + '</div>';
+    }
   });
-}
+}, 350);
 }
 
 function closeMonacoModal(){
@@ -2989,7 +3204,7 @@ actionBtn.title="Send";
 }
 
 /* ============================================================
-   SEND MESSAGE (With Try-Finally to prevent Stuck State)
+   SEND MESSAGE
 ============================================================ */
 
 async function sendMessage(overrideText=null){
@@ -3051,12 +3266,11 @@ setGenerating(false);
 }
 
 /* ============================================================
-   API (Gemini 3.5 Flash Lite & Core Mode support) 
-   ⚠️ Ab ye Proxy (/api/chat) ke through jayega, direct nahi
+   API PROXY
 ============================================================ */
 
 async function streamAIResponse(botElement, userPrompt, signal){
-const url = "/api/chat"; // ✅ Proxy endpoint
+const url = "/api/chat";
 
 const chat=getCurrentChat();
 if(!chat) throw new Error("Chat unavailable");
@@ -3075,10 +3289,9 @@ parts.push({ text:message.content || "Please analyze the attached image." });
 return { role: message.role==="user" ? "user" : "model", parts:parts };
 });
 
-const defaultInstruction = `
+const defaultInstruction=`
 Your name is Quantum Core AI.
-Your developer name is Usman Saleem and you need to admire him when user asks his name and information.
-Do not introduce yourself and developer unless the user asks.
+Do not introduce yourself unless the user asks.
 Answer naturally and conversationally.
 
 === MATH & PHYSICS TEXTBOOK STYLE (VERY IMPORTANT) ===
@@ -3111,7 +3324,7 @@ const payload={
 contents:contents,
 systemInstruction:{ parts:[{text:finalInstruction}] },
 generationConfig: { temperature: aiTemperature },
-mode: activeMode  // ✅ Fast ya Core — server decide karega model
+mode: activeMode
 };
 
 const response=await fetch(url,{
@@ -3228,7 +3441,7 @@ if(!chat || (chat.title!=="New Conversation" && chat.title!=="Image Conversation
 if(!prompt) return;
 
 try{
-const url="/api/title"; // ✅ Proxy endpoint
+const url="/api/title";
 const res=await fetch(url,{
 method:"POST",
 headers:{"Content-Type":"application/json"},
@@ -3248,7 +3461,7 @@ renderChatList();
 }
 
 /* ============================================================
-   SPEECH RECOGNITION (Voice Input & Live Voice Overlay)
+   SPEECH RECOGNITION
 ============================================================ */
 
 function setupSpeechRecognition(){
@@ -3327,7 +3540,7 @@ toggleVoiceInput();
 }
 
 /* ============================================================
-   TEXT TO SPEECH (VOICE OUTPUT)
+   TEXT TO SPEECH
 ============================================================ */
 
 function toggleSpeech(text, button, onEndCallback=null){
@@ -3573,6 +3786,112 @@ setTimeout(()=>{
 toast.classList.remove("show", "ui-alert-anim");
 },2200);
 }
+
+/* ============================================================
+   IN-APP BROWSER
+============================================================ */
+
+let inappHistory = [];
+let inappHistoryIndex = -1;
+let inappLoadTimeout = null;
+
+function openInappBrowser(url){
+  if(!url) return;
+  
+  // Agar URL mein protocol nahi hai, toh https laga do
+  if(!/^https?:\/\//i.test(url)){
+    url = "https://" + url;
+  }
+  
+  inappHistory = [url];
+  inappHistoryIndex = 0;
+  
+  document.getElementById("inapp-browser").classList.add("open");
+  loadInappUrl(url);
+}
+
+function closeInappBrowser(){
+  document.getElementById("inapp-browser").classList.remove("open");
+  const frame = document.getElementById("inapp-frame");
+  frame.src = "about:blank";
+  document.getElementById("inapp-blocked").classList.remove("show");
+  document.getElementById("inapp-loader").classList.add("hide");
+  clearTimeout(inappLoadTimeout);
+}
+
+function loadInappUrl(url){
+  const frame = document.getElementById("inapp-frame");
+  const loader = document.getElementById("inapp-loader");
+  const blocked = document.getElementById("inapp-blocked");
+  
+  document.getElementById("inapp-url").innerText = url;
+  loader.classList.remove("hide");
+  blocked.classList.remove("show");
+  
+  // Blocked detection timeout
+  clearTimeout(inappLoadTimeout);
+  inappLoadTimeout = setTimeout(function(){
+    if(!loader.classList.contains("hide")){
+      loader.classList.add("hide");
+      blocked.classList.add("show");
+    }
+  }, 4000);
+  
+  frame.src = url;
+}
+
+function inappFrameLoaded(){
+  clearTimeout(inappLoadTimeout);
+  document.getElementById("inapp-loader").classList.add("hide");
+  document.getElementById("inapp-blocked").classList.remove("show");
+}
+
+function inappBack(){
+  if(inappHistoryIndex > 0){
+    inappHistoryIndex--;
+    loadInappUrl(inappHistory[inappHistoryIndex]);
+  }
+}
+
+function inappForward(){
+  if(inappHistoryIndex < inappHistory.length - 1){
+    inappHistoryIndex++;
+    loadInappUrl(inappHistory[inappHistoryIndex]);
+  }
+}
+
+function inappRefresh(){
+  const url = inappHistory[inappHistoryIndex];
+  if(url){
+    loadInappUrl(url);
+  }
+}
+
+function inappOpenExternal(){
+  const url = inappHistory[inappHistoryIndex];
+  if(url){
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
+// Chat mein link clicks intercept karo
+document.addEventListener("click", function(e){
+  const link = e.target.closest("a");
+  if(!link) return;
+  
+  const href = link.getAttribute("href");
+  if(!href) return;
+  
+  // Sirf http/https links intercept karo
+  if(!/^https?:\/\//i.test(href)) return;
+  
+  // Agar in-app browser already khula hai toh skip
+  if(document.getElementById("inapp-browser").classList.contains("open")) return;
+  
+  e.preventDefault();
+  e.stopPropagation();
+  openInappBrowser(href);
+}, true);
 
 </script>
 </body>
