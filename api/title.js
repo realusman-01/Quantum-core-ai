@@ -5,8 +5,7 @@ export const config = {
 
 const MODEL_MAP = {
   fast: 'gemini-3.5-flash-lite',
-  core: 'gemma-4-31b-it',
-  fallback: 'gemini-3.5-flash-lite'
+  core: 'gemini-3.1-flash-lite'
 };
 
 async function callGemini(modelName, apiKey, geminiBody) {
