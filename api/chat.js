@@ -1,35 +1,39 @@
-export const config = { runtime: 'edge' };
+export const config = {
+  runtime: 'nodejs',
+  maxDuration: 60
+};
 
-// Yahan model IDs change kar sakte ho (agar future mein update ho)
 const MODEL_MAP = {
   fast: 'gemini-3.5-flash-lite',
   core: 'gemini-3.6-flash'
 };
 
-export default async function handler(req) {
+export default async function handler(req, res) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: 'Server API key not configured. Add GEMINI_API_KEY in Vercel Environment Variables.' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return res.status(500).json({ 
+      error: 'Server API key not configured. Add GEMINI_API_KEY in Vercel Environment Variables.' 
+    });
   }
 
   let body;
   try {
-    body = await req.json();
+    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
   } catch (e) {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
   const { contents, systemInstruction, generationConfig, mode } = body;
@@ -46,26 +50,27 @@ export default async function handler(req) {
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
-      return new Response(errText, {
-        status: geminiRes.status,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      console.error('Gemini API error:', geminiRes.status, errText);
+      return res.status(geminiRes.status).send(errText);
     }
 
-    // Stream ko seedha frontend tak pass karo (SSE)
-    return new Response(geminiRes.body, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no'
-      }
-    });
+    // Streaming headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    // Web stream to Node.js response
+    const reader = geminiRes.body.getReader();
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(value);
+    }
+    res.end();
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Upstream fetch failed: ' + err.message }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.error('Proxy error:', err);
+    return res.status(502).json({ error: 'Upstream fetch failed: ' + err.message });
   }
 }
