@@ -279,10 +279,57 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 .persona-card-delete{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:white;border:0;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;}
 .persona-card:hover .persona-card-delete{opacity:1;}
 
-/* Image generation result */
-.gen-image-wrapper{margin:12px 0;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.15);position:relative;}
-.gen-image-wrapper img{width:100%;display:block;}
-.gen-image-actions{position:absolute;bottom:8px;right:8px;display:flex;gap:6px;}
+/* ================= IMAGE GENERATION RESULT ================= */
+.gen-image-wrapper{
+margin:12px 0;border-radius:12px;overflow:hidden;
+box-shadow:0 4px 20px rgba(0,0,0,0.15);position:relative;background:#05070b;
+}
+.gen-image-wrapper img{
+width:100%;display:block;cursor:zoom-in;transition:opacity 0.2s;
+}
+.gen-image-wrapper img:hover{opacity:0.95;}
+.gen-image-actions{
+position:absolute;bottom:8px;right:8px;display:flex;gap:6px;
+background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);
+padding:5px;border-radius:12px;
+}
+.gen-image-actions .action-btn{
+background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.2);
+color:white;width:34px;height:34px;font-size:13px;
+}
+.gen-image-actions .action-btn:hover{
+background:var(--primary);border-color:var(--primary);color:white;
+}
+
+/* ================= IMAGE PREVIEW MODAL ================= */
+#image-preview-modal .image-preview-card{
+width:95%;max-width:900px;height:85vh;display:flex;flex-direction:column;
+background:var(--card);border:1px solid var(--border);border-radius:16px;
+overflow:hidden;padding:0;animation:scaleInModal 0.35s cubic-bezier(0.16,1,0.3,1);
+}
+.image-preview-topbar{
+height:52px;display:flex;align-items:center;gap:6px;padding:0 8px;
+background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.preview-btn{
+width:38px;height:38px;border:0;background:transparent;color:var(--text);
+border-radius:8px;cursor:pointer;display:flex;align-items:center;
+justify-content:center;font-size:15px;transition:all 0.2s;flex-shrink:0;
+}
+.preview-btn:hover{background:var(--hover);color:var(--primary);}
+.preview-btn:active{transform:scale(0.92);}
+.image-preview-container{
+flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;
+background:#05070b;position:relative;touch-action:pan-x pan-y pinch-zoom;
+}
+.image-preview-container img{
+max-width:100%;max-height:100%;object-fit:contain;
+transition:transform 0.15s ease;user-select:none;transform-origin:center center;
+}
+.image-zoom-label{
+font-size:12px;color:var(--muted);padding:0 8px;font-weight:650;
+min-width:50px;text-align:center;
+}
 
 @media(max-width:500px){
 .drawer{width:300px;}
@@ -313,7 +360,6 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 
 <input id="chat-search" class="search-box" placeholder="Search chats & messages..." data-i18n-ph="search-ph" oninput="searchChats(this.value)">
 
-<!-- Folders Row -->
 <div class="folder-row" id="folder-row">
 <button class="folder-chip active" data-folder="all" onclick="setFolderFilter('all')">📂 <span data-i18n="all">All</span> <span class="count" id="cnt-all">0</span></button>
 <button class="folder-chip" data-folder="none" onclick="setFolderFilter('none')">📄 <span data-i18n="unsorted">Unsorted</span> <span class="count" id="cnt-none">0</span></button>
@@ -440,7 +486,7 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 <button class="danger" onclick="openClearModal()"><i class="fa-solid fa-trash"></i> <span data-i18n="clear_all">Clear All Conversations</span></button>
 
 <div class="info-box" style="margin-top:14px;text-align:center;font-size:11px;">
-<span data-i18n="made_by">Made with ❤️ by</span> <strong>Usman Saleem</strong>
+<span data-i18n="made_by">Made  by</span> <strong>Usman Saleem</strong>
 </div>
 
 </div>
@@ -583,6 +629,24 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 </div>
 </div>
 
+<!-- IMAGE PREVIEW MODAL -->
+<div id="image-preview-modal" class="modal">
+<div class="image-preview-card">
+<div class="image-preview-topbar">
+<button class="preview-btn" onclick="previewZoomOut()" title="Zoom out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+<span class="image-zoom-label" id="zoom-label">100%</span>
+<button class="preview-btn" onclick="previewZoomIn()" title="Zoom in"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+<button class="preview-btn" onclick="previewResetZoom()" title="Reset zoom"><i class="fa-solid fa-arrows-rotate"></i></button>
+<div style="flex:1;"></div>
+<button class="preview-btn" onclick="downloadPreviewImage()" title="Download"><i class="fa-solid fa-download"></i></button>
+<button class="preview-btn" onclick="closeImagePreview()" title="Close"><i class="fa-solid fa-xmark"></i></button>
+</div>
+<div class="image-preview-container" id="image-preview-container">
+<img id="image-preview-img" src="" alt="Preview" ondblclick="previewResetZoom()">
+</div>
+</div>
+</div>
+
 <!-- IN-APP BROWSER -->
 <div id="inapp-browser" class="inapp-browser">
 <div class="inapp-topbar">
@@ -657,7 +721,7 @@ let currentLang = "en";
 ============================================================ */
 let activeMode = "fast";
 let chatHistories = {};
-let folders = []; // {name, id}
+let folders = [];
 let currentFolderFilter = "all";
 let currentChatId = null;
 let autoScrollEnabled = true;
@@ -681,7 +745,7 @@ let monacoEditorInstance = null;
 let aiTemperature = 0.7;
 let mathSkillLevel = 5;
 let currentTheme = "dark";
-let personas = []; // {id, name, icon, prompt}
+let personas = [];
 let activePersonaId = null;
 let editingMessageIndex = null;
 
@@ -1234,11 +1298,21 @@ function createMessageElement(role, text, image, index){
   if(role === "bot"){
     if(text === "Thinking..."){
       message.innerHTML += '<div class="thinking"><div class="spinner"></div><span>' + (TRANSLATIONS[currentLang]?.thinking||"Thinking") + '<span class="dots"><span>.</span><span>.</span><span>.</span></span></span></div>';
-    } else if(text && text.startsWith("[IMAGE_GEN]")){
-      const imgUrl = text.replace("[IMAGE_GEN]","").trim();
-      message.innerHTML += '<div class="gen-image-wrapper"><img src="' + escapeHTML(imgUrl) + '" alt="Generated image" onerror="this.parentElement.innerHTML=\'<p style=color:var(--danger)>Image failed to load</p>\'"><div class="gen-image-actions"><button class="action-btn" onclick="window.open(\'' + escapeHTML(imgUrl) + '\',\'_blank\')"><i class="fa-solid fa-download"></i></button></div></div>';
     } else {
-      message.innerHTML += renderMarkdown(text);
+      // Detect [IMAGE_GEN]URL pattern anywhere in text
+      const imageGenMatch = text ? text.match(/\[IMAGE_GEN\]\s*(https?:\/\/[^\s\)\]]+)/) : null;
+      
+      if(imageGenMatch){
+        const imgUrl = imageGenMatch[1];
+        const beforeText = text.substring(0, imageGenMatch.index).trim();
+        const afterText = text.substring(imageGenMatch.index + imageGenMatch[0].length).trim();
+        
+        if(beforeText) message.innerHTML += renderMarkdown(beforeText);
+        message.innerHTML += createImageHtml(imgUrl, index);
+        if(afterText) message.innerHTML += renderMarkdown(afterText);
+      } else {
+        message.innerHTML += renderMarkdown(text);
+      }
     }
   } else {
     message.appendChild(document.createTextNode(text || ""));
@@ -1268,7 +1342,6 @@ function createMessageElement(role, text, image, index){
     voice.onclick = function(){ toggleSpeech(text, voice); };
     actions.appendChild(voice);
 
-    // Regenerate button
     const regen = document.createElement("button");
     regen.className = "action-btn";
     regen.title = "Regenerate response";
@@ -1299,6 +1372,138 @@ function createMessageElement(role, text, image, index){
 }
 
 /* ============================================================
+   IMAGE HELPERS
+============================================================ */
+function createImageHtml(url, messageIndex){
+  const safeUrl = escapeHTML(url);
+  const urlEsc = url.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");
+  return '<div class="gen-image-wrapper">' +
+    '<img src="' + safeUrl + '" alt="Image" loading="lazy" onclick="openImagePreview(\'' + urlEsc + '\')" onerror="this.style.opacity=0.3;this.alt=\'Image failed to load\';this.onclick=null;">' +
+    '<div class="gen-image-actions">' +
+      '<button class="action-btn" onclick="openImagePreview(\'' + urlEsc + '\')" title="Preview"><i class="fa-solid fa-expand"></i></button>' +
+      '<button class="action-btn" onclick="downloadImage(\'' + urlEsc + '\')" title="Download"><i class="fa-solid fa-download"></i></button>' +
+      '<button class="action-btn" onclick="retryImageAt(' + messageIndex + ')" title="Retry"><i class="fa-solid fa-rotate"></i></button>' +
+    '</div>' +
+  '</div>';
+}
+
+function retryImageAt(messageIndex){
+  const chat = getCurrentChat();
+  if(!chat) return;
+  let userIdx = messageIndex - 1;
+  while(userIdx >= 0 && chat.messages[userIdx].role !== "user") userIdx--;
+  if(userIdx < 0){ showToast("No prompt found to retry"); return; }
+  
+  const userText = chat.messages[userIdx].content || "";
+  const cleanPrompt = userText.replace(/^🎨\s*Generate image:\s*/i, "").replace(/^\[IMAGE_GEN\]\s*/, "").trim();
+  if(!cleanPrompt){ showToast("No prompt found"); return; }
+  
+  chat.messages = chat.messages.slice(0, messageIndex);
+  saveChats();
+  renderCurrentChat();
+  
+  if(userText.startsWith("🎨 Generate image:")){
+    regenerateImage(cleanPrompt);
+  } else {
+    sendMessage(cleanPrompt);
+  }
+}
+
+async function regenerateImage(prompt){
+  const chat = getCurrentChat();
+  if(!chat) return;
+  
+  const bot = createMessageElement("bot","Thinking...",null,-1);
+  chatBox.appendChild(bot.wrapper);
+  scrollToBottom(false);
+  setGenerating(true);
+
+  try{
+    const res = await fetch("/api/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: prompt })
+    });
+    if(!res.ok) throw new Error("Image API failed");
+    const data = await res.json();
+    if(!data.imageUrl) throw new Error(data.error || "No image");
+    
+    const imageMarkdown = "[IMAGE_GEN]" + data.imageUrl;
+    const botIndex = chat.messages.length;
+    bot.message.innerHTML = createImageHtml(data.imageUrl, botIndex);
+    chat.messages.push({ role:"bot", content: imageMarkdown, image: null });
+    scheduleSave();
+    renderChatList();
+  }catch(err){
+    bot.message.innerHTML = '<span style="color:var(--danger)">Image generation failed. ' + escapeHTML(err.message) + '</span>';
+  }finally{
+    setGenerating(false);
+  }
+}
+
+async function downloadImage(url){
+  try{
+    showToast("Downloading...");
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = "quantum_core_" + Date.now() + ".png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+    showToast("Downloaded!");
+  }catch(e){
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
+/* ============================================================
+   IMAGE PREVIEW MODAL
+============================================================ */
+let previewZoomLevel = 1;
+let currentPreviewUrl = "";
+
+function openImagePreview(url){
+  currentPreviewUrl = url;
+  previewZoomLevel = 1;
+  document.getElementById("image-preview-img").src = url;
+  document.getElementById("image-preview-img").style.transform = "scale(1)";
+  document.getElementById("zoom-label").innerText = "100%";
+  document.getElementById("image-preview-modal").classList.add("active");
+}
+
+function closeImagePreview(){
+  document.getElementById("image-preview-modal").classList.remove("active");
+  currentPreviewUrl = "";
+  previewZoomLevel = 1;
+}
+
+function previewZoomIn(){
+  previewZoomLevel = Math.min(previewZoomLevel + 0.25, 5);
+  applyPreviewZoom();
+}
+function previewZoomOut(){
+  previewZoomLevel = Math.max(previewZoomLevel - 0.25, 0.5);
+  applyPreviewZoom();
+}
+function previewResetZoom(){
+  previewZoomLevel = 1;
+  applyPreviewZoom();
+}
+function applyPreviewZoom(){
+  document.getElementById("image-preview-img").style.transform = "scale(" + previewZoomLevel + ")";
+  document.getElementById("zoom-label").innerText = Math.round(previewZoomLevel * 100) + "%";
+}
+
+function downloadPreviewImage(){
+  if(!currentPreviewUrl) return;
+  downloadImage(currentPreviewUrl);
+}
+
+/* ============================================================
    REGENERATE & EDIT
 ============================================================ */
 async function regenerateResponse(botMsgIndex){
@@ -1306,19 +1511,16 @@ async function regenerateResponse(botMsgIndex){
   const chat = getCurrentChat();
   if(!chat) return;
 
-  // Find the user message before this bot message
   let userIndex = botMsgIndex - 1;
   while(userIndex >= 0 && chat.messages[userIndex].role !== "user") userIndex--;
   if(userIndex < 0){ showToast("No user message found"); return; }
 
   const userMsg = chat.messages[userIndex];
   
-  // Remove the bot message from index botMsgIndex onwards
   chat.messages = chat.messages.slice(0, botMsgIndex);
   saveChats();
   renderCurrentChat();
 
-  // Now send the user prompt again
   const bot = createMessageElement("bot","Thinking...",null, -1);
   chatBox.appendChild(bot.wrapper);
   scrollToBottom(false);
@@ -1347,13 +1549,10 @@ function editUserMessage(userMsgIndex){
   if(newText === null || newText.trim() === "") return;
   
   chat.messages[userMsgIndex].content = newText.trim();
-  
-  // Remove all messages AFTER this one (bot responses)
   chat.messages = chat.messages.slice(0, userMsgIndex + 1);
   saveChats();
   renderCurrentChat();
 
-  // Resend
   const bot = createMessageElement("bot","Thinking...",null, -1);
   chatBox.appendChild(bot.wrapper);
   scrollToBottom(false);
@@ -1502,9 +1701,7 @@ async function generateImage(){
   closeImageGenModal();
 
   const chat = ensureCurrentChat();
-  const userMsgIndex = chat.messages.length;
   chat.messages.push({ role:"user", content: "🎨 Generate image: " + prompt, image: null });
-  
   renderCurrentChat();
 
   const bot = createMessageElement("bot","Thinking...",null, -1);
@@ -1523,7 +1720,8 @@ async function generateImage(){
     if(!data.imageUrl) throw new Error(data.error || "No image in response");
     
     const imageMarkdown = "[IMAGE_GEN]" + data.imageUrl;
-    bot.message.innerHTML = '<div class="gen-image-wrapper"><img src="' + escapeHTML(data.imageUrl) + '" alt="Generated image"><div class="gen-image-actions"><button class="action-btn" onclick="window.open(\'' + escapeHTML(data.imageUrl) + '\',\'_blank\')"><i class="fa-solid fa-download"></i></button></div></div>';
+    const botIndex = chat.messages.length;
+    bot.message.innerHTML = createImageHtml(data.imageUrl, botIndex);
     
     chat.messages.push({ role:"bot", content: imageMarkdown, image: null });
     scheduleSave();
@@ -1620,14 +1818,12 @@ function showErrorInMessage(msgEl, error){
 function retryLastMessage(){
   const chat = getCurrentChat();
   if(!chat) return;
-  // Find last user message
   let lastUser = -1;
   for(let i = chat.messages.length-1; i >= 0; i--){
     if(chat.messages[i].role === "user"){ lastUser = i; break; }
   }
   if(lastUser < 0) return;
   const lastUserMsg = chat.messages[lastUser];
-  // Remove everything after last user
   chat.messages = chat.messages.slice(0, lastUser + 1);
   saveChats();
   renderCurrentChat();
@@ -1691,7 +1887,11 @@ async function streamAIResponse(botElement, userPrompt, signal, imageOverride=nu
     'Always use LaTeX ($...$ inline, $$...$$ display).\n' +
     'Math Depth (Skill ' + mathSkillLevel + '/10): ' + (mathSkillLevel <= 3 ? 'Extreme step-by-step, beginner-friendly.' : mathSkillLevel <= 7 ? 'Step-by-step with balanced logic.' : 'Concise, advanced, rigorous.') + '\n\n' +
     '=== WRITING ===\n- Match the tone the user wants.\n- Improve grammar, flow, clarity.\n\n' +
-    '=== IMAGES ===\n- Analyze uploaded images and answer questions about them.\n';
+    '=== IMAGES ===\n- Analyze uploaded images and answer questions about them.\n\n' +
+    '=== IMAGE GENERATION ===\n' +
+    'When user asks to generate/create an image, respond with EXACTLY this format on a single line:\n' +
+    '[IMAGE_GEN]https://image.pollinations.ai/prompt/{url-encoded-detailed-prompt}?width=1024&height=1024&nologo=true\n' +
+    'Replace {url-encoded-detailed-prompt} with a detailed English description of the requested image, URL-encoded (spaces as %20). Do not add extra text around it.\n';
 
   let finalInstruction = defaultInstruction;
   if(activePersona) finalInstruction = '=== ACTIVE PERSONA: ' + activePersona.name + ' ===\n' + activePersona.prompt + '\n\n' + defaultInstruction;
@@ -1763,9 +1963,21 @@ async function processStream(response, botElement, userPrompt){
   if(renderTimer) clearTimeout(renderTimer);
 
   if(fullText.trim()){
-    botElement.innerHTML = renderMarkdown(fullText);
-    if(window.renderMathInElement){
-      renderMathInElement(botElement, { delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError: false });
+    // If AI returned [IMAGE_GEN]URL, render as image
+    const imageGenMatch = fullText.match(/\[IMAGE_GEN\]\s*(https?:\/\/[^\s\)\]]+)/);
+    if(imageGenMatch){
+      const beforeText = fullText.substring(0, imageGenMatch.index).trim();
+      const afterText = fullText.substring(imageGenMatch.index + imageGenMatch[0].length).trim();
+      let html = "";
+      if(beforeText) html += renderMarkdown(beforeText);
+      html += createImageHtml(imageGenMatch[1], -1);
+      if(afterText) html += renderMarkdown(afterText);
+      botElement.innerHTML = html;
+    } else {
+      botElement.innerHTML = renderMarkdown(fullText);
+      if(window.renderMathInElement){
+        renderMathInElement(botElement, { delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError: false });
+      }
     }
     const latestChat = getCurrentChat();
     if(latestChat) latestChat.messages.push({ role:"bot", content: fullText, image: null });
