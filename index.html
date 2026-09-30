@@ -277,7 +277,7 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 .persona-card-delete{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:white;border:0;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;}
 .persona-card:hover .persona-card-delete{opacity:1;}
 
-/* ================= IMAGE GENERATION RESULT ================= */
+/* Image generation */
 .gen-image-wrapper{
 margin:12px 0;border-radius:12px;overflow:hidden;
 box-shadow:0 4px 20px rgba(0,0,0,0.15);position:relative;background:#05070b;
@@ -299,7 +299,6 @@ color:white;width:34px;height:34px;font-size:13px;
 background:var(--primary);border-color:var(--primary);color:white;
 }
 
-/* Image Generating Placeholder */
 .image-generating-placeholder{
 padding:60px 20px;text-align:center;background:var(--hover);
 border:1px dashed var(--border);border-radius:12px;margin:12px 0;
@@ -311,7 +310,6 @@ margin:0 auto 12px;width:32px;height:32px;border-width:3px;
 color:var(--muted);font-size:13px;font-weight:600;
 }
 
-/* ================= IMAGE PREVIEW MODAL ================= */
 #image-preview-modal .image-preview-card{
 width:95%;max-width:900px;height:85vh;display:flex;flex-direction:column;
 background:var(--card);border:1px solid var(--border);border-radius:16px;
@@ -670,6 +668,7 @@ min-width:50px;text-align:center;
 
 /* ============================================================
    QUANTUM CORE AI - BY USMAN SALEEM
+   Image Generation: Cloudflare Workers AI (Flux-1-Schnell)
 ============================================================ */
 
 const LOCAL_TEST_API_KEY = "";
@@ -1251,8 +1250,17 @@ function createMessageElement(role, text, image, index){
   if(role === "bot"){
     if(text === "Thinking..."){
       message.innerHTML += '<div class="thinking"><div class="spinner"></div><span>' + (TRANSLATIONS[currentLang]?.thinking||"Thinking") + '<span class="dots"><span>.</span><span>.</span><span>.</span></span></span></div>';
+    } else if(text && text.startsWith("[IMAGE_DATA]")){
+      // Stored image (base64 data URI) — direct render
+      const dataUri = text.replace("[IMAGE_DATA]","").trim();
+      message.innerHTML += createImageHtml(dataUri, index);
+    } else if(text && text.indexOf("[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::") !== -1){
+      // Pending trigger (shouldn't normally persist) — show placeholder
+      const before = text.substring(0, text.indexOf("[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::")).trim();
+      if(before) message.innerHTML += renderMarkdown(before);
+      message.innerHTML += '<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🎨 Generating image...</div></div>';
     } else {
-      message.innerHTML += renderWithImages(text, index);
+      message.innerHTML += renderMarkdown(text);
     }
   } else {
     message.appendChild(document.createTextNode(text || ""));
@@ -1269,7 +1277,8 @@ function createMessageElement(role, text, image, index){
     copy.title = "Copy";
     copy.innerHTML = '<i class="fa-solid fa-copy"></i>';
     copy.onclick = function(){
-      copyText(text);
+      const cleanText = text.startsWith("[IMAGE_DATA]") || text.indexOf("[IMAGE_GEN]") !== -1 ? (text.split("[IMAGE_GEN]")[0] || "[Image]") : text;
+      copyText(cleanText);
       copy.innerHTML = '<i class="fa-solid fa-check"></i>';
       setTimeout(()=>{ copy.innerHTML = '<i class="fa-solid fa-copy"></i>'; }, 1500);
     };
@@ -1279,7 +1288,10 @@ function createMessageElement(role, text, image, index){
     voice.className = "action-btn";
     voice.title = "Read aloud";
     voice.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-    voice.onclick = function(){ toggleSpeech(text, voice); };
+    voice.onclick = function(){ 
+      const cleanText = text.indexOf("[IMAGE_GEN]") !== -1 ? (text.split("[IMAGE_GEN]")[0] || "Image generated.") : text;
+      toggleSpeech(cleanText, voice); 
+    };
     actions.appendChild(voice);
 
     const regen = document.createElement("button");
@@ -1312,55 +1324,94 @@ function createMessageElement(role, text, image, index){
 }
 
 /* ============================================================
-   IMAGE HELPERS
+   IMAGE HELPERS (Cloudflare Workers AI)
 ============================================================ */
 function createImageHtml(url, messageIndex){
   const safeUrl = escapeHTML(url);
-  const urlEsc = url.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");
-  return '<div class="gen-image-wrapper">' +
-    '<img src="' + safeUrl + '" alt="Image" loading="lazy" onclick="openImagePreview(\'' + urlEsc + '\')" onerror="this.style.opacity=0.3;this.alt=\'Image failed to load\';this.onclick=null;">' +
-    '<div class="gen-image-actions">' +
+  // For base64 data URIs, escaping quotes breaks the src, so use a placeholder approach
+  const isDataUri = url.startsWith("data:");
+  const srcAttr = isDataUri ? url : safeUrl;
+  const urlEsc = isDataUri ? "" : url.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");
+  
+  let buttons = "";
+  if(isDataUri){
+    buttons = 
+      '<button class="action-btn" onclick="openImagePreview(\'' + urlEsc + '\')" title="Preview" data-imgidx="' + messageIndex + '" data-imgtype="data"><i class="fa-solid fa-expand"></i></button>' +
+      '<button class="action-btn" onclick="downloadImageFromEl(this)" data-imgtype="data" title="Download"><i class="fa-solid fa-download"></i></button>' +
+      '<button class="action-btn" onclick="retryImageAt(' + messageIndex + ')" title="Retry"><i class="fa-solid fa-rotate"></i></button>';
+  } else {
+    buttons = 
       '<button class="action-btn" onclick="openImagePreview(\'' + urlEsc + '\')" title="Preview"><i class="fa-solid fa-expand"></i></button>' +
       '<button class="action-btn" onclick="downloadImage(\'' + urlEsc + '\')" title="Download"><i class="fa-solid fa-download"></i></button>' +
-      '<button class="action-btn" onclick="retryImageAt(' + messageIndex + ')" title="Retry"><i class="fa-solid fa-rotate"></i></button>' +
-    '</div>' +
+      '<button class="action-btn" onclick="retryImageAt(' + messageIndex + ')" title="Retry"><i class="fa-solid fa-rotate"></i></button>';
+  }
+  
+  return '<div class="gen-image-wrapper">' +
+    '<img src="' + srcAttr + '" alt="Image" loading="lazy" onclick="openImagePreviewFromEl(this)" onerror="this.style.opacity=0.3;this.alt=\'Image failed to load\';this.onclick=null;">' +
+    '<div class="gen-image-actions">' + buttons + '</div>' +
   '</div>';
 }
 
-function renderWithImages(text, messageIndex){
-  if(!text) return "";
-  const match = text.match(/\[IMAGE_GEN\]\s*(https?:\/\/[^\s\)\]\n]+)/);
-  if(match){
-    const url = match[1];
-    const beforeText = text.substring(0, match.index).trim();
-    const afterText = text.substring(match.index + match[0].length).trim();
-    let html = "";
-    if(beforeText) html += renderMarkdown(beforeText);
-    html += createImageHtml(url, messageIndex);
-    if(afterText) html += renderMarkdown(afterText);
-    return html;
-  }
-  return renderMarkdown(text);
+function openImagePreviewFromEl(imgEl){
+  const src = imgEl.getAttribute("src");
+  if(!src) return;
+  openImagePreview(src);
 }
 
-function renderStreamText(text){
-  if(!text) return "";
-  if(text.indexOf("[IMAGE_GEN]") !== -1){
-    const match = text.match(/\[IMAGE_GEN\]\s*(https?:\/\/[^\s\)\]\n]+)/);
-    if(match && match[1].indexOf("nologo=true") !== -1){
-      return renderWithImages(text, -1);
-    } else {
-      const before = text.substring(0, text.indexOf("[IMAGE_GEN]")).trim();
-      let html = "";
-      if(before) html += renderMarkdown(before);
-      html += '<div class="image-generating-placeholder">' +
-        '<div class="spinner"></div>' +
-        '<div class="image-generating-text">🎨 Generating image...</div>' +
-      '</div>';
-      return html;
+function downloadImageFromEl(btn){
+  const wrapper = btn.closest(".gen-image-wrapper");
+  if(!wrapper) return;
+  const img = wrapper.querySelector("img");
+  if(!img) return;
+  downloadImage(img.getAttribute("src"));
+}
+
+function extractImagePrompt(text){
+  if(!text) return null;
+  const match = text.match(/\[IMAGE_GEN\]IMAGE_GENERATION_TRIGGER::([^\n\]]+)/);
+  return match ? match[1].trim() : null;
+}
+
+async function generateImageFromChat(prompt, botElement){
+  botElement.innerHTML = '<div class="image-generating-placeholder">' +
+    '<div class="spinner"></div>' +
+    '<div class="image-generating-text">🎨 Generating image...</div>' +
+  '</div>';
+  
+  try{
+    const res = await fetch("/api/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: prompt })
+    });
+    if(!res.ok){
+      let errText = "Image API failed (" + res.status + ")";
+      try{ const errData = await res.json(); errText = errData.error || errData.details || errText; }catch(e){}
+      throw new Error(errText);
     }
+    const data = await res.json();
+    if(!data.imageUrl) throw new Error(data.error || "No image in response");
+    
+    const chat = getCurrentChat();
+    let botIndex = -1;
+    if(chat){
+      botIndex = chat.messages.length - 1;
+      // Replace the last bot message with the image marker
+      if(botIndex >= 0 && chat.messages[botIndex].role === "bot"){
+        chat.messages[botIndex].content = "[IMAGE_DATA]" + data.imageUrl;
+        chat.messages[botIndex].image = null;
+      } else {
+        chat.messages.push({ role:"bot", content: "[IMAGE_DATA]" + data.imageUrl, image: null });
+        botIndex = chat.messages.length - 1;
+      }
+    }
+    
+    botElement.innerHTML = createImageHtml(data.imageUrl, botIndex);
+    scheduleSave();
+    renderChatList();
+  }catch(err){
+    botElement.innerHTML = '<span style="color:var(--danger)">⚠️ Image generation failed: ' + escapeHTML(err.message) + '</span>';
   }
-  return renderMarkdown(text);
 }
 
 function retryImageAt(messageIndex){
@@ -1371,7 +1422,7 @@ function retryImageAt(messageIndex){
   if(userIdx < 0){ showToast("No prompt found to retry"); return; }
   
   const userText = chat.messages[userIdx].content || "";
-  const cleanPrompt = userText.replace(/^🎨\s*Generate image:\s*/i, "").replace(/^\[IMAGE_GEN\]\s*/, "").trim();
+  const cleanPrompt = userText.replace(/^🎨\s*Generate image:\s*/i, "").replace(/^\[IMAGE_GEN\]\s*/, "").replace(/^\[IMAGE_DATA\][^,]+,/, "").trim();
   if(!cleanPrompt){ showToast("No prompt found"); return; }
   
   chat.messages = chat.messages.slice(0, messageIndex);
@@ -1381,7 +1432,9 @@ function retryImageAt(messageIndex){
   if(userText.startsWith("🎨 Generate image:")){
     regenerateImage(cleanPrompt);
   } else {
-    sendMessage(cleanPrompt);
+    // Chat-based trigger retry — re-extract and re-call
+    const cleanText = userText.replace(/\[IMAGE_GEN\]IMAGE_GENERATION_TRIGGER::[^\n\]]+/g, "").trim();
+    sendMessage(cleanText || "Generate an image of " + cleanPrompt);
   }
 }
 
@@ -1400,14 +1453,13 @@ async function regenerateImage(prompt){
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: prompt })
     });
-    if(!res.ok) throw new Error("Image API failed");
+    if(!res.ok) throw new Error("Image API failed (" + res.status + ")");
     const data = await res.json();
     if(!data.imageUrl) throw new Error(data.error || "No image");
     
-    const imageMarkdown = "[IMAGE_GEN]" + data.imageUrl;
     const botIndex = chat.messages.length;
     bot.message.innerHTML = createImageHtml(data.imageUrl, botIndex);
-    chat.messages.push({ role:"bot", content: imageMarkdown, image: null });
+    chat.messages.push({ role:"bot", content: "[IMAGE_DATA]" + data.imageUrl, image: null });
     scheduleSave();
     renderChatList();
   }catch(err){
@@ -1420,6 +1472,16 @@ async function regenerateImage(prompt){
 async function downloadImage(url){
   try{
     showToast("Downloading...");
+    if(url.startsWith("data:")){
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "quantum_core_" + Date.now() + ".png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast("Downloaded!");
+      return;
+    }
     const res = await fetch(url);
     const blob = await res.blob();
     const blobUrl = URL.createObjectURL(blob);
@@ -1442,8 +1504,9 @@ let currentPreviewUrl = "";
 function openImagePreview(url){
   currentPreviewUrl = url;
   previewZoomLevel = 1;
-  document.getElementById("image-preview-img").src = url;
-  document.getElementById("image-preview-img").style.transform = "scale(1)";
+  const img = document.getElementById("image-preview-img");
+  img.src = url;
+  img.style.transform = "scale(1)";
   document.getElementById("zoom-label").innerText = "100%";
   document.getElementById("image-preview-modal").classList.add("active");
 }
@@ -1452,6 +1515,7 @@ function closeImagePreview(){
   document.getElementById("image-preview-modal").classList.remove("active");
   currentPreviewUrl = "";
   previewZoomLevel = 1;
+  document.getElementById("image-preview-img").src = "";
 }
 
 function previewZoomIn(){ previewZoomLevel = Math.min(previewZoomLevel + 0.25, 5); applyPreviewZoom(); }
@@ -1567,6 +1631,22 @@ function renderMarkdown(text){
   return temp.innerHTML;
 }
 
+function renderStreamText(text){
+  if(!text) return "";
+  const triggerIdx = text.indexOf("[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::");
+  if(triggerIdx !== -1){
+    const before = text.substring(0, triggerIdx).trim();
+    let html = "";
+    if(before) html += renderMarkdown(before);
+    html += '<div class="image-generating-placeholder">' +
+      '<div class="spinner"></div>' +
+      '<div class="image-generating-text">🎨 Generating image...</div>' +
+    '</div>';
+    return html;
+  }
+  return renderMarkdown(text);
+}
+
 async function runPythonCode(button){
   const code = decodeURIComponent(button.getAttribute("data-code"));
   const wrapper = button.closest(".code-wrapper");
@@ -1660,15 +1740,14 @@ async function generateImage(){
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: prompt })
     });
-    if(!res.ok) throw new Error("Image API failed");
+    if(!res.ok) throw new Error("Image API failed (" + res.status + ")");
     const data = await res.json();
     if(!data.imageUrl) throw new Error(data.error || "No image in response");
     
-    const imageMarkdown = "[IMAGE_GEN]" + data.imageUrl;
     const botIndex = chat.messages.length;
     bot.message.innerHTML = createImageHtml(data.imageUrl, botIndex);
     
-    chat.messages.push({ role:"bot", content: imageMarkdown, image: null });
+    chat.messages.push({ role:"bot", content: "[IMAGE_DATA]" + data.imageUrl, image: null });
     scheduleSave();
     renderChatList();
   }catch(err){
@@ -1798,7 +1877,11 @@ async function streamAIResponse(botElement, userPrompt, signal, imageOverride=nu
       const mime = m.image.split(";")[0].replace("data:","");
       if(data) parts.push({ inlineData: { mimeType: mime, data: data } });
     }
-    parts.push({ text: m.content || "Analyze image." });
+    let msgText = m.content || "Analyze image.";
+    // Don't send stored base64 image data back to AI
+    if(msgText.startsWith("[IMAGE_DATA]")) msgText = "Generate an image.";
+    if(msgText.indexOf("[IMAGE_GEN]") !== -1) msgText = msgText.split("[IMAGE_GEN]")[0].trim() || "Generate an image.";
+    parts.push({ text: msgText });
     return { role: m.role === "user" ? "user" : "model", parts: parts };
   });
 
@@ -1825,14 +1908,15 @@ async function streamAIResponse(botElement, userPrompt, signal, imageOverride=nu
     '=== WRITING ===\n- Match the tone the user wants.\n- Improve grammar, flow, clarity.\n\n' +
     '=== IMAGES ===\n- Analyze uploaded images and answer questions about them.\n\n' +
     '=== IMAGE GENERATION (CRITICAL RULE) ===\n' +
-    'Whenever the user asks to generate, create, draw, make, or show an image/picture/photo of ANYTHING — even if they just mention it casually in a sentence — you MUST respond with a single line in EXACTLY this format:\n' +
-    '[IMAGE_GEN]https://image.pollinations.ai/prompt/{url-encoded-detailed-prompt}?width=1024&height=1024&nologo=true\n' +
+    'Whenever the user asks to generate, create, draw, make, or show an image/picture/photo of ANYTHING — even casually mentioned — you MUST respond with EXACTLY this single line format:\n' +
+    '[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<a detailed English description of the requested image>\n' +
     'RULES:\n' +
-    '1. NEVER provide a raw URL without the [IMAGE_GEN] prefix.\n' +
-    '2. NEVER describe the image in text and stop — always produce the [IMAGE_GEN] URL.\n' +
-    '3. The prompt inside the URL must be a detailed English description, URL-encoded (spaces as %20, commas as %2C).\n' +
-    '4. You may optionally add a short one-line sentence before the URL, but the URL must be on its own line.\n' +
-    '5. Example: [IMAGE_GEN]https://image.pollinations.ai/prompt/A%20cute%20orange%20cat%20sitting%20on%20a%20wooden%20table%2C%20soft%20lighting%2C%20photorealistic?width=1024&height=1024&nologo=true\n';
+    '1. NEVER write the word "IMAGE_GEN" or "IMAGE_GENERATION_TRIGGER" in any other context.\n' +
+    '2. NEVER provide a raw URL. NEVER mention Cloudflare, Flux, or any backend service.\n' +
+    '3. The description after "::" must be a clear, detailed English prompt (include style, lighting, mood).\n' +
+    '4. You may add ONE short friendly sentence before the trigger line, but the trigger MUST be on its own line.\n' +
+    '5. Do NOT mention that you are generating an image — just output the trigger and the system will handle it.\n' +
+    '6. Example reply: "Here you go!\n[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::A cute orange cat sitting on a wooden table, soft warm lighting, photorealistic, 4k"\n';
 
   let finalInstruction = defaultInstruction;
   if(activePersona) finalInstruction = '=== ACTIVE PERSONA: ' + activePersona.name + ' ===\n' + activePersona.prompt + '\n\n' + defaultInstruction;
@@ -1904,7 +1988,23 @@ async function processStream(response, botElement, userPrompt){
   if(renderTimer) clearTimeout(renderTimer);
 
   if(fullText.trim()){
-    botElement.innerHTML = renderWithImages(fullText, -1);
+    const imagePrompt = extractImagePrompt(fullText);
+    
+    if(imagePrompt){
+      // Save the bot message first
+      const latestChat = getCurrentChat();
+      if(latestChat) latestChat.messages.push({ role:"bot", content: fullText, image: null });
+      await updateSmartTitle(userPrompt);
+      scheduleSave();
+      renderChatList();
+
+      // Now generate the image and replace
+      await generateImageFromChat(imagePrompt, botElement);
+      return;
+    }
+    
+    // Normal text response
+    botElement.innerHTML = renderMarkdown(fullText);
     if(window.renderMathInElement){
       renderMathInElement(botElement, { delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError: false });
     }
@@ -1993,7 +2093,13 @@ function toggleSpeech(text, button, onEnd=null){
   if(!("speechSynthesis" in window)){ showToast("TTS not supported"); return; }
   if(currentlySpeakingButton === button && window.speechSynthesis.speaking){ stopAllSpeech(); return; }
   stopAllSpeech();
-  const cleanText = text.replace(/\[IMAGE_GEN\][^\s]+/g,"").replace(/```[\s\S]*?```/g,"Code omitted.").replace(/`([^`]+)`/g,"$1").replace(/[*_#]/g,"").replace(/\$([^\$]+)\$/g,"$1");
+  const cleanText = String(text)
+    .replace(/\[IMAGE_GEN\][^\n]*/g,"")
+    .replace(/\[IMAGE_DATA\][^\s]+/g,"Image.")
+    .replace(/```[\s\S]*?```/g,"Code omitted.")
+    .replace(/`([^`]+)`/g,"$1")
+    .replace(/[*_#]/g,"")
+    .replace(/\$([^\$]+)\$/g,"$1");
   currentSpeechUtterance = new SpeechSynthesisUtterance(cleanText);
   if(availableVoices.length > 0){
     let v = null;
@@ -2105,7 +2211,11 @@ function exportMarkdown(){
   const chat = getCurrentChat();
   if(!chat || !chat.messages.length){ showToast("No messages"); return; }
   let md = "# " + (chat.title || "Conversation") + "\n\n";
-  chat.messages.forEach(m=>{ md += "### " + (m.role === "user" ? "User" : "Quantum Core") + "\n" + m.content + "\n\n"; });
+  chat.messages.forEach(m=>{ 
+    let content = m.content || "";
+    if(content.startsWith("[IMAGE_DATA]")) content = "[Image generated]";
+    md += "### " + (m.role === "user" ? "User" : "Quantum Core") + "\n" + content + "\n\n"; 
+  });
   downloadFile("data:text/markdown;charset=utf-8," + encodeURIComponent(md), (chat.title || "chat").replace(/\s+/g,"_") + ".md");
 }
 
@@ -2169,7 +2279,6 @@ document.addEventListener("click", function(e){
   if(!link) return;
   const href = link.getAttribute("href");
   if(!href || !/^https?:\/\//i.test(href)) return;
-  if(href.indexOf("pollinations.ai") !== -1) return;
   if(document.getElementById("inapp-browser").classList.contains("open")) return;
   e.preventDefault(); e.stopPropagation();
   openInappBrowser(href);
