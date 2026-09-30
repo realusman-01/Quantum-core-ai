@@ -69,7 +69,6 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 .new-chat:hover{transform:translateY(-2px) scale(1.01);box-shadow:0 6px 18px rgba(37,99,235,0.35);}
 .new-chat:active{transform:scale(.97);}
 
-/* Folder chips */
 .folder-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;scrollbar-width:none;}
 .folder-row::-webkit-scrollbar{display:none;}
 .folder-chip{flex-shrink:0;padding:6px 12px;border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:14px;font-size:11.5px;font-weight:650;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
@@ -269,7 +268,6 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 #toast{position:fixed;left:50%;bottom:95px;transform:translate(-50%,20px);background:var(--card);color:var(--text);padding:10px 16px;border-radius:10px;font-size:12.5px;font-weight:650;opacity:0;pointer-events:none;transition:all .3s cubic-bezier(0.16,1,0.3,1);z-index:9000;box-shadow:0 6px 20px rgba(0,0,0,0.2);border:1px solid var(--primary);max-width:90%;text-align:center;}
 #toast.show{opacity:1;transform:translate(-50%,0);}
 
-/* Persona cards */
 .persona-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
 .persona-card{padding:10px;border:1px solid var(--border);background:var(--card);border-radius:10px;cursor:pointer;transition:all 0.2s;position:relative;}
 .persona-card:hover{border-color:var(--primary);transform:translateY(-2px);}
@@ -299,6 +297,18 @@ color:white;width:34px;height:34px;font-size:13px;
 }
 .gen-image-actions .action-btn:hover{
 background:var(--primary);border-color:var(--primary);color:white;
+}
+
+/* Image Generating Placeholder */
+.image-generating-placeholder{
+padding:60px 20px;text-align:center;background:var(--hover);
+border:1px dashed var(--border);border-radius:12px;margin:12px 0;
+}
+.image-generating-placeholder .spinner{
+margin:0 auto 12px;width:32px;height:32px;border-width:3px;
+}
+.image-generating-text{
+color:var(--muted);font-size:13px;font-weight:600;
 }
 
 /* ================= IMAGE PREVIEW MODAL ================= */
@@ -351,7 +361,6 @@ min-width:50px;text-align:center;
 
 <div id="overlay" onclick="closeDrawers()"></div>
 
-<!-- SIDEBAR -->
 <aside id="sidebar" class="drawer">
 <div class="drawer-header">
 <span class="drawer-title" data-i18n="conversations">Conversations</span>
@@ -375,7 +384,6 @@ min-width:50px;text-align:center;
 <div id="chat-list" class="chat-list"></div>
 </aside>
 
-<!-- SETTINGS -->
 <aside id="settings" class="drawer">
 <div class="drawer-header">
 <span class="drawer-title" data-i18n="settings">Settings</span>
@@ -486,13 +494,12 @@ min-width:50px;text-align:center;
 <button class="danger" onclick="openClearModal()"><i class="fa-solid fa-trash"></i> <span data-i18n="clear_all">Clear All Conversations</span></button>
 
 <div class="info-box" style="margin-top:14px;text-align:center;font-size:11px;">
-<span data-i18n="made_by">Made  by</span> <strong>Usman Saleem</strong>
+<span data-i18n="made_by">Made with ❤️ by</span> <strong>Usman Saleem</strong>
 </div>
 
 </div>
 </aside>
 
-<!-- HEADER -->
 <header>
 <div class="header-left">
 <button class="icon-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
@@ -505,13 +512,11 @@ min-width:50px;text-align:center;
 </div>
 </header>
 
-<!-- CHAT -->
 <div class="chat-wrapper">
 <div id="chat-box"></div>
 <button id="scroll-btn" onclick="scrollToBottom(true)" title="Scroll down"><i class="fa-solid fa-arrow-down"></i></button>
 </div>
 
-<!-- IMAGE PREVIEW -->
 <div id="preview">
 <div class="preview-wrap">
 <img id="preview-img" class="preview-img">
@@ -524,7 +529,6 @@ min-width:50px;text-align:center;
 <div id="transcript-text" style="font-style:italic;">Listening...</div>
 </div>
 
-<!-- INPUT -->
 <div class="input-area">
 <div class="input-row">
 <textarea id="user-input" rows="1" placeholder="Message Quantum Core..." oninput="resizeInput(this)" onkeydown="handleKeyDown(event)"></textarea>
@@ -543,7 +547,6 @@ min-width:50px;text-align:center;
 </div>
 </div>
 
-<!-- MONACO MODAL -->
 <div id="monaco-modal" class="modal">
 <div class="modal-card">
 <div class="drawer-header" style="margin-bottom:0;">
@@ -562,7 +565,6 @@ min-width:50px;text-align:center;
 </div>
 </div>
 
-<!-- IMAGE GEN MODAL -->
 <div id="image-gen-modal" class="modal">
 <div class="modal-card">
 <div class="drawer-header" style="margin-bottom:0;">
@@ -578,7 +580,6 @@ min-width:50px;text-align:center;
 </div>
 </div>
 
-<!-- CLEAR MODAL -->
 <div id="clear-modal" class="modal">
 <div class="modal-card">
 <div class="modal-title">Clear All Conversations</div>
@@ -590,7 +591,6 @@ min-width:50px;text-align:center;
 </div>
 </div>
 
-<!-- RENAME MODAL -->
 <div id="rename-modal" class="modal">
 <div class="modal-card">
 <div class="modal-title">Rename Conversation</div>
@@ -602,7 +602,6 @@ min-width:50px;text-align:center;
 </div>
 </div>
 
-<!-- NEW FOLDER MODAL -->
 <div id="new-folder-modal" class="modal">
 <div class="modal-card">
 <div class="modal-title">New Folder</div>
@@ -614,7 +613,6 @@ min-width:50px;text-align:center;
 </div>
 </div>
 
-<!-- PERSONA MODAL -->
 <div id="persona-modal" class="modal">
 <div class="modal-card">
 <div class="modal-title">New AI Persona</div>
@@ -629,7 +627,6 @@ min-width:50px;text-align:center;
 </div>
 </div>
 
-<!-- IMAGE PREVIEW MODAL -->
 <div id="image-preview-modal" class="modal">
 <div class="image-preview-card">
 <div class="image-preview-topbar">
@@ -647,7 +644,6 @@ min-width:50px;text-align:center;
 </div>
 </div>
 
-<!-- IN-APP BROWSER -->
 <div id="inapp-browser" class="inapp-browser">
 <div class="inapp-topbar">
 <button class="inapp-btn" onclick="inappBack()"><i class="fa-solid fa-arrow-left"></i></button>
@@ -678,9 +674,6 @@ min-width:50px;text-align:center;
 
 const LOCAL_TEST_API_KEY = "";
 
-/* ============================================================
-   TRANSLATIONS
-============================================================ */
 const TRANSLATIONS = {
   en: {
     conversations:"Conversations", search_ph:"Search chats & messages...",
@@ -694,7 +687,7 @@ const TRANSLATIONS = {
     select_prompt:"Select a prompt", save_prompt:"Save Prompt",
     voice:"Voice & Engine", male:"Male", female:"Female", auto_scroll:"Auto-Scroll",
     stats:"Chat Statistics", messages:"Messages:", characters:"Characters:",
-    backup:"Backup & Export", clear_all:"Clear All Conversations", made_by:"Made  by",
+    backup:"Backup & Export", clear_all:"Clear All Conversations", made_by:"Made with ❤️ by",
     thinking:"Thinking"
   },
   ur: {
@@ -715,10 +708,6 @@ const TRANSLATIONS = {
 };
 
 let currentLang = "en";
-
-/* ============================================================
-   STATE
-============================================================ */
 let activeMode = "fast";
 let chatHistories = {};
 let folders = [];
@@ -755,15 +744,9 @@ const actionBtn = document.getElementById("action-btn");
 const actionIcon = document.getElementById("action-icon");
 const scrollBtn = document.getElementById("scroll-btn");
 
-/* ============================================================
-   STORAGE HELPERS
-============================================================ */
 function safeGet(key, fallback = null){ try{ const v = localStorage.getItem(key); return v === null ? fallback : v; }catch(e){ return fallback; } }
 function safeSet(key,value){ try{ localStorage.setItem(key,value); }catch(e){ console.warn("Storage unavailable"); } }
 
-/* ============================================================
-   I18N
-============================================================ */
 function applyLanguage(lang){
   currentLang = lang;
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
@@ -782,9 +765,6 @@ function applyLanguage(lang){
 
 function setLanguage(lang){ applyLanguage(lang); showToast(lang === "ur" ? "Zubaan badal di" : "Language changed"); }
 
-/* ============================================================
-   PROMPT LIBRARY
-============================================================ */
 const PROMPT_LIBRARY = [
   { category: "Programming", name: "Python Expert", prompt: "Act as an expert Python programmer who explains code clearly and concisely, follows PEP8, and provides complete runnable examples." },
   { category: "Programming", name: "JavaScript Expert", prompt: "Act as an expert JavaScript/Node.js developer. Write clean, modern ES6+ code with best practices and comments." },
@@ -810,9 +790,6 @@ const PROMPT_LIBRARY = [
   { category: "Utility", name: "Fact Checker", prompt: "Act as a fact checker. Verify claims, point out inaccuracies, and cite reliable sources." }
 ];
 
-/* ============================================================
-   INIT
-============================================================ */
 window.addEventListener("load", function(){
   const splash = document.getElementById("splash-screen");
   if(splash) splash.classList.add("hide");
@@ -832,9 +809,6 @@ window.addEventListener("load", function(){
   if(window.require) require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs' }});
 });
 
-/* ============================================================
-   SETTINGS
-============================================================ */
 function loadSettings(){
   const savedMode = safeGet("qc_mode","fast");
   activeMode = savedMode === "core" ? "core" : "fast";
@@ -894,9 +868,6 @@ function updateModeUI(){
 }
 function updateTemperature(val){ aiTemperature = parseFloat(val); document.getElementById("temp-val").innerText = aiTemperature; safeSet("qc_temperature", val); }
 
-/* ============================================================
-   THEME
-============================================================ */
 function applyTheme(theme, save=true){
   const actual = theme === "auto" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme;
   if(actual === "dark") document.body.classList.add("dark-mode");
@@ -950,9 +921,6 @@ function setVoiceGender(g){ voiceGender = g; safeSet("qc_voice_gender", g); docu
 function setAutoScroll(v){ autoScrollEnabled = v; safeSet("qc_auto_scroll", String(v)); if(v) scrollToBottom(false); }
 function loadVoices(){ if("speechSynthesis" in window) availableVoices = window.speechSynthesis.getVoices(); }
 
-/* ============================================================
-   FOLDERS
-============================================================ */
 function loadFolders(){
   try{ folders = JSON.parse(safeGet("qc_folders","[]")); if(!Array.isArray(folders)) folders = []; }catch(e){ folders = []; }
   renderFolders();
@@ -1004,9 +972,6 @@ function createNewFolder(){
   showToast("Folder created");
 }
 
-/* ============================================================
-   PERSONAS
-============================================================ */
 function loadPersonas(){
   try{ personas = JSON.parse(safeGet("qc_personas","[]")); if(!Array.isArray(personas)) personas = []; }catch(e){ personas = []; }
   renderPersonas();
@@ -1060,9 +1025,6 @@ function savePersona(){
   activatePersona(id);
 }
 
-/* ============================================================
-   CHAT STORAGE
-============================================================ */
 function loadChats(){
   try{ const stored = safeGet("quantum_chats","{}"); chatHistories = JSON.parse(stored || "{}"); if(!chatHistories || typeof chatHistories !== "object") chatHistories = {}; }
   catch(e){ chatHistories = {}; }
@@ -1102,9 +1064,6 @@ function ensureCurrentChat(){
   return chatHistories[currentChatId];
 }
 
-/* ============================================================
-   CHAT LIST
-============================================================ */
 function searchChats(q){ searchTerm = String(q||"").toLowerCase().trim(); renderChatList(); }
 
 function chatMatches(chat){
@@ -1236,9 +1195,6 @@ function pinChat(e,id){ e.stopPropagation(); if(!chatHistories[id]) return; chat
 function deleteSingleChat(e,id){ e.stopPropagation(); if(!chatHistories[id]) return; delete chatHistories[id]; saveChats(); if(id===currentChatId) startNewChat(); else renderChatList(); showToast("Deleted"); }
 function loadChat(id){ if(!chatHistories[id]) return; currentChatId=id; renderCurrentChat(); renderChatList(); closeDrawers(); }
 
-/* ============================================================
-   RENDER CHAT
-============================================================ */
 function renderCurrentChat(){
   chatBox.innerHTML = "";
   const chat = getCurrentChat();
@@ -1255,7 +1211,7 @@ function renderCurrentChat(){
       '<button class="quick" onclick="sendQuick(\'Explain a concept simply\')">📚 Explain</button>' +
       '<button class="quick" onclick="sendQuick(\'Help me brainstorm ideas\')">💡 Ideas</button>' +
       '<button class="quick" onclick="sendQuick(\'Summarize this topic\')">📝 Summarize</button>' +
-      '<button class="quick" onclick="sendQuick(\'Solve x² + 5x + 6 = 0\')">📐 Math</button>' +
+      '<button class="quick" onclick="sendQuick(\'Generate an image of a sunset\')">🎨 Image</button>' +
       '</div></div>';
     updateStats();
     return;
@@ -1276,9 +1232,6 @@ function renderCurrentChat(){
   requestAnimationFrame(()=>scrollToBottom(true));
 }
 
-/* ============================================================
-   MESSAGE ELEMENT
-============================================================ */
 function createMessageElement(role, text, image, index){
   const wrapper = document.createElement("div");
   wrapper.className = "msg-wrap " + (role === "user" ? "user-wrap" : "bot-wrap");
@@ -1299,20 +1252,7 @@ function createMessageElement(role, text, image, index){
     if(text === "Thinking..."){
       message.innerHTML += '<div class="thinking"><div class="spinner"></div><span>' + (TRANSLATIONS[currentLang]?.thinking||"Thinking") + '<span class="dots"><span>.</span><span>.</span><span>.</span></span></span></div>';
     } else {
-      // Detect [IMAGE_GEN]URL pattern anywhere in text
-      const imageGenMatch = text ? text.match(/\[IMAGE_GEN\]\s*(https?:\/\/[^\s\)\]]+)/) : null;
-      
-      if(imageGenMatch){
-        const imgUrl = imageGenMatch[1];
-        const beforeText = text.substring(0, imageGenMatch.index).trim();
-        const afterText = text.substring(imageGenMatch.index + imageGenMatch[0].length).trim();
-        
-        if(beforeText) message.innerHTML += renderMarkdown(beforeText);
-        message.innerHTML += createImageHtml(imgUrl, index);
-        if(afterText) message.innerHTML += renderMarkdown(afterText);
-      } else {
-        message.innerHTML += renderMarkdown(text);
-      }
+      message.innerHTML += renderWithImages(text, index);
     }
   } else {
     message.appendChild(document.createTextNode(text || ""));
@@ -1385,6 +1325,42 @@ function createImageHtml(url, messageIndex){
       '<button class="action-btn" onclick="retryImageAt(' + messageIndex + ')" title="Retry"><i class="fa-solid fa-rotate"></i></button>' +
     '</div>' +
   '</div>';
+}
+
+function renderWithImages(text, messageIndex){
+  if(!text) return "";
+  const match = text.match(/\[IMAGE_GEN\]\s*(https?:\/\/[^\s\)\]\n]+)/);
+  if(match){
+    const url = match[1];
+    const beforeText = text.substring(0, match.index).trim();
+    const afterText = text.substring(match.index + match[0].length).trim();
+    let html = "";
+    if(beforeText) html += renderMarkdown(beforeText);
+    html += createImageHtml(url, messageIndex);
+    if(afterText) html += renderMarkdown(afterText);
+    return html;
+  }
+  return renderMarkdown(text);
+}
+
+function renderStreamText(text){
+  if(!text) return "";
+  if(text.indexOf("[IMAGE_GEN]") !== -1){
+    const match = text.match(/\[IMAGE_GEN\]\s*(https?:\/\/[^\s\)\]\n]+)/);
+    if(match && match[1].indexOf("nologo=true") !== -1){
+      return renderWithImages(text, -1);
+    } else {
+      const before = text.substring(0, text.indexOf("[IMAGE_GEN]")).trim();
+      let html = "";
+      if(before) html += renderMarkdown(before);
+      html += '<div class="image-generating-placeholder">' +
+        '<div class="spinner"></div>' +
+        '<div class="image-generating-text">🎨 Generating image...</div>' +
+      '</div>';
+      return html;
+    }
+  }
+  return renderMarkdown(text);
 }
 
 function retryImageAt(messageIndex){
@@ -1460,9 +1436,6 @@ async function downloadImage(url){
   }
 }
 
-/* ============================================================
-   IMAGE PREVIEW MODAL
-============================================================ */
 let previewZoomLevel = 1;
 let currentPreviewUrl = "";
 
@@ -1481,31 +1454,15 @@ function closeImagePreview(){
   previewZoomLevel = 1;
 }
 
-function previewZoomIn(){
-  previewZoomLevel = Math.min(previewZoomLevel + 0.25, 5);
-  applyPreviewZoom();
-}
-function previewZoomOut(){
-  previewZoomLevel = Math.max(previewZoomLevel - 0.25, 0.5);
-  applyPreviewZoom();
-}
-function previewResetZoom(){
-  previewZoomLevel = 1;
-  applyPreviewZoom();
-}
+function previewZoomIn(){ previewZoomLevel = Math.min(previewZoomLevel + 0.25, 5); applyPreviewZoom(); }
+function previewZoomOut(){ previewZoomLevel = Math.max(previewZoomLevel - 0.25, 0.5); applyPreviewZoom(); }
+function previewResetZoom(){ previewZoomLevel = 1; applyPreviewZoom(); }
 function applyPreviewZoom(){
   document.getElementById("image-preview-img").style.transform = "scale(" + previewZoomLevel + ")";
   document.getElementById("zoom-label").innerText = Math.round(previewZoomLevel * 100) + "%";
 }
+function downloadPreviewImage(){ if(currentPreviewUrl) downloadImage(currentPreviewUrl); }
 
-function downloadPreviewImage(){
-  if(!currentPreviewUrl) return;
-  downloadImage(currentPreviewUrl);
-}
-
-/* ============================================================
-   REGENERATE & EDIT
-============================================================ */
 async function regenerateResponse(botMsgIndex){
   if(isGenerating) return;
   const chat = getCurrentChat();
@@ -1570,9 +1527,6 @@ function editUserMessage(userMsgIndex){
     .finally(()=>{ setGenerating(false); abortController = null; });
 }
 
-/* ============================================================
-   MARKDOWN RENDERER
-============================================================ */
 function renderMarkdown(text){
   if(!window.marked) return escapeHTML(text);
   const renderer = new marked.Renderer();
@@ -1613,9 +1567,6 @@ function renderMarkdown(text){
   return temp.innerHTML;
 }
 
-/* ============================================================
-   PYTHON SANDBOX
-============================================================ */
 async function runPythonCode(button){
   const code = decodeURIComponent(button.getAttribute("data-code"));
   const wrapper = button.closest(".code-wrapper");
@@ -1638,9 +1589,6 @@ async function runPythonCode(button){
   }catch(err){ outputDiv.innerText = "Error:\n" + err; }
 }
 
-/* ============================================================
-   MONACO
-============================================================ */
 function openMonacoModal(){
   document.getElementById("monaco-modal").classList.add("active");
   setTimeout(function(){
@@ -1689,9 +1637,6 @@ async function runMonacoCode(){
   }
 }
 
-/* ============================================================
-   IMAGE GENERATION
-============================================================ */
 function openImageGenModal(){ document.getElementById("image-gen-modal").classList.add("active"); document.getElementById("image-prompt-input").value = ""; }
 function closeImageGenModal(){ document.getElementById("image-gen-modal").classList.remove("active"); }
 
@@ -1733,9 +1678,6 @@ async function generateImage(){
   }
 }
 
-/* ============================================================
-   HELPERS
-============================================================ */
 function escapeHTML(v){
   return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
@@ -1767,9 +1709,6 @@ function setGenerating(v){
   else{ actionBtn.classList.remove("stop"); actionIcon.className = "fa-solid fa-paper-plane"; }
 }
 
-/* ============================================================
-   SEND MESSAGE
-============================================================ */
 async function sendMessage(overrideText=null){
   let text = overrideText !== null ? String(overrideText).trim() : userInput.value.trim();
   if(!text && !base64Image) return;
@@ -1844,9 +1783,6 @@ function stopGeneration(){
   setGenerating(false);
 }
 
-/* ============================================================
-   API CALL
-============================================================ */
 async function streamAIResponse(botElement, userPrompt, signal, imageOverride=null){
   const useLocalKey = LOCAL_TEST_API_KEY && LOCAL_TEST_API_KEY.trim() !== "";
   const url = useLocalKey ? "direct" : "/api/chat";
@@ -1888,10 +1824,15 @@ async function streamAIResponse(botElement, userPrompt, signal, imageOverride=nu
     'Math Depth (Skill ' + mathSkillLevel + '/10): ' + (mathSkillLevel <= 3 ? 'Extreme step-by-step, beginner-friendly.' : mathSkillLevel <= 7 ? 'Step-by-step with balanced logic.' : 'Concise, advanced, rigorous.') + '\n\n' +
     '=== WRITING ===\n- Match the tone the user wants.\n- Improve grammar, flow, clarity.\n\n' +
     '=== IMAGES ===\n- Analyze uploaded images and answer questions about them.\n\n' +
-    '=== IMAGE GENERATION ===\n' +
-    'When user asks to generate/create an image, respond with EXACTLY this format on a single line:\n' +
+    '=== IMAGE GENERATION (CRITICAL RULE) ===\n' +
+    'Whenever the user asks to generate, create, draw, make, or show an image/picture/photo of ANYTHING — even if they just mention it casually in a sentence — you MUST respond with a single line in EXACTLY this format:\n' +
     '[IMAGE_GEN]https://image.pollinations.ai/prompt/{url-encoded-detailed-prompt}?width=1024&height=1024&nologo=true\n' +
-    'Replace {url-encoded-detailed-prompt} with a detailed English description of the requested image, URL-encoded (spaces as %20). Do not add extra text around it.\n';
+    'RULES:\n' +
+    '1. NEVER provide a raw URL without the [IMAGE_GEN] prefix.\n' +
+    '2. NEVER describe the image in text and stop — always produce the [IMAGE_GEN] URL.\n' +
+    '3. The prompt inside the URL must be a detailed English description, URL-encoded (spaces as %20, commas as %2C).\n' +
+    '4. You may optionally add a short one-line sentence before the URL, but the URL must be on its own line.\n' +
+    '5. Example: [IMAGE_GEN]https://image.pollinations.ai/prompt/A%20cute%20orange%20cat%20sitting%20on%20a%20wooden%20table%2C%20soft%20lighting%2C%20photorealistic?width=1024&height=1024&nologo=true\n';
 
   let finalInstruction = defaultInstruction;
   if(activePersona) finalInstruction = '=== ACTIVE PERSONA: ' + activePersona.name + ' ===\n' + activePersona.prompt + '\n\n' + defaultInstruction;
@@ -1928,7 +1869,7 @@ async function processStream(response, botElement, userPrompt){
     pendingRender = true;
     requestAnimationFrame(()=>{
       pendingRender = false;
-      botElement.innerHTML = renderMarkdown(fullText);
+      botElement.innerHTML = renderStreamText(fullText);
       if(window.renderMathInElement){
         renderMathInElement(botElement, { delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError: false });
       }
@@ -1963,21 +1904,9 @@ async function processStream(response, botElement, userPrompt){
   if(renderTimer) clearTimeout(renderTimer);
 
   if(fullText.trim()){
-    // If AI returned [IMAGE_GEN]URL, render as image
-    const imageGenMatch = fullText.match(/\[IMAGE_GEN\]\s*(https?:\/\/[^\s\)\]]+)/);
-    if(imageGenMatch){
-      const beforeText = fullText.substring(0, imageGenMatch.index).trim();
-      const afterText = fullText.substring(imageGenMatch.index + imageGenMatch[0].length).trim();
-      let html = "";
-      if(beforeText) html += renderMarkdown(beforeText);
-      html += createImageHtml(imageGenMatch[1], -1);
-      if(afterText) html += renderMarkdown(afterText);
-      botElement.innerHTML = html;
-    } else {
-      botElement.innerHTML = renderMarkdown(fullText);
-      if(window.renderMathInElement){
-        renderMathInElement(botElement, { delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError: false });
-      }
+    botElement.innerHTML = renderWithImages(fullText, -1);
+    if(window.renderMathInElement){
+      renderMathInElement(botElement, { delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError: false });
     }
     const latestChat = getCurrentChat();
     if(latestChat) latestChat.messages.push({ role:"bot", content: fullText, image: null });
@@ -2008,9 +1937,6 @@ async function updateSmartTitle(prompt){
   }catch(e){}
 }
 
-/* ============================================================
-   SPEECH
-============================================================ */
 function setupSpeechRecognition(){
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!Speech) return;
@@ -2067,7 +1993,7 @@ function toggleSpeech(text, button, onEnd=null){
   if(!("speechSynthesis" in window)){ showToast("TTS not supported"); return; }
   if(currentlySpeakingButton === button && window.speechSynthesis.speaking){ stopAllSpeech(); return; }
   stopAllSpeech();
-  const cleanText = text.replace(/```[\s\S]*?```/g,"Code omitted.").replace(/`([^`]+)`/g,"$1").replace(/[*_#]/g,"").replace(/\$([^\$]+)\$/g,"$1");
+  const cleanText = text.replace(/\[IMAGE_GEN\][^\s]+/g,"").replace(/```[\s\S]*?```/g,"Code omitted.").replace(/`([^`]+)`/g,"$1").replace(/[*_#]/g,"").replace(/\$([^\$]+)\$/g,"$1");
   currentSpeechUtterance = new SpeechSynthesisUtterance(cleanText);
   if(availableVoices.length > 0){
     let v = null;
@@ -2086,9 +2012,6 @@ function toggleSpeech(text, button, onEnd=null){
 function resetSpeechButton(b){ if(b){ b.classList.remove("voice-stop"); b.innerHTML = '<i class="fa-solid fa-volume-high"></i>'; } if(currentlySpeakingButton === b) currentlySpeakingButton = null; }
 function stopAllSpeech(){ if("speechSynthesis" in window) window.speechSynthesis.cancel(); if(currentlySpeakingButton) resetSpeechButton(currentlySpeakingButton); }
 
-/* ============================================================
-   IMAGE UPLOAD
-============================================================ */
 function handleImage(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -2109,9 +2032,6 @@ function removeImage(){
   document.getElementById("file-input").value = "";
 }
 
-/* ============================================================
-   UI
-============================================================ */
 function resizeInput(el){ el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 150) + "px"; }
 function handleKeyDown(e){ if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); mainAction(); } }
 function scrollToBottom(force=false){ if(force || autoScrollEnabled) chatBox.scrollTop = chatBox.scrollHeight; }
@@ -2202,9 +2122,6 @@ function showToast(msg){
   setTimeout(()=>{ t.classList.remove("show", "ui-alert-anim"); }, 2200);
 }
 
-/* ============================================================
-   IN-APP BROWSER
-============================================================ */
 let inappHistory = [], inappHistoryIndex = -1, inappLoadTimeout = null;
 
 function openInappBrowser(url){
@@ -2252,6 +2169,7 @@ document.addEventListener("click", function(e){
   if(!link) return;
   const href = link.getAttribute("href");
   if(!href || !/^https?:\/\//i.test(href)) return;
+  if(href.indexOf("pollinations.ai") !== -1) return;
   if(document.getElementById("inapp-browser").classList.contains("open")) return;
   e.preventDefault(); e.stopPropagation();
   openInappBrowser(href);
