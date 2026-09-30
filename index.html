@@ -277,67 +277,25 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 .persona-card-delete{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:white;border:0;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;}
 .persona-card:hover .persona-card-delete{opacity:1;}
 
-/* Image generation */
-.gen-image-wrapper{
-margin:12px 0;border-radius:12px;overflow:hidden;
-box-shadow:0 4px 20px rgba(0,0,0,0.15);position:relative;background:#05070b;
-}
-.gen-image-wrapper img{
-width:100%;display:block;cursor:zoom-in;transition:opacity 0.2s;
-}
+.gen-image-wrapper{margin:12px 0;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.15);position:relative;background:#05070b;}
+.gen-image-wrapper img{width:100%;display:block;cursor:zoom-in;transition:opacity 0.2s;}
 .gen-image-wrapper img:hover{opacity:0.95;}
-.gen-image-actions{
-position:absolute;bottom:8px;right:8px;display:flex;gap:6px;
-background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);
-padding:5px;border-radius:12px;
-}
-.gen-image-actions .action-btn{
-background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.2);
-color:white;width:34px;height:34px;font-size:13px;
-}
-.gen-image-actions .action-btn:hover{
-background:var(--primary);border-color:var(--primary);color:white;
-}
+.gen-image-actions{position:absolute;bottom:8px;right:8px;display:flex;gap:6px;background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);padding:5px;border-radius:12px;}
+.gen-image-actions .action-btn{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.2);color:white;width:34px;height:34px;font-size:13px;}
+.gen-image-actions .action-btn:hover{background:var(--primary);border-color:var(--primary);color:white;}
 
-.image-generating-placeholder{
-padding:60px 20px;text-align:center;background:var(--hover);
-border:1px dashed var(--border);border-radius:12px;margin:12px 0;
-}
-.image-generating-placeholder .spinner{
-margin:0 auto 12px;width:32px;height:32px;border-width:3px;
-}
-.image-generating-text{
-color:var(--muted);font-size:13px;font-weight:600;
-}
+.image-generating-placeholder{padding:60px 20px;text-align:center;background:var(--hover);border:1px dashed var(--border);border-radius:12px;margin:12px 0;}
+.image-generating-placeholder .spinner{margin:0 auto 12px;width:32px;height:32px;border-width:3px;}
+.image-generating-text{color:var(--muted);font-size:13px;font-weight:600;}
 
-#image-preview-modal .image-preview-card{
-width:95%;max-width:900px;height:85vh;display:flex;flex-direction:column;
-background:var(--card);border:1px solid var(--border);border-radius:16px;
-overflow:hidden;padding:0;animation:scaleInModal 0.35s cubic-bezier(0.16,1,0.3,1);
-}
-.image-preview-topbar{
-height:52px;display:flex;align-items:center;gap:6px;padding:0 8px;
-background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;
-}
-.preview-btn{
-width:38px;height:38px;border:0;background:transparent;color:var(--text);
-border-radius:8px;cursor:pointer;display:flex;align-items:center;
-justify-content:center;font-size:15px;transition:all 0.2s;flex-shrink:0;
-}
+#image-preview-modal .image-preview-card{width:95%;max-width:900px;height:85vh;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;padding:0;animation:scaleInModal 0.35s cubic-bezier(0.16,1,0.3,1);}
+.image-preview-topbar{height:52px;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;}
+.preview-btn{width:38px;height:38px;border:0;background:transparent;color:var(--text);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all 0.2s;flex-shrink:0;}
 .preview-btn:hover{background:var(--hover);color:var(--primary);}
 .preview-btn:active{transform:scale(0.92);}
-.image-preview-container{
-flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;
-background:#05070b;position:relative;touch-action:pan-x pan-y pinch-zoom;
-}
-.image-preview-container img{
-max-width:100%;max-height:100%;object-fit:contain;
-transition:transform 0.15s ease;user-select:none;transform-origin:center center;
-}
-.image-zoom-label{
-font-size:12px;color:var(--muted);padding:0 8px;font-weight:650;
-min-width:50px;text-align:center;
-}
+.image-preview-container{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#05070b;position:relative;touch-action:pan-x pan-y pinch-zoom;}
+.image-preview-container img{max-width:100%;max-height:100%;object-fit:contain;transition:transform 0.15s ease;user-select:none;transform-origin:center center;}
+.image-zoom-label{font-size:12px;color:var(--muted);padding:0 8px;font-weight:650;min-width:50px;text-align:center;}
 
 @media(max-width:500px){
 .drawer{width:300px;}
@@ -668,7 +626,7 @@ min-width:50px;text-align:center;
 
 /* ============================================================
    QUANTUM CORE AI - BY USMAN SALEEM
-   Image Generation: Cloudflare Workers AI (Flux-1-Schnell)
+   Storage: IndexedDB | Images: Cloudflare Workers AI + Compression
 ============================================================ */
 
 const LOCAL_TEST_API_KEY = "";
@@ -743,9 +701,136 @@ const actionBtn = document.getElementById("action-btn");
 const actionIcon = document.getElementById("action-icon");
 const scrollBtn = document.getElementById("scroll-btn");
 
+/* ============================================================
+   SAFE LOCALSTORAGE (only for settings/preferences, not chats)
+============================================================ */
 function safeGet(key, fallback = null){ try{ const v = localStorage.getItem(key); return v === null ? fallback : v; }catch(e){ return fallback; } }
 function safeSet(key,value){ try{ localStorage.setItem(key,value); }catch(e){ console.warn("Storage unavailable"); } }
 
+/* ============================================================
+   INDEXEDDB SETUP
+============================================================ */
+let db = null;
+const DB_NAME = "QuantumCoreDB";
+const DB_VERSION = 1;
+let lastSyncedState = {};
+
+function initDB(){
+  return new Promise(function(resolve, reject){
+    if(!window.indexedDB){ reject(new Error("IndexedDB not supported")); return; }
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = function(e){
+      const database = e.target.result;
+      if(!database.objectStoreNames.contains("chats")) database.createObjectStore("chats", { keyPath: "id" });
+      if(!database.objectStoreNames.contains("folders")) database.createObjectStore("folders", { keyPath: "id" });
+      if(!database.objectStoreNames.contains("personas")) database.createObjectStore("personas", { keyPath: "id" });
+    };
+    request.onsuccess = function(e){ db = e.target.result; resolve(db); };
+    request.onerror = function(e){ reject(e.target.error); };
+  });
+}
+
+function dbGetAll(storeName){
+  return new Promise(function(resolve, reject){
+    if(!db) return resolve([]);
+    const tx = db.transaction(storeName, "readonly");
+    const store = tx.objectStore(storeName);
+    const request = store.getAll();
+    request.onsuccess = function(){ resolve(request.result || []); };
+    request.onerror = function(){ reject(request.error); };
+  });
+}
+
+function dbSet(storeName, value){
+  return new Promise(function(resolve, reject){
+    if(!db) return reject(new Error("DB not ready"));
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    const request = store.put(value);
+    request.onsuccess = function(){ resolve(request.result); };
+    request.onerror = function(){ reject(request.error); };
+  });
+}
+
+function dbDelete(storeName, key){
+  return new Promise(function(resolve, reject){
+    if(!db) return reject(new Error("DB not ready"));
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    const request = store.delete(key);
+    request.onsuccess = function(){ resolve(); };
+    request.onerror = function(){ reject(request.error); };
+  });
+}
+
+function dbClear(storeName){
+  return new Promise(function(resolve, reject){
+    if(!db) return reject(new Error("DB not ready"));
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    const request = store.clear();
+    request.onsuccess = function(){ resolve(); };
+    request.onerror = function(){ reject(request.error); };
+  });
+}
+
+async function migrateFromLocalStorage(){
+  if(localStorage.getItem("qc_migrated_to_idb") === "1") return;
+  try{
+    const stored = localStorage.getItem("quantum_chats");
+    if(stored){
+      const chats = JSON.parse(stored);
+      for(const id in chats){
+        await dbSet("chats", Object.assign({}, chats[id], { id: id }));
+      }
+      localStorage.removeItem("quantum_chats");
+    }
+  }catch(e){}
+  try{
+    const storedF = localStorage.getItem("qc_folders");
+    if(storedF){
+      const list = JSON.parse(storedF);
+      for(const f of list) await dbSet("folders", f);
+      localStorage.removeItem("qc_folders");
+    }
+  }catch(e){}
+  try{
+    const storedP = localStorage.getItem("qc_personas");
+    if(storedP){
+      const list = JSON.parse(storedP);
+      for(const p of list) await dbSet("personas", p);
+      localStorage.removeItem("qc_personas");
+    }
+  }catch(e){}
+  localStorage.setItem("qc_migrated_to_idb", "1");
+}
+
+async function flushDB(){
+  if(!db) return;
+  try{
+    const currentIds = new Set(Object.keys(chatHistories));
+    for(const id of currentIds){
+      const currentStr = JSON.stringify(chatHistories[id]);
+      if(currentStr !== lastSyncedState[id]){
+        await dbSet("chats", Object.assign({}, chatHistories[id], { id: id }));
+        lastSyncedState[id] = currentStr;
+      }
+    }
+    for(const id in lastSyncedState){
+      if(!currentIds.has(id)){
+        await dbDelete("chats", id);
+        delete lastSyncedState[id];
+      }
+    }
+  }catch(e){
+    console.error("DB flush failed:", e);
+    showToast("⚠️ Storage error.");
+  }
+}
+
+/* ============================================================
+   LANGUAGE
+============================================================ */
 function applyLanguage(lang){
   currentLang = lang;
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
@@ -764,6 +849,9 @@ function applyLanguage(lang){
 
 function setLanguage(lang){ applyLanguage(lang); showToast(lang === "ur" ? "Zubaan badal di" : "Language changed"); }
 
+/* ============================================================
+   PROMPT LIBRARY
+============================================================ */
 const PROMPT_LIBRARY = [
   { category: "Programming", name: "Python Expert", prompt: "Act as an expert Python programmer who explains code clearly and concisely, follows PEP8, and provides complete runnable examples." },
   { category: "Programming", name: "JavaScript Expert", prompt: "Act as an expert JavaScript/Node.js developer. Write clean, modern ES6+ code with best practices and comments." },
@@ -789,14 +877,26 @@ const PROMPT_LIBRARY = [
   { category: "Utility", name: "Fact Checker", prompt: "Act as a fact checker. Verify claims, point out inaccuracies, and cite reliable sources." }
 ];
 
-window.addEventListener("load", function(){
+/* ============================================================
+   INIT
+============================================================ */
+window.addEventListener("load", async function(){
   const splash = document.getElementById("splash-screen");
   if(splash) splash.classList.add("hide");
 
   loadSettings();
-  loadChats();
-  loadFolders();
-  loadPersonas();
+  
+  try{
+    await initDB();
+    await migrateFromLocalStorage();
+    await loadChats();
+    await loadFolders();
+    await loadPersonas();
+  }catch(e){
+    console.error("DB init failed:", e);
+    showToast("⚠️ Storage initialization failed");
+  }
+  
   applyLanguage(safeGet("qc_lang", "en"));
   buildPromptLibrary();
   setupSpeechRecognition();
@@ -808,6 +908,9 @@ window.addEventListener("load", function(){
   if(window.require) require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs' }});
 });
 
+/* ============================================================
+   SETTINGS
+============================================================ */
 function loadSettings(){
   const savedMode = safeGet("qc_mode","fast");
   activeMode = savedMode === "core" ? "core" : "fast";
@@ -871,11 +974,9 @@ function applyTheme(theme, save=true){
   const actual = theme === "auto" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme;
   if(actual === "dark") document.body.classList.add("dark-mode");
   else document.body.classList.remove("dark-mode");
-
   document.getElementById("dark-theme").classList.toggle("active", theme === "dark");
   document.getElementById("light-theme").classList.toggle("active", theme === "light");
   document.getElementById("auto-theme").classList.toggle("active", theme === "auto");
-
   if(save) safeSet("qc_theme", theme);
 }
 
@@ -888,18 +989,12 @@ function setupSystemThemeWatcher(){
 }
 
 function setAccent(color){ document.documentElement.style.setProperty("--primary", color); safeSet("qc_accent",color); showToast("Accent updated"); }
-
 function saveCustomPrompt(){
   customSystemPrompt = document.getElementById("custom-prompt").value.trim();
   safeSet("qc_system_prompt", customSystemPrompt);
   showToast(customSystemPrompt ? "Prompt saved" : "Cleared");
 }
-
-function togglePromptDropdown(event){
-  event.stopPropagation();
-  document.getElementById("prompt-dropdown-menu").classList.toggle("show");
-}
-
+function togglePromptDropdown(event){ event.stopPropagation(); document.getElementById("prompt-dropdown-menu").classList.toggle("show"); }
 function selectPromptTemplate(value, label){
   document.getElementById("prompt-dropdown-label").innerText = label;
   document.getElementById("prompt-dropdown-menu").classList.remove("show");
@@ -907,7 +1002,6 @@ function selectPromptTemplate(value, label){
   document.getElementById("custom-prompt").value = value;
   saveCustomPrompt();
 }
-
 document.addEventListener("click", function(e){
   const dd = document.getElementById("prompt-dropdown");
   if(dd && !dd.contains(e.target)){
@@ -915,17 +1009,28 @@ document.addEventListener("click", function(e){
     if(menu) menu.classList.remove("show");
   }
 });
-
 function setVoiceGender(g){ voiceGender = g; safeSet("qc_voice_gender", g); document.getElementById("voice-male").classList.toggle("active", g==="male"); document.getElementById("voice-female").classList.toggle("active", g==="female"); showToast(g==="male"?"Male voice":"Female voice"); }
 function setAutoScroll(v){ autoScrollEnabled = v; safeSet("qc_auto_scroll", String(v)); if(v) scrollToBottom(false); }
 function loadVoices(){ if("speechSynthesis" in window) availableVoices = window.speechSynthesis.getVoices(); }
 
-function loadFolders(){
-  try{ folders = JSON.parse(safeGet("qc_folders","[]")); if(!Array.isArray(folders)) folders = []; }catch(e){ folders = []; }
+/* ============================================================
+   FOLDERS (IndexedDB)
+============================================================ */
+async function loadFolders(){
+  try{
+    const list = await dbGetAll("folders");
+    folders = (list || []).filter(function(f){ return f && f.id; });
+  }catch(e){ folders = []; }
   renderFolders();
 }
 
-function saveFolders(){ safeSet("qc_folders", JSON.stringify(folders)); renderFolders(); }
+async function saveFolders(){
+  try{
+    await dbClear("folders");
+    for(const f of folders) await dbSet("folders", f);
+  }catch(e){ console.error("Save folders failed:", e); }
+  renderFolders();
+}
 
 function renderFolders(){
   const row = document.getElementById("folder-row");
@@ -953,12 +1058,7 @@ function renderFolders(){
   });
 }
 
-function setFolderFilter(id){
-  currentFolderFilter = id;
-  renderFolders();
-  renderChatList();
-}
-
+function setFolderFilter(id){ currentFolderFilter = id; renderFolders(); renderChatList(); }
 function openNewFolderModal(){ document.getElementById("new-folder-modal").classList.add("active"); document.getElementById("new-folder-input").value=""; }
 function closeNewFolderModal(){ document.getElementById("new-folder-modal").classList.remove("active"); }
 function createNewFolder(){
@@ -971,12 +1071,24 @@ function createNewFolder(){
   showToast("Folder created");
 }
 
-function loadPersonas(){
-  try{ personas = JSON.parse(safeGet("qc_personas","[]")); if(!Array.isArray(personas)) personas = []; }catch(e){ personas = []; }
+/* ============================================================
+   PERSONAS (IndexedDB)
+============================================================ */
+async function loadPersonas(){
+  try{
+    const list = await dbGetAll("personas");
+    personas = (list || []).filter(function(p){ return p && p.id; });
+  }catch(e){ personas = []; }
   renderPersonas();
 }
 
-function savePersonas(){ safeSet("qc_personas", JSON.stringify(personas)); renderPersonas(); }
+async function savePersonas(){
+  try{
+    await dbClear("personas");
+    for(const p of personas) await dbSet("personas", p);
+  }catch(e){ console.error("Save personas failed:", e); }
+  renderPersonas();
+}
 
 function renderPersonas(){
   const grid = document.getElementById("persona-grid");
@@ -1024,15 +1136,26 @@ function savePersona(){
   activatePersona(id);
 }
 
-function loadChats(){
-  try{ const stored = safeGet("quantum_chats","{}"); chatHistories = JSON.parse(stored || "{}"); if(!chatHistories || typeof chatHistories !== "object") chatHistories = {}; }
-  catch(e){ chatHistories = {}; }
+/* ============================================================
+   CHATS (IndexedDB)
+============================================================ */
+async function loadChats(){
+  try{
+    const all = await dbGetAll("chats");
+    chatHistories = {};
+    lastSyncedState = {};
+    (all || []).forEach(function(c){
+      if(c && c.id){
+        const copy = Object.assign({}, c);
+        delete copy.id;
+        chatHistories[c.id] = copy;
+        lastSyncedState[c.id] = JSON.stringify(copy);
+      }
+    });
+  }catch(e){ chatHistories = {}; }
 }
 
-function saveChats(){
-  try{ safeSet("quantum_chats", JSON.stringify(chatHistories)); }catch(e){ console.warn("Save failed"); }
-  updateStats();
-}
+function saveChats(){ flushDB().catch(function(e){ console.error(e); }); updateStats(); }
 
 function cleanupEmptyChats(){
   Object.keys(chatHistories).forEach(id=>{
@@ -1043,7 +1166,12 @@ function cleanupEmptyChats(){
 
 function scheduleSave(){
   clearTimeout(pendingSaveTimer);
-  pendingSaveTimer = setTimeout(function(){ cleanupEmptyChats(); saveChats(); renderFolders(); }, 250);
+  pendingSaveTimer = setTimeout(function(){ 
+    cleanupEmptyChats(); 
+    flushDB().catch(function(e){ console.error(e); });
+    updateStats();
+    renderFolders(); 
+  }, 400);
 }
 
 function startNewChat(){
@@ -1075,9 +1203,7 @@ function chatMatches(chat){
 function renderChatList(){
   const container = document.getElementById("chat-list");
   container.innerHTML = "";
-
   let ids = Object.keys(chatHistories).filter(id => chatMatches(chatHistories[id]));
-
   if(currentFolderFilter === "none") ids = ids.filter(id => !chatHistories[id].folder);
   else if(currentFolderFilter !== "all") ids = ids.filter(id => chatHistories[id].folder === currentFolderFilter);
 
@@ -1091,21 +1217,17 @@ function renderChatList(){
     const chat = chatHistories[id];
     const item = document.createElement("div");
     item.className = "chat-item " + (id === currentChatId ? "active" : "");
-
     const main = document.createElement("div");
     main.className = "chat-item-main";
-
     const titleRow = document.createElement("div");
     titleRow.style.display = "flex";
     titleRow.style.alignItems = "center";
     titleRow.style.gap = "6px";
-
     const title = document.createElement("div");
     title.className = "chat-title";
     title.style.flex = "1";
     title.textContent = (chat.pinned ? "📌 " : "") + (chat.title || "Conversation");
     titleRow.appendChild(title);
-
     if(chat.folder){
       const f = folders.find(x => x.id === chat.folder);
       if(f){
@@ -1115,15 +1237,14 @@ function renderChatList(){
         titleRow.appendChild(badge);
       }
     }
-
     const preview = document.createElement("div");
     preview.className = "chat-preview";
     const last = chat.messages?.[chat.messages.length-1];
-    preview.textContent = last ? String(last.content||"").replace(/\s+/g," ").slice(0,70) : "Empty";
-
+    let previewText = last ? String(last.content||"").replace(/\s+/g," ") : "Empty";
+    if(previewText.startsWith("[IMAGE_DATA]")) previewText = "🎨 Image";
+    preview.textContent = previewText.slice(0,70);
     main.appendChild(titleRow);
     main.appendChild(preview);
-
     const menuButton = document.createElement("button");
     menuButton.className = "chat-menu-btn";
     menuButton.innerHTML = '<i class="fa-solid fa-ellipsis-vertical"></i>';
@@ -1131,23 +1252,17 @@ function renderChatList(){
     item.onclick = function(){ loadChat(id); };
     item.appendChild(main);
     item.appendChild(menuButton);
-
     const menu = document.createElement("div");
     menu.className = "chat-menu";
     menu.id = "menu-" + id;
-
-    let folderOptions = '<button onclick="openFolderAssign(event,\''+id+'\')"><i class="fa-solid fa-folder"></i> Assign Folder</button>';
-
     menu.innerHTML = 
       '<button onclick="renameChat(event,\''+id+'\')"><i class="fa-solid fa-pen"></i> Rename</button>' +
       '<button onclick="pinChat(event,\''+id+'\')"><i class="fa-solid fa-thumbtack"></i> ' + (chat.pinned ? "Unpin" : "Pin") + '</button>' +
-      folderOptions +
+      '<button onclick="openFolderAssign(event,\''+id+'\')"><i class="fa-solid fa-folder"></i> Assign Folder</button>' +
       '<button onclick="deleteSingleChat(event,\''+id+'\')" style="color:var(--danger)"><i class="fa-solid fa-trash"></i> Delete</button>';
-
     item.appendChild(menu);
     container.appendChild(item);
   });
-
   renderFolders();
 }
 
@@ -1176,7 +1291,7 @@ function openFolderAssign(e, id){
   if(idx === 0){ chatHistories[id].folder = null; }
   else if(idx > 0 && idx <= folders.length){ chatHistories[id].folder = folders[idx-1].id; }
   else{ return; }
-  saveChats();
+  scheduleSave();
   renderChatList();
   showToast("Folder updated");
 }
@@ -1188,12 +1303,23 @@ function confirmRename(){
   const v = document.getElementById("rename-input").value.trim();
   if(!v){ showToast("Enter name"); return; }
   if(chatHistories[renameTargetId]) chatHistories[renameTargetId].title = v.slice(0,80);
-  saveChats(); renderChatList(); closeRenameModal(); showToast("Renamed");
+  scheduleSave(); renderChatList(); closeRenameModal(); showToast("Renamed");
 }
-function pinChat(e,id){ e.stopPropagation(); if(!chatHistories[id]) return; chatHistories[id].pinned = !chatHistories[id].pinned; saveChats(); renderChatList(); showToast(chatHistories[id].pinned ? "Pinned" : "Unpinned"); }
-function deleteSingleChat(e,id){ e.stopPropagation(); if(!chatHistories[id]) return; delete chatHistories[id]; saveChats(); if(id===currentChatId) startNewChat(); else renderChatList(); showToast("Deleted"); }
+function pinChat(e,id){ e.stopPropagation(); if(!chatHistories[id]) return; chatHistories[id].pinned = !chatHistories[id].pinned; scheduleSave(); renderChatList(); showToast(chatHistories[id].pinned ? "Pinned" : "Unpinned"); }
+function deleteSingleChat(e,id){ 
+  e.stopPropagation(); 
+  if(!chatHistories[id]) return; 
+  delete chatHistories[id]; 
+  delete lastSyncedState[id];
+  dbDelete("chats", id).catch(function(err){ console.error("Delete failed:", err); });
+  if(id===currentChatId) startNewChat(); else renderChatList(); 
+  showToast("Deleted"); 
+}
 function loadChat(id){ if(!chatHistories[id]) return; currentChatId=id; renderCurrentChat(); renderChatList(); closeDrawers(); }
 
+/* ============================================================
+   RENDER CHAT
+============================================================ */
 function renderCurrentChat(){
   chatBox.innerHTML = "";
   const chat = getCurrentChat();
@@ -1234,7 +1360,6 @@ function renderCurrentChat(){
 function createMessageElement(role, text, image, index){
   const wrapper = document.createElement("div");
   wrapper.className = "msg-wrap " + (role === "user" ? "user-wrap" : "bot-wrap");
-
   const message = document.createElement("div");
   message.className = "msg " + role;
 
@@ -1251,11 +1376,9 @@ function createMessageElement(role, text, image, index){
     if(text === "Thinking..."){
       message.innerHTML += '<div class="thinking"><div class="spinner"></div><span>' + (TRANSLATIONS[currentLang]?.thinking||"Thinking") + '<span class="dots"><span>.</span><span>.</span><span>.</span></span></span></div>';
     } else if(text && text.startsWith("[IMAGE_DATA]")){
-      // Stored image (base64 data URI) — direct render
       const dataUri = text.replace("[IMAGE_DATA]","").trim();
       message.innerHTML += createImageHtml(dataUri, index);
     } else if(text && text.indexOf("[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::") !== -1){
-      // Pending trigger (shouldn't normally persist) — show placeholder
       const before = text.substring(0, text.indexOf("[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::")).trim();
       if(before) message.innerHTML += renderMarkdown(before);
       message.innerHTML += '<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🎨 Generating image...</div></div>';
@@ -1277,7 +1400,7 @@ function createMessageElement(role, text, image, index){
     copy.title = "Copy";
     copy.innerHTML = '<i class="fa-solid fa-copy"></i>';
     copy.onclick = function(){
-      const cleanText = text.startsWith("[IMAGE_DATA]") || text.indexOf("[IMAGE_GEN]") !== -1 ? (text.split("[IMAGE_GEN]")[0] || "[Image]") : text;
+      const cleanText = (text.startsWith("[IMAGE_DATA]") || text.indexOf("[IMAGE_GEN]") !== -1) ? (text.split("[IMAGE_GEN]")[0] || "[Image]") : text;
       copyText(cleanText);
       copy.innerHTML = '<i class="fa-solid fa-check"></i>';
       setTimeout(()=>{ copy.innerHTML = '<i class="fa-solid fa-copy"></i>'; }, 1500);
@@ -1324,11 +1447,10 @@ function createMessageElement(role, text, image, index){
 }
 
 /* ============================================================
-   IMAGE HELPERS (Cloudflare Workers AI)
+   IMAGE HELPERS
 ============================================================ */
 function createImageHtml(url, messageIndex){
   const safeUrl = escapeHTML(url);
-  // For base64 data URIs, escaping quotes breaks the src, so use a placeholder approach
   const isDataUri = url.startsWith("data:");
   const srcAttr = isDataUri ? url : safeUrl;
   const urlEsc = isDataUri ? "" : url.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");
@@ -1336,8 +1458,8 @@ function createImageHtml(url, messageIndex){
   let buttons = "";
   if(isDataUri){
     buttons = 
-      '<button class="action-btn" onclick="openImagePreview(\'' + urlEsc + '\')" title="Preview" data-imgidx="' + messageIndex + '" data-imgtype="data"><i class="fa-solid fa-expand"></i></button>' +
-      '<button class="action-btn" onclick="downloadImageFromEl(this)" data-imgtype="data" title="Download"><i class="fa-solid fa-download"></i></button>' +
+      '<button class="action-btn" onclick="openImagePreviewFromEl(this.closest(\'.gen-image-wrapper\').querySelector(\'img\'))" title="Preview"><i class="fa-solid fa-expand"></i></button>' +
+      '<button class="action-btn" onclick="downloadImageFromEl(this)" title="Download"><i class="fa-solid fa-download"></i></button>' +
       '<button class="action-btn" onclick="retryImageAt(' + messageIndex + ')" title="Retry"><i class="fa-solid fa-rotate"></i></button>';
   } else {
     buttons = 
@@ -1353,6 +1475,7 @@ function createImageHtml(url, messageIndex){
 }
 
 function openImagePreviewFromEl(imgEl){
+  if(!imgEl) return;
   const src = imgEl.getAttribute("src");
   if(!src) return;
   openImagePreview(src);
@@ -1372,11 +1495,33 @@ function extractImagePrompt(text){
   return match ? match[1].trim() : null;
 }
 
+// ✅ Compress image to save storage
+function compressImage(dataUri, maxSize, quality){
+  maxSize = maxSize || 512;
+  quality = quality || 0.75;
+  return new Promise(function(resolve){
+    const img = new Image();
+    img.onload = function(){
+      let w = img.width, h = img.height;
+      if(w > maxSize || h > maxSize){
+        if(w > h){ h = Math.round((h * maxSize) / w); w = maxSize; }
+        else { w = Math.round((w * maxSize) / h); h = maxSize; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      try{
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      }catch(e){ resolve(dataUri); }
+    };
+    img.onerror = function(){ resolve(dataUri); };
+    img.src = dataUri;
+  });
+}
+
 async function generateImageFromChat(prompt, botElement){
-  botElement.innerHTML = '<div class="image-generating-placeholder">' +
-    '<div class="spinner"></div>' +
-    '<div class="image-generating-text">🎨 Generating image...</div>' +
-  '</div>';
+  botElement.innerHTML = '<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🎨 Generating image...</div></div>';
   
   try{
     const res = await fetch("/api/image", {
@@ -1392,21 +1537,24 @@ async function generateImageFromChat(prompt, botElement){
     const data = await res.json();
     if(!data.imageUrl) throw new Error(data.error || "No image in response");
     
+    // Compress
+    botElement.innerHTML = '<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🗜️ Optimizing image...</div></div>';
+    const compressedUri = await compressImage(data.imageUrl, 512, 0.75);
+    
     const chat = getCurrentChat();
     let botIndex = -1;
     if(chat){
       botIndex = chat.messages.length - 1;
-      // Replace the last bot message with the image marker
       if(botIndex >= 0 && chat.messages[botIndex].role === "bot"){
-        chat.messages[botIndex].content = "[IMAGE_DATA]" + data.imageUrl;
+        chat.messages[botIndex].content = "[IMAGE_DATA]" + compressedUri;
         chat.messages[botIndex].image = null;
       } else {
-        chat.messages.push({ role:"bot", content: "[IMAGE_DATA]" + data.imageUrl, image: null });
+        chat.messages.push({ role:"bot", content: "[IMAGE_DATA]" + compressedUri, image: null });
         botIndex = chat.messages.length - 1;
       }
     }
     
-    botElement.innerHTML = createImageHtml(data.imageUrl, botIndex);
+    botElement.innerHTML = createImageHtml(compressedUri, botIndex);
     scheduleSave();
     renderChatList();
   }catch(err){
@@ -1426,13 +1574,12 @@ function retryImageAt(messageIndex){
   if(!cleanPrompt){ showToast("No prompt found"); return; }
   
   chat.messages = chat.messages.slice(0, messageIndex);
-  saveChats();
+  scheduleSave();
   renderCurrentChat();
   
   if(userText.startsWith("🎨 Generate image:")){
     regenerateImage(cleanPrompt);
   } else {
-    // Chat-based trigger retry — re-extract and re-call
     const cleanText = userText.replace(/\[IMAGE_GEN\]IMAGE_GENERATION_TRIGGER::[^\n\]]+/g, "").trim();
     sendMessage(cleanText || "Generate an image of " + cleanPrompt);
   }
@@ -1457,9 +1604,10 @@ async function regenerateImage(prompt){
     const data = await res.json();
     if(!data.imageUrl) throw new Error(data.error || "No image");
     
+    const compressedUri = await compressImage(data.imageUrl, 512, 0.75);
     const botIndex = chat.messages.length;
-    bot.message.innerHTML = createImageHtml(data.imageUrl, botIndex);
-    chat.messages.push({ role:"bot", content: "[IMAGE_DATA]" + data.imageUrl, image: null });
+    bot.message.innerHTML = createImageHtml(compressedUri, botIndex);
+    chat.messages.push({ role:"bot", content: "[IMAGE_DATA]" + compressedUri, image: null });
     scheduleSave();
     renderChatList();
   }catch(err){
@@ -1475,7 +1623,7 @@ async function downloadImage(url){
     if(url.startsWith("data:")){
       const a = document.createElement("a");
       a.href = url;
-      a.download = "quantum_core_" + Date.now() + ".png";
+      a.download = "quantum_core_" + Date.now() + ".jpg";
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1527,39 +1675,32 @@ function applyPreviewZoom(){
 }
 function downloadPreviewImage(){ if(currentPreviewUrl) downloadImage(currentPreviewUrl); }
 
+/* ============================================================
+   REGENERATE & EDIT
+============================================================ */
 async function regenerateResponse(botMsgIndex){
   if(isGenerating) return;
   const chat = getCurrentChat();
   if(!chat) return;
-
   let userIndex = botMsgIndex - 1;
   while(userIndex >= 0 && chat.messages[userIndex].role !== "user") userIndex--;
   if(userIndex < 0){ showToast("No user message found"); return; }
-
   const userMsg = chat.messages[userIndex];
-  
   chat.messages = chat.messages.slice(0, botMsgIndex);
-  saveChats();
+  scheduleSave();
   renderCurrentChat();
-
   const bot = createMessageElement("bot","Thinking...",null, -1);
   chatBox.appendChild(bot.wrapper);
   scrollToBottom(false);
   setGenerating(true);
   abortController = new AbortController();
-
   try{
     await streamAIResponse(bot.message, userMsg.content, abortController.signal, userMsg.image);
   }catch(error){
     if(error.name === "AbortError"){
       bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>";
-    }else{
-      showErrorInMessage(bot.message, error);
-    }
-  }finally{
-    setGenerating(false);
-    abortController = null;
-  }
+    }else{ showErrorInMessage(bot.message, error); }
+  }finally{ setGenerating(false); abortController = null; }
 }
 
 function editUserMessage(userMsgIndex){
@@ -1568,29 +1709,26 @@ function editUserMessage(userMsgIndex){
   const currentText = chat.messages[userMsgIndex].content || "";
   const newText = prompt("Edit your message:", currentText);
   if(newText === null || newText.trim() === "") return;
-  
   chat.messages[userMsgIndex].content = newText.trim();
   chat.messages = chat.messages.slice(0, userMsgIndex + 1);
-  saveChats();
+  scheduleSave();
   renderCurrentChat();
-
   const bot = createMessageElement("bot","Thinking...",null, -1);
   chatBox.appendChild(bot.wrapper);
   scrollToBottom(false);
   setGenerating(true);
   abortController = new AbortController();
-
   streamAIResponse(bot.message, newText.trim(), abortController.signal, chat.messages[userMsgIndex].image)
     .catch(error=>{
-      if(error.name === "AbortError"){
-        bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>";
-      }else{
-        showErrorInMessage(bot.message, error);
-      }
+      if(error.name === "AbortError"){ bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>"; }
+      else{ showErrorInMessage(bot.message, error); }
     })
     .finally(()=>{ setGenerating(false); abortController = null; });
 }
 
+/* ============================================================
+   MARKDOWN
+============================================================ */
 function renderMarkdown(text){
   if(!window.marked) return escapeHTML(text);
   const renderer = new marked.Renderer();
@@ -1638,28 +1776,26 @@ function renderStreamText(text){
     const before = text.substring(0, triggerIdx).trim();
     let html = "";
     if(before) html += renderMarkdown(before);
-    html += '<div class="image-generating-placeholder">' +
-      '<div class="spinner"></div>' +
-      '<div class="image-generating-text">🎨 Generating image...</div>' +
-    '</div>';
+    html += '<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🎨 Generating image...</div></div>';
     return html;
   }
   return renderMarkdown(text);
 }
 
+/* ============================================================
+   PYTHON SANDBOX
+============================================================ */
 async function runPythonCode(button){
   const code = decodeURIComponent(button.getAttribute("data-code"));
   const wrapper = button.closest(".code-wrapper");
   const outputDiv = wrapper.querySelector(".code-output");
   outputDiv.classList.add("show");
   outputDiv.innerText = "Running...";
-
   if(!pyodideReady || !pyodideInstance){
     outputDiv.innerText = "⏳ Downloading Python sandbox (~10MB). First time only...";
     try{ pyodideInstance = await loadPyodide(); pyodideReady = true; outputDiv.innerText = "✅ Ready. Running..."; }
     catch(e){ outputDiv.innerText = "Error loading Pyodide."; return; }
   }
-
   try{
     pyodideInstance.runPython("import sys\nimport io\nsys.stdout = io.StringIO()\nsys.stderr = io.StringIO()");
     await pyodideInstance.runPythonAsync(code);
@@ -1669,6 +1805,9 @@ async function runPythonCode(button){
   }catch(err){ outputDiv.innerText = "Error:\n" + err; }
 }
 
+/* ============================================================
+   MONACO
+============================================================ */
 function openMonacoModal(){
   document.getElementById("monaco-modal").classList.add("active");
   setTimeout(function(){
@@ -1695,7 +1834,6 @@ async function runMonacoCode(){
   const lang = document.getElementById("monaco-lang").value;
   const out = document.getElementById("monaco-output");
   out.innerText = "Running...";
-
   if(lang === "python"){
     if(!pyodideReady || !pyodideInstance){
       out.innerText = "⏳ Downloading Python sandbox...";
@@ -1717,6 +1855,9 @@ async function runMonacoCode(){
   }
 }
 
+/* ============================================================
+   IMAGE BUTTON GENERATION
+============================================================ */
 function openImageGenModal(){ document.getElementById("image-gen-modal").classList.add("active"); document.getElementById("image-prompt-input").value = ""; }
 function closeImageGenModal(){ document.getElementById("image-gen-modal").classList.remove("active"); }
 
@@ -1744,10 +1885,12 @@ async function generateImage(){
     const data = await res.json();
     if(!data.imageUrl) throw new Error(data.error || "No image in response");
     
-    const botIndex = chat.messages.length;
-    bot.message.innerHTML = createImageHtml(data.imageUrl, botIndex);
+    bot.message.innerHTML = '<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🗜️ Optimizing...</div></div>';
+    const compressedUri = await compressImage(data.imageUrl, 512, 0.75);
     
-    chat.messages.push({ role:"bot", content: "[IMAGE_DATA]" + data.imageUrl, image: null });
+    const botIndex = chat.messages.length;
+    bot.message.innerHTML = createImageHtml(compressedUri, botIndex);
+    chat.messages.push({ role:"bot", content: "[IMAGE_DATA]" + compressedUri, image: null });
     scheduleSave();
     renderChatList();
   }catch(err){
@@ -1757,6 +1900,9 @@ async function generateImage(){
   }
 }
 
+/* ============================================================
+   HELPERS
+============================================================ */
 function escapeHTML(v){
   return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
@@ -1788,7 +1934,11 @@ function setGenerating(v){
   else{ actionBtn.classList.remove("stop"); actionIcon.className = "fa-solid fa-paper-plane"; }
 }
 
-async function sendMessage(overrideText=null){
+/* ============================================================
+   SEND MESSAGE
+============================================================ */
+async function sendMessage(overrideText){
+  overrideText = overrideText || null;
   let text = overrideText !== null ? String(overrideText).trim() : userInput.value.trim();
   if(!text && !base64Image) return;
   const chat = ensureCurrentChat();
@@ -1825,11 +1975,10 @@ function showErrorInMessage(msgEl, error){
   const errStr = String(error.message || error);
   let errMsg = "⚠️ Something went wrong. ";
   if(errStr.includes("503") || errStr.includes("overloaded")) errMsg = "⚠️ AI server is currently busy. Please try again in 30 seconds.";
-  else if(errStr.includes("429") || errStr.includes("quota")) errMsg = "⚠️ Daily quota reached. Please try again tomorrow or enable billing.";
+  else if(errStr.includes("429") || errStr.includes("quota")) errMsg = "⚠️ Daily quota reached. Please try again tomorrow.";
   else if(errStr.includes("Failed to fetch") || errStr.includes("NetworkError")) errMsg = "⚠️ Network error. Check your internet connection.";
   else if(errStr.includes("400")) errMsg = "⚠️ Invalid request. Try clearing and resending.";
   else errMsg = "⚠️ Server error. Please try again.";
-  
   msgEl.innerHTML = '<span style="color:var(--danger)">' + errMsg + '</span> <button class="code-btn" style="display:inline-flex;margin-left:6px;" onclick="retryLastMessage()">Retry</button>';
 }
 
@@ -1843,15 +1992,13 @@ function retryLastMessage(){
   if(lastUser < 0) return;
   const lastUserMsg = chat.messages[lastUser];
   chat.messages = chat.messages.slice(0, lastUser + 1);
-  saveChats();
+  scheduleSave();
   renderCurrentChat();
-  
   const bot = createMessageElement("bot","Thinking...",null,-1);
   chatBox.appendChild(bot.wrapper);
   scrollToBottom(false);
   setGenerating(true);
   abortController = new AbortController();
-  
   streamAIResponse(bot.message, lastUserMsg.content, abortController.signal, lastUserMsg.image)
     .catch(error=>{ if(error.name === "AbortError") bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>"; else showErrorInMessage(bot.message, error); })
     .finally(()=>{ setGenerating(false); abortController = null; });
@@ -1862,7 +2009,10 @@ function stopGeneration(){
   setGenerating(false);
 }
 
-async function streamAIResponse(botElement, userPrompt, signal, imageOverride=null){
+/* ============================================================
+   API CALL
+============================================================ */
+async function streamAIResponse(botElement, userPrompt, signal, imageOverride){
   const useLocalKey = LOCAL_TEST_API_KEY && LOCAL_TEST_API_KEY.trim() !== "";
   const url = useLocalKey ? "direct" : "/api/chat";
 
@@ -1878,7 +2028,6 @@ async function streamAIResponse(botElement, userPrompt, signal, imageOverride=nu
       if(data) parts.push({ inlineData: { mimeType: mime, data: data } });
     }
     let msgText = m.content || "Analyze image.";
-    // Don't send stored base64 image data back to AI
     if(msgText.startsWith("[IMAGE_DATA]")) msgText = "Generate an image.";
     if(msgText.indexOf("[IMAGE_GEN]") !== -1) msgText = msgText.split("[IMAGE_GEN]")[0].trim() || "Generate an image.";
     parts.push({ text: msgText });
@@ -1913,10 +2062,9 @@ async function streamAIResponse(botElement, userPrompt, signal, imageOverride=nu
     'RULES:\n' +
     '1. NEVER write the word "IMAGE_GEN" or "IMAGE_GENERATION_TRIGGER" in any other context.\n' +
     '2. NEVER provide a raw URL. NEVER mention Cloudflare, Flux, or any backend service.\n' +
-    '3. The description after "::" must be a clear, detailed English prompt (include style, lighting, mood).\n' +
-    '4. You may add ONE short friendly sentence before the trigger line, but the trigger MUST be on its own line.\n' +
-    '5. Do NOT mention that you are generating an image — just output the trigger and the system will handle it.\n' +
-    '6. Example reply: "Here you go!\n[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::A cute orange cat sitting on a wooden table, soft warm lighting, photorealistic, 4k"\n';
+    '3. The description after "::" must be a clear, detailed English prompt.\n' +
+    '4. You may add ONE short sentence before the trigger line.\n' +
+    '5. Do NOT mention that you are generating an image.\n';
 
   let finalInstruction = defaultInstruction;
   if(activePersona) finalInstruction = '=== ACTIVE PERSONA: ' + activePersona.name + ' ===\n' + activePersona.prompt + '\n\n' + defaultInstruction;
@@ -1989,21 +2137,15 @@ async function processStream(response, botElement, userPrompt){
 
   if(fullText.trim()){
     const imagePrompt = extractImagePrompt(fullText);
-    
     if(imagePrompt){
-      // Save the bot message first
       const latestChat = getCurrentChat();
       if(latestChat) latestChat.messages.push({ role:"bot", content: fullText, image: null });
       await updateSmartTitle(userPrompt);
       scheduleSave();
       renderChatList();
-
-      // Now generate the image and replace
       await generateImageFromChat(imagePrompt, botElement);
       return;
     }
-    
-    // Normal text response
     botElement.innerHTML = renderMarkdown(fullText);
     if(window.renderMathInElement){
       renderMathInElement(botElement, { delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}], throwOnError: false });
@@ -2033,17 +2175,19 @@ async function updateSmartTitle(prompt){
     const res = await fetch("/api/title", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ prompt: prompt, mode: activeMode }) });
     const data = await res.json();
     const title = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if(title){ chat.title = title.replace(/["']/g,"").slice(0,40); saveChats(); renderChatList(); }
+    if(title){ chat.title = title.replace(/["']/g,"").slice(0,40); scheduleSave(); renderChatList(); }
   }catch(e){}
 }
 
+/* ============================================================
+   SPEECH
+============================================================ */
 function setupSpeechRecognition(){
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!Speech) return;
   recognition = new Speech();
   recognition.continuous = false;
   recognition.interimResults = true;
-
   recognition.onresult = function(e){
     let text = "";
     for(let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
@@ -2051,14 +2195,12 @@ function setupSpeechRecognition(){
     userInput.value = text;
     if(!liveVoiceActive) resizeInput(userInput);
   };
-
   recognition.onend = function(){
     isListening = false;
     document.getElementById("mic-btn").classList.remove("listening");
     document.getElementById("speech-transcript-box").classList.remove("show");
     if(liveVoiceActive && userInput.value.trim()) sendMessage();
   };
-
   recognition.onerror = function(){
     isListening = false;
     document.getElementById("mic-btn").classList.remove("listening");
@@ -2089,7 +2231,7 @@ function toggleLiveVoice(){
 
 function startLiveListening(){ if(liveVoiceActive && !isListening) toggleVoiceInput(); }
 
-function toggleSpeech(text, button, onEnd=null){
+function toggleSpeech(text, button, onEnd){
   if(!("speechSynthesis" in window)){ showToast("TTS not supported"); return; }
   if(currentlySpeakingButton === button && window.speechSynthesis.speaking){ stopAllSpeech(); return; }
   stopAllSpeech();
@@ -2118,6 +2260,9 @@ function toggleSpeech(text, button, onEnd=null){
 function resetSpeechButton(b){ if(b){ b.classList.remove("voice-stop"); b.innerHTML = '<i class="fa-solid fa-volume-high"></i>'; } if(currentlySpeakingButton === b) currentlySpeakingButton = null; }
 function stopAllSpeech(){ if("speechSynthesis" in window) window.speechSynthesis.cancel(); if(currentlySpeakingButton) resetSpeechButton(currentlySpeakingButton); }
 
+/* ============================================================
+   IMAGE UPLOAD
+============================================================ */
 function handleImage(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -2138,6 +2283,9 @@ function removeImage(){
   document.getElementById("file-input").value = "";
 }
 
+/* ============================================================
+   UI
+============================================================ */
 function resizeInput(el){ el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 150) + "px"; }
 function handleKeyDown(e){ if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); mainAction(); } }
 function scrollToBottom(force=false){ if(force || autoScrollEnabled) chatBox.scrollTop = chatBox.scrollHeight; }
@@ -2167,15 +2315,23 @@ function updateStats(){
   document.getElementById("character-count").innerText = cc;
   const cc2 = getCurrentChat();
   let tk = 0;
-  if(cc2 && cc2.messages) cc2.messages.forEach(m => tk += Math.ceil((m.content||"").length / 4));
+  if(cc2 && cc2.messages){
+    cc2.messages.forEach(m => {
+      const text = m.content || "";
+      if(text.startsWith("[IMAGE_DATA]")){ tk += 5; return; }
+      if(text.indexOf("[IMAGE_GEN]") !== -1){ tk += 5; return; }
+      tk += Math.ceil(text.length / 4);
+    });
+  }
   document.getElementById("token-counter").innerText = "Tokens: ~" + tk;
 }
 
 function openClearModal(){ document.getElementById("clear-modal").classList.add("active"); }
 function closeClearModal(){ document.getElementById("clear-modal").classList.remove("active"); }
-function clearAllChats(){
+async function clearAllChats(){
   chatHistories = {};
-  saveChats();
+  lastSyncedState = {};
+  try{ await dbClear("chats"); }catch(e){ console.error(e); }
   startNewChat();
   closeClearModal();
   closeDrawers();
@@ -2192,12 +2348,17 @@ function importJSONBackup(e){
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = function(evt){
+  reader.onload = async function(evt){
     try{
       const parsed = JSON.parse(evt.target.result);
       if(parsed && typeof parsed === "object"){
+        await dbClear("chats");
+        lastSyncedState = {};
         chatHistories = parsed;
-        saveChats();
+        for(const id in chatHistories){
+          await dbSet("chats", Object.assign({}, chatHistories[id], { id: id }));
+          lastSyncedState[id] = JSON.stringify(chatHistories[id]);
+        }
         renderChatList();
         startNewChat();
         showToast("Backup restored");
@@ -2232,6 +2393,9 @@ function showToast(msg){
   setTimeout(()=>{ t.classList.remove("show", "ui-alert-anim"); }, 2200);
 }
 
+/* ============================================================
+   IN-APP BROWSER
+============================================================ */
 let inappHistory = [], inappHistoryIndex = -1, inappLoadTimeout = null;
 
 function openInappBrowser(url){
