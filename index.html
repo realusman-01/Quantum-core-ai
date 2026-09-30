@@ -739,7 +739,7 @@ border-radius:10px;
 
 .welcome{
 margin:auto;
-max-width:440px;
+max-width:460px;
 text-align:center;
 padding:20px;
 animation: scaleInWelcome 0.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -799,6 +799,8 @@ animation: fadeInQuick 0.4s ease backwards;
 .quick:nth-child(2) { animation-delay: 0.1s; }
 .quick:nth-child(3) { animation-delay: 0.15s; }
 .quick:nth-child(4) { animation-delay: 0.2s; }
+.quick:nth-child(5) { animation-delay: 0.25s; }
+.quick:nth-child(6) { animation-delay: 0.3s; }
 
 @keyframes fadeInQuick {
 from { opacity: 0; transform: translateY(8px); }
@@ -1491,7 +1493,6 @@ background:var(--danger);
 box-shadow: 0 4px 12px rgba(239,68,68,0.25);
 }
 
-/* Speech Transcript Overlay Box */
 #speech-transcript-box {
 position: fixed;
 bottom: 120px;
@@ -1514,7 +1515,6 @@ animation: fadeInKey 0.3s ease;
 display: block;
 }
 
-/* Monaco Code Playground Modal */
 #monaco-modal .modal-card {
 max-width: 850px;
 width: 95%;
@@ -1549,7 +1549,7 @@ accent-color: var(--primary);
 margin-top: 5px;
 }
 
-/* ================= CUSTOM DROPDOWN (Theme-matched) ================= */
+/* ================= CUSTOM DROPDOWN ================= */
 .custom-dropdown{
 position:relative;
 margin-bottom:8px;
@@ -1891,7 +1891,7 @@ Core
 <div class="setting-group">
 <label class="setting-label">Math Expertise Level (<span id="math-level-val">5</span>)</label>
 <input type="range" id="math-level-slider" class="range-slider" min="1" max="10" step="1" value="5" oninput="updateMathLevel(this.value)">
-<div style="font-size:10.5px;color:var(--muted);margin-top:4px;">Level 1 = Basic/Detailed breakdown | Level 10 = Advanced Math</div>
+<div style="font-size:10.5px;color:var(--muted);margin-top:4px;">Level 1 = Detailed breakdown | Level 10 = Advanced Math</div>
 </div>
 
 <div class="setting-group">
@@ -1934,7 +1934,6 @@ onclick="setAccent('#ec4899')"></div>
 </div>
 </div>
 
-<!-- Prompt Library & System Prompts -->
 <div class="setting-group">
 <label class="setting-label">Prompt Library & System Prompt</label>
 <div class="custom-dropdown" id="prompt-dropdown">
@@ -1945,9 +1944,11 @@ onclick="setAccent('#ec4899')"></div>
 <div class="custom-dropdown-menu" id="prompt-dropdown-menu">
 <div class="custom-dropdown-item" onclick="selectPromptTemplate('', 'Select system prompts')">Select system prompts</div>
 <div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as an expert Python programmer who explains code clearly and concisely.', 'Python Expert')">Python Expert</div>
-<div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as a math tutor. Use step-by-step logic, clear breakdown, and simple examples.', 'Math Tutor')">Math Tutor</div>
-<div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as a professional creative writer and editor. Improve tone, flow, and vocabulary.', 'Creative Editor')">Creative Editor</div>
+<div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as a professional creative writer and editor. Improve tone, flow, and vocabulary.', 'Creative Writer')">Creative Writer</div>
 <div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as a helpful cybersecurity and debugging assistant. Find bugs and provide secure fixes.', 'Code Debugger')">Code Debugger</div>
+<div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as a concise math tutor. Solve math and physics problems step-by-step in clean textbook format with LaTeX.', 'Math Tutor')">Math Tutor</div>
+<div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as a friendly teacher who explains concepts with simple real-life examples, for beginners.', 'Simple Teacher')">Simple Teacher</div>
+<div class="custom-dropdown-item" onclick="selectPromptTemplate('Act as a professional translator. Translate text accurately while preserving tone and context.', 'Translator')">Translator</div>
 </div>
 </div>
 <textarea
@@ -1960,7 +1961,6 @@ placeholder="Example: Act as a Python expert and explain code step-by-step."
 </button>
 </div>
 
-<!-- Voice Customization Engine & Gender Options -->
 <div class="setting-group">
 <label class="setting-label">Speech Engine & Voice Type</label>
 <div class="segment" style="margin-bottom: 8px;">
@@ -2112,7 +2112,6 @@ title="Scroll to bottom">
 
 </div>
 
-<!-- Speech Transcript Live Overlay Floating Box -->
 <div id="speech-transcript-box">
 <div style="font-size:10px;font-weight:800;color:var(--primary);margin-bottom:4px;text-transform:uppercase;">
 <i class="fa-solid fa-wave-square"></i> Live Speech Transcript
@@ -2319,9 +2318,14 @@ Save
 <script>
 
 /* ============================================================
-   QUANTUM CORE
-   CORE APPLICATION
+   QUANTUM CORE - ALL-ROUND AI ASSISTANT
 ============================================================ */
+
+/* ============================================================
+   LOCAL TESTING CONFIG (Spck Editor ke liye)
+   ⚠️ GitHub par push karne se pehle isko khali chhod do!
+============================================================ */
+const LOCAL_TEST_API_KEY = "";
 
 /* ============================================================
    STATE
@@ -2403,10 +2407,6 @@ if (window.speechSynthesis) {
 }
 startNewChat();
 
-// Pyodide lazy-load (sirf Run button dabane par)
-// Isse page load par freeze khatam ho jayega
-
-// Initialize Monaco Loader
 if(window.require) {
   require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs' }});
 }
@@ -2495,7 +2495,7 @@ showToast("Accent color updated");
 function saveCustomPrompt(){
 customSystemPrompt = document.getElementById("custom-prompt").value.trim();
 safeSet("qc_system_prompt", customSystemPrompt);
-showToast(customSystemPrompt ? "Custom prompt saved" : "Nothing ordered");
+showToast(customSystemPrompt ? "Custom prompt saved" : "Nothing saved");
 }
 
 function togglePromptDropdown(event){
@@ -2820,14 +2820,16 @@ chatBox.innerHTML=`
 <div class="welcome-logo">✨</div>
 <h2>Quantum Core AI</h2>
 <p>
-Ask anything, solve mathematics, discuss programming,
-analyze images or use voice interaction.
+Your all-in-one AI assistant for <strong>writing, coding, learning, research, brainstorming,</strong> and everyday questions.
+Ask anything — from simple chats to deep problems.
 </p>
 <div class="quick-grid">
-<button class="quick" onclick="sendQuick('I need help in math.')">📐 Math</button>
-<button class="quick" onclick="sendQuick('Write a Python program')">💻 Python</button>
-<button class="quick" onclick="sendQuick('I need help in physics.')">⚛️ Physics</button>
+<button class="quick" onclick="sendQuick('Write a Python program for me')">💻 Write Code</button>
 <button class="quick" onclick="sendQuick('Help me debug my code')">🛠️ Debug Code</button>
+<button class="quick" onclick="sendQuick('Explain a concept simply')">📚 Explain</button>
+<button class="quick" onclick="sendQuick('Help me brainstorm ideas')">💡 Brainstorm</button>
+<button class="quick" onclick="sendQuick('Summarize this topic')">📝 Summarize</button>
+<button class="quick" onclick="sendQuick('Solve a math problem: x² + 5x + 6 = 0')">📐 Math</button>
 </div>
 </div>
 `;
@@ -2942,7 +2944,7 @@ return {wrapper,message};
 }
 
 /* ============================================================
-   MARKDOWN + HIGHLIGHT + CODE RUNNER SANDBOX
+   MARKDOWN RENDERER
 ============================================================ */
 
 function renderMarkdown(text){
@@ -2952,7 +2954,6 @@ return escapeHTML(text);
 
 const renderer=new marked.Renderer();
 
-// Links ko safely render karo (in-app browser ke liye)
 renderer.link=function({href, text, title}){
   const safeText = text || href;
   const titleAttr = title ? ' title="' + escapeHTML(title) + '"' : '';
@@ -3023,7 +3024,7 @@ return temp.innerHTML;
 }
 
 /* ============================================================
-   PYTHON SANDBOX RUNNER
+   PYTHON SANDBOX
 ============================================================ */
 
 async function runPythonCode(button){
@@ -3064,7 +3065,7 @@ sys.stderr = io.StringIO()
 }
 
 /* ============================================================
-   MONACO EDITOR PLAYGROUND LOGIC
+   MONACO EDITOR
 ============================================================ */
 
 function openMonacoModal(){
@@ -3249,7 +3250,7 @@ if(error.name==="AbortError"){
 bot.message.innerHTML="<span style='color:var(--muted)'>You stopped the response.</span>";
 }else{
 console.error(error);
-bot.message.innerHTML=`<span style="color:var(--danger)">Hmm, it seems like something went wrong to the server please try to change ai performance [in the settings].</span>`;
+bot.message.innerHTML=`<span style="color:var(--danger)">Hmm, something went wrong. Please try again or switch AI mode in Settings.</span>`;
 }
 }finally{
 setGenerating(false);
@@ -3266,11 +3267,12 @@ setGenerating(false);
 }
 
 /* ============================================================
-   API PROXY
+   API CALL
 ============================================================ */
 
 async function streamAIResponse(botElement, userPrompt, signal){
-const url = "/api/chat";
+const useLocalKey = LOCAL_TEST_API_KEY && LOCAL_TEST_API_KEY.trim() !== "";
+const url = useLocalKey ? "direct" : "/api/chat";
 
 const chat=getCurrentChat();
 if(!chat) throw new Error("Chat unavailable");
@@ -3290,36 +3292,62 @@ return { role: message.role==="user" ? "user" : "model", parts:parts };
 });
 
 const defaultInstruction=`
-Your name is Quantum Core AI.
-Do not introduce yourself unless the user asks.
-Answer naturally and conversationally.
+Your name is Quantum Core AI — a versatile, all-round AI assistant.
 
-=== MATH & PHYSICS TEXTBOOK STYLE (VERY IMPORTANT) ===
-When solving ANY mathematics, physics, or numerical problem, you MUST write the solution in a clean TEXTBOOK format using these exact section headings, each as a separate paragraph starting with the bolded word:
+You help with ANYTHING the user asks: general knowledge, coding, writing, research, brainstorming, explanations, translations, summaries, everyday questions, creative tasks, and more.
 
-**Given:** State all known values, variables, and conditions clearly.
-**Formula:** Write the relevant formula(s) in LaTeX display mode ($$...$$).
-**Calculation:** Show the step-by-step solution. Each step on a new line. Use LaTeX for every equation.
-**Final Answer:** State the final result clearly with proper units, wrapped in a boxed LaTeX expression like $$\\boxed{...}$$.
-
-Rules for textbook style:
-- ALWAYS use LaTeX for EVERY mathematical expression, no matter how small (even $2 + 2$).
-- Use display mode ($$...$$) for main formulas and important equations.
-- Use inline mode ($...$) for variables mentioned inside sentences.
-- Use proper LaTeX for fractions (\\frac{}{}), square roots (\\sqrt{}), integrals (\\int), summations (\\sum), Greek letters (\\alpha, \\theta, \\pi), etc.
-- Show EVERY step of the calculation — do not skip steps.
-- Number the steps if the problem is long (Step 1:, Step 2:, etc.).
-- Keep the layout clean and readable like a school textbook.
-
-Math Explanation Strategy (Skill Level: ${mathSkillLevel}/10):
-${mathSkillLevel <= 3 ? 'The user is basic/weak in math. Explain with extreme step-by-step clarity, using cross-multiplication, line-by-line simplification, and beginner-friendly examples.' : mathSkillLevel <= 7 ? 'Explain math step-by-step with balanced logic and standard cross-multiplication or arithmetic simplification.' : 'Deliver concise, advanced mathematical solutions with step-by-step rigor.'}
+=== COMMUNICATION STYLE ===
+- Answer naturally, clearly, and conversationally.
+- Match the depth of your answer to the user's question. Simple question → simple answer. Complex question → detailed answer.
+- Use Markdown formatting (headings, bullet points, bold, tables) to make answers easy to read.
+- When sharing links, provide complete URLs so they open in the in-app browser.
+- Never introduce yourself unless the user asks.
 
 === FOR PROGRAMMING ===
-Preserve complete code. Explain code when useful. Use Markdown code blocks.
+- Preserve complete, runnable code in Markdown code blocks.
+- Explain code when it helps the user understand.
+- Support any language (Python, JavaScript, C++, Java, etc.).
+
+=== FOR MATH & PHYSICS (Textbook Style) ===
+When solving a math or physics problem, use this clean format with each section starting as a separate paragraph:
+**Given:** Known values and conditions.
+**Formula:** The relevant formula in LaTeX ($$...$$).
+**Calculation:** Step-by-step solution, every equation in LaTeX.
+**Final Answer:** The result, boxed with \\boxed{} if applicable.
+Always use LaTeX for math ($...$ inline, $$...$$ display).
+Math Explanation Depth (Skill Level: ${mathSkillLevel}/10):
+${mathSkillLevel <= 3 ? 'Explain with extreme step-by-step clarity and beginner-friendly examples.' : mathSkillLevel <= 7 ? 'Explain step-by-step with balanced logic.' : 'Deliver concise, advanced solutions with rigorous steps.'}
+
+=== FOR WRITING ===
+- Match the tone the user wants (formal, casual, persuasive, creative, etc.).
+- Improve grammar, flow, and clarity.
+
+=== FOR IMAGES ===
+- Analyze uploaded images and describe what you see or answer questions about them.
 `;
 
-const finalInstruction = customSystemPrompt ? defaultInstruction + "\n\nCUSTOMIZE AI :\n" + customSystemPrompt : defaultInstruction;
+const finalInstruction = customSystemPrompt ? defaultInstruction + "\n\n=== USER CUSTOM INSTRUCTION ===\n" + customSystemPrompt : defaultInstruction;
 
+if(useLocalKey){
+  // Direct Gemini API call (only for local/Spck testing)
+  const modelName = "gemini-3.5-flash-lite";
+  const directUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(LOCAL_TEST_API_KEY)}`;
+  const response = await fetch(directUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: contents,
+      systemInstruction: { parts: [{ text: finalInstruction }] },
+      generationConfig: { temperature: aiTemperature }
+    }),
+    signal: signal
+  });
+  if(!response.ok) throw new Error("Direct API failed");
+  await processStream(response, botElement, userPrompt);
+  return;
+}
+
+// Vercel Proxy call
 const payload={
 contents:contents,
 systemInstruction:{ parts:[{text:finalInstruction}] },
@@ -3340,6 +3368,10 @@ try{ errorText=await response.text(); }catch(e){}
 throw new Error(errorText);
 }
 
+await processStream(response, botElement, userPrompt);
+}
+
+async function processStream(response, botElement, userPrompt){
 if(!response.body) throw new Error("Streaming not supported");
 
 const reader=response.body.getReader();
@@ -3637,7 +3669,7 @@ document.getElementById("file-input").value="";
 }
 
 /* ============================================================
-   UI HELPERS & BACKUPS
+   UI HELPERS
 ============================================================ */
 
 function resizeInput(el){
@@ -3797,15 +3829,11 @@ let inappLoadTimeout = null;
 
 function openInappBrowser(url){
   if(!url) return;
-  
-  // Agar URL mein protocol nahi hai, toh https laga do
   if(!/^https?:\/\//i.test(url)){
     url = "https://" + url;
   }
-  
   inappHistory = [url];
   inappHistoryIndex = 0;
-  
   document.getElementById("inapp-browser").classList.add("open");
   loadInappUrl(url);
 }
@@ -3828,7 +3856,6 @@ function loadInappUrl(url){
   loader.classList.remove("hide");
   blocked.classList.remove("show");
   
-  // Blocked detection timeout
   clearTimeout(inappLoadTimeout);
   inappLoadTimeout = setTimeout(function(){
     if(!loader.classList.contains("hide")){
@@ -3874,20 +3901,13 @@ function inappOpenExternal(){
   }
 }
 
-// Chat mein link clicks intercept karo
 document.addEventListener("click", function(e){
   const link = e.target.closest("a");
   if(!link) return;
-  
   const href = link.getAttribute("href");
   if(!href) return;
-  
-  // Sirf http/https links intercept karo
   if(!/^https?:\/\//i.test(href)) return;
-  
-  // Agar in-app browser already khula hai toh skip
   if(document.getElementById("inapp-browser").classList.contains("open")) return;
-  
   e.preventDefault();
   e.stopPropagation();
   openInappBrowser(href);
