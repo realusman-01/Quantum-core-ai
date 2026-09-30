@@ -627,6 +627,7 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 /* ============================================================
    QUANTUM CORE AI - BY USMAN SALEEM
    Storage: IndexedDB | Images: Cloudflare Workers AI + Compression
+   Live Voice: Auto-listen → Auto-send → Auto-speak → Loop
 ============================================================ */
 
 const LOCAL_TEST_API_KEY = "";
@@ -702,7 +703,7 @@ const actionIcon = document.getElementById("action-icon");
 const scrollBtn = document.getElementById("scroll-btn");
 
 /* ============================================================
-   SAFE LOCALSTORAGE (only for settings/preferences, not chats)
+   SAFE LOCALSTORAGE
 ============================================================ */
 function safeGet(key, fallback = null){ try{ const v = localStorage.getItem(key); return v === null ? fallback : v; }catch(e){ return fallback; } }
 function safeSet(key,value){ try{ localStorage.setItem(key,value); }catch(e){ console.warn("Storage unavailable"); } }
@@ -780,9 +781,7 @@ async function migrateFromLocalStorage(){
     const stored = localStorage.getItem("quantum_chats");
     if(stored){
       const chats = JSON.parse(stored);
-      for(const id in chats){
-        await dbSet("chats", Object.assign({}, chats[id], { id: id }));
-      }
+      for(const id in chats){ await dbSet("chats", Object.assign({}, chats[id], { id: id })); }
       localStorage.removeItem("quantum_chats");
     }
   }catch(e){}
@@ -824,7 +823,6 @@ async function flushDB(){
     }
   }catch(e){
     console.error("DB flush failed:", e);
-    showToast("⚠️ Storage error.");
   }
 }
 
@@ -915,30 +913,22 @@ function loadSettings(){
   const savedMode = safeGet("qc_mode","fast");
   activeMode = savedMode === "core" ? "core" : "fast";
   updateModeUI();
-
   currentTheme = safeGet("qc_theme","dark");
   applyTheme(currentTheme,false);
-
   const accent = safeGet("qc_accent","#2563eb");
   document.documentElement.style.setProperty("--primary", accent);
-
   customSystemPrompt = safeGet("qc_system_prompt","");
   document.getElementById("custom-prompt").value = customSystemPrompt;
-
   const auto = safeGet("qc_auto_scroll","true");
   autoScrollEnabled = auto !== "false";
   document.getElementById("auto-scroll-toggle").checked = autoScrollEnabled;
-
   voiceGender = safeGet("qc_voice_gender", "male");
-
   aiTemperature = parseFloat(safeGet("qc_temperature", "0.7"));
   document.getElementById("temp-slider").value = aiTemperature;
   document.getElementById("temp-val").innerText = aiTemperature;
-
   mathSkillLevel = parseInt(safeGet("qc_math_level", "5"));
   document.getElementById("math-level-slider").value = mathSkillLevel;
   document.getElementById("math-level-val").innerText = mathSkillLevel;
-
   activePersonaId = safeGet("qc_active_persona", null);
 }
 
@@ -981,13 +971,11 @@ function applyTheme(theme, save=true){
 }
 
 function setTheme(theme){ applyTheme(theme, true); showToast("Theme: " + theme); }
-
 function setupSystemThemeWatcher(){
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(){
     if(currentTheme === "auto") applyTheme("auto", false);
   });
 }
-
 function setAccent(color){ document.documentElement.style.setProperty("--primary", color); safeSet("qc_accent",color); showToast("Accent updated"); }
 function saveCustomPrompt(){
   customSystemPrompt = document.getElementById("custom-prompt").value.trim();
@@ -1014,7 +1002,7 @@ function setAutoScroll(v){ autoScrollEnabled = v; safeSet("qc_auto_scroll", Stri
 function loadVoices(){ if("speechSynthesis" in window) availableVoices = window.speechSynthesis.getVoices(); }
 
 /* ============================================================
-   FOLDERS (IndexedDB)
+   FOLDERS
 ============================================================ */
 async function loadFolders(){
   try{
@@ -1072,7 +1060,7 @@ function createNewFolder(){
 }
 
 /* ============================================================
-   PERSONAS (IndexedDB)
+   PERSONAS
 ============================================================ */
 async function loadPersonas(){
   try{
@@ -1137,7 +1125,7 @@ function savePersona(){
 }
 
 /* ============================================================
-   CHATS (IndexedDB)
+   CHATS
 ============================================================ */
 async function loadChats(){
   try{
@@ -1495,7 +1483,6 @@ function extractImagePrompt(text){
   return match ? match[1].trim() : null;
 }
 
-// ✅ Compress image to save storage
 function compressImage(dataUri, maxSize, quality){
   maxSize = maxSize || 512;
   quality = quality || 0.75;
@@ -1511,9 +1498,8 @@ function compressImage(dataUri, maxSize, quality){
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, w, h);
-      try{
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      }catch(e){ resolve(dataUri); }
+      try{ resolve(canvas.toDataURL("image/jpeg", quality)); }
+      catch(e){ resolve(dataUri); }
     };
     img.onerror = function(){ resolve(dataUri); };
     img.src = dataUri;
@@ -1537,7 +1523,6 @@ async function generateImageFromChat(prompt, botElement){
     const data = await res.json();
     if(!data.imageUrl) throw new Error(data.error || "No image in response");
     
-    // Compress
     botElement.innerHTML = '<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🗜️ Optimizing image...</div></div>';
     const compressedUri = await compressImage(data.imageUrl, 512, 0.75);
     
@@ -1697,9 +1682,8 @@ async function regenerateResponse(botMsgIndex){
   try{
     await streamAIResponse(bot.message, userMsg.content, abortController.signal, userMsg.image);
   }catch(error){
-    if(error.name === "AbortError"){
-      bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>";
-    }else{ showErrorInMessage(bot.message, error); }
+    if(error.name === "AbortError"){ bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>"; }
+    else{ showErrorInMessage(bot.message, error); }
   }finally{ setGenerating(false); abortController = null; }
 }
 
@@ -1856,7 +1840,7 @@ async function runMonacoCode(){
 }
 
 /* ============================================================
-   IMAGE BUTTON GENERATION
+   IMAGE BUTTON
 ============================================================ */
 function openImageGenModal(){ document.getElementById("image-gen-modal").classList.add("active"); document.getElementById("image-prompt-input").value = ""; }
 function closeImageGenModal(){ document.getElementById("image-gen-modal").classList.remove("active"); }
@@ -2144,6 +2128,7 @@ async function processStream(response, botElement, userPrompt){
       scheduleSave();
       renderChatList();
       await generateImageFromChat(imagePrompt, botElement);
+      if(liveVoiceActive) updateLiveVoiceStatus("🎤 Listening...");
       return;
     }
     botElement.innerHTML = renderMarkdown(fullText);
@@ -2157,13 +2142,55 @@ async function processStream(response, botElement, userPrompt){
     renderChatList();
 
     if(liveVoiceActive){
-      const tempButton = botElement.parentElement.querySelector(".action-btn");
-      if(tempButton){
-        toggleSpeech(fullText, tempButton, ()=>{ if(liveVoiceActive) setTimeout(startLiveListening, 700); });
+      const wrapper = botElement.parentElement;
+      const allBtns = wrapper.querySelectorAll(".action-btn");
+      let voiceBtn = null;
+      for(let i = 0; i < allBtns.length; i++){
+        if(allBtns[i].title === "Read aloud"){ voiceBtn = allBtns[i]; break; }
+      }
+      const speakText = fullText.replace(/\[IMAGE_GEN\][^\n]*/g,"").replace(/\[IMAGE_DATA\][^\s]+/g,"Image.").trim();
+      
+      updateLiveVoiceStatus("🔊 Speaking...");
+      
+      if(speakText){
+        if(voiceBtn){
+          toggleSpeech(speakText, voiceBtn, function(){
+            if(liveVoiceActive){
+              updateLiveVoiceStatus("🎤 Listening...");
+              setTimeout(startLiveListening, 600);
+            }
+          });
+        } else {
+          const utterance = new SpeechSynthesisUtterance(speakText);
+          if(availableVoices.length > 0){
+            let v = null;
+            if(voiceGender === "female") v = availableVoices.find(x=>x.name.toLowerCase().includes("female")||x.name.toLowerCase().includes("zira")||x.name.toLowerCase().includes("samantha"));
+            else v = availableVoices.find(x=>x.name.toLowerCase().includes("male")||x.name.toLowerCase().includes("david")||x.name.toLowerCase().includes("mark"));
+            if(v) utterance.voice = v;
+          }
+          utterance.onend = function(){
+            if(liveVoiceActive){
+              updateLiveVoiceStatus("🎤 Listening...");
+              setTimeout(startLiveListening, 600);
+            }
+          };
+          utterance.onerror = function(){
+            if(liveVoiceActive) setTimeout(startLiveListening, 600);
+          };
+          window.speechSynthesis.speak(utterance);
+        }
+      } else {
+        setTimeout(function(){
+          if(liveVoiceActive){
+            updateLiveVoiceStatus("🎤 Listening...");
+            startLiveListening();
+          }
+        }, 800);
       }
     }
   }else{
     botElement.innerText = "No response received.";
+    if(liveVoiceActive) setTimeout(startLiveListening, 800);
   }
 }
 
@@ -2180,7 +2207,7 @@ async function updateSmartTitle(prompt){
 }
 
 /* ============================================================
-   SPEECH
+   SPEECH RECOGNITION (With Live Voice Support)
 ============================================================ */
 function setupSpeechRecognition(){
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2188,23 +2215,56 @@ function setupSpeechRecognition(){
   recognition = new Speech();
   recognition.continuous = false;
   recognition.interimResults = true;
+
   recognition.onresult = function(e){
     let text = "";
     for(let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
     document.getElementById("transcript-text").innerText = text || "Listening...";
-    userInput.value = text;
-    if(!liveVoiceActive) resizeInput(userInput);
+    if(liveVoiceActive){
+      updateLiveVoiceStatus("🔴 Listening...");
+    } else {
+      userInput.value = text;
+      resizeInput(userInput);
+    }
+    recognition._lastTranscript = text;
   };
+
   recognition.onend = function(){
     isListening = false;
     document.getElementById("mic-btn").classList.remove("listening");
-    document.getElementById("speech-transcript-box").classList.remove("show");
-    if(liveVoiceActive && userInput.value.trim()) sendMessage();
+    
+    if(liveVoiceActive){
+      const heard = (recognition._lastTranscript || "").trim();
+      if(heard){
+        recognition._lastTranscript = "";
+        userInput.value = heard;
+        sendMessage();
+      } else {
+        document.getElementById("speech-transcript-box").classList.remove("show");
+        setTimeout(function(){
+          if(liveVoiceActive && !isGenerating) startLiveListening();
+        }, 500);
+      }
+    } else {
+      document.getElementById("speech-transcript-box").classList.remove("show");
+    }
   };
-  recognition.onerror = function(){
+
+  recognition.onerror = function(e){
     isListening = false;
     document.getElementById("mic-btn").classList.remove("listening");
-    document.getElementById("speech-transcript-box").classList.remove("show");
+    if(liveVoiceActive && e.error !== "aborted" && e.error !== "no-speech"){
+      updateLiveVoiceStatus("⚠️ Mic error. Restarting...");
+      setTimeout(function(){
+        if(liveVoiceActive) startLiveListening();
+      }, 1500);
+    } else if(liveVoiceActive){
+      setTimeout(function(){
+        if(liveVoiceActive && !isGenerating) startLiveListening();
+      }, 500);
+    } else {
+      document.getElementById("speech-transcript-box").classList.remove("show");
+    }
   };
 }
 
@@ -2216,6 +2276,7 @@ function toggleVoiceInput(){
     document.getElementById("mic-btn").classList.add("listening");
     document.getElementById("speech-transcript-box").classList.add("show");
     document.getElementById("transcript-text").innerText = "Listening...";
+    recognition._lastTranscript = "";
     try{ recognition.start(); }catch(e){}
   }
 }
@@ -2225,15 +2286,53 @@ function toggleLiveVoice(){
   const btn = document.getElementById("live-btn");
   btn.classList.toggle("active", liveVoiceActive);
   document.getElementById("live-label").innerText = liveVoiceActive ? "Live Active" : "Live";
-  if(liveVoiceActive){ showToast("Live Voice ON"); startLiveListening(); }
-  else{ stopAllSpeech(); showToast("Live Voice OFF"); }
+  
+  if(liveVoiceActive){
+    showToast("🎤 Live Voice ON — Speak now");
+    updateLiveVoiceStatus("🎤 Starting...");
+    startLiveListening();
+  } else {
+    stopAllSpeech();
+    if(recognition && isListening){ try{ recognition.stop(); }catch(e){} }
+    updateLiveVoiceStatus("");
+    showToast("Live Voice OFF");
+  }
 }
 
-function startLiveListening(){ if(liveVoiceActive && !isListening) toggleVoiceInput(); }
+function startLiveListening(){
+  if(!liveVoiceActive) return;
+  if(isGenerating) return;
+  if(isListening) return;
+  if(!recognition) return;
+  
+  recognition._lastTranscript = "";
+  userInput.value = "";
+  isListening = true;
+  document.getElementById("mic-btn").classList.add("listening");
+  document.getElementById("speech-transcript-box").classList.add("show");
+  document.getElementById("transcript-text").innerText = "Listening...";
+  updateLiveVoiceStatus("🔴 Listening...");
+  
+  try{ recognition.start(); }catch(e){
+    console.warn("Recognition start failed:", e);
+    setTimeout(function(){ if(liveVoiceActive) startLiveListening(); }, 1000);
+  }
+}
+
+function updateLiveVoiceStatus(text){
+  const box = document.getElementById("speech-transcript-box");
+  if(!box) return;
+  if(!text){
+    box.classList.remove("show");
+    return;
+  }
+  box.classList.add("show");
+  document.getElementById("transcript-text").innerText = text;
+}
 
 function toggleSpeech(text, button, onEnd){
-  if(!("speechSynthesis" in window)){ showToast("TTS not supported"); return; }
-  if(currentlySpeakingButton === button && window.speechSynthesis.speaking){ stopAllSpeech(); return; }
+  if(!("speechSynthesis" in window)){ showToast("TTS not supported"); if(onEnd) onEnd(); return; }
+  if(currentlySpeakingButton === button && window.speechSynthesis.speaking){ stopAllSpeech(); if(onEnd) onEnd(); return; }
   stopAllSpeech();
   const cleanText = String(text)
     .replace(/\[IMAGE_GEN\][^\n]*/g,"")
@@ -2249,11 +2348,19 @@ function toggleSpeech(text, button, onEnd){
     else v = availableVoices.find(x=>x.name.toLowerCase().includes("male")||x.name.toLowerCase().includes("david")||x.name.toLowerCase().includes("mark"));
     if(v) currentSpeechUtterance.voice = v;
   }
-  button.classList.add("voice-stop");
-  button.innerHTML = '<i class="fa-solid fa-stop"></i>';
-  currentlySpeakingButton = button;
-  currentSpeechUtterance.onend = function(){ resetSpeechButton(button); if(onEnd) onEnd(); };
-  currentSpeechUtterance.onerror = function(){ resetSpeechButton(button); };
+  if(button){
+    button.classList.add("voice-stop");
+    button.innerHTML = '<i class="fa-solid fa-stop"></i>';
+    currentlySpeakingButton = button;
+  }
+  currentSpeechUtterance.onend = function(){ 
+    if(button) resetSpeechButton(button); 
+    if(onEnd) onEnd(); 
+  };
+  currentSpeechUtterance.onerror = function(){ 
+    if(button) resetSpeechButton(button); 
+    if(onEnd) onEnd(); 
+  };
   window.speechSynthesis.speak(currentSpeechUtterance);
 }
 
