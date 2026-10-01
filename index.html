@@ -627,7 +627,7 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 /* ============================================================
    QUANTUM CORE AI - BY USMAN SALEEM
    Storage: IndexedDB | Images: Cloudflare Workers AI + Compression
-   Voice: Edge TTS (Microsoft Neural Voices) - Natural Quality
+   Voice: Microsoft Edge Neural TTS (via backend proxy /api/tts)
 ============================================================ */
 
 const LOCAL_TEST_API_KEY = "";
@@ -681,7 +681,6 @@ let liveVoiceActive = false;
 let currentlySpeakingButton = null;
 let currentSpeechUtterance = null;
 let currentGoogleAudio = null;
-let edgeTTSWebSocket = null;
 let edgeTTSAudioPlayer = null;
 let voiceGender = "male";
 let searchTerm = "";
@@ -1002,26 +1001,6 @@ function setVoiceGender(g){
 function setAutoScroll(v){ autoScrollEnabled = v; safeSet("qc_auto_scroll", String(v)); if(v) scrollToBottom(false); }
 function loadVoices(){ if("speechSynthesis" in window) availableVoices = window.speechSynthesis.getVoices(); }
 
-const FEMALE_KEYWORDS = ["female","woman","zira","samantha","victoria","karen","moira","tessa","aria","jenny","susan","hazel","heera","swara","kalpana","heami","yuna","zhiyu","ting-ting","sinji","meijia","lili","catherine","linda","mary","eva","alice","emma","olivia","sophia","female voice","woman voice"];
-const MALE_KEYWORDS = ["male","man","david","mark","alex","daniel","fred","tom","aaron","lee","oliver","rishi","albert","bruce","guy","ryan","george","james","ravi","prabhat","hemant","diego","jorge","luca","yannick","maged","tarik","naayf","male voice","man voice"];
-
-function scoreVoiceForGender(voiceName, gender){
-  const name = voiceName.toLowerCase();
-  const keywords = gender === "female" ? FEMALE_KEYWORDS : MALE_KEYWORDS;
-  const opposite = gender === "female" ? MALE_KEYWORDS : FEMALE_KEYWORDS;
-  let score = 0;
-  for(let i = 0; i < keywords.length; i++){
-    if(name.indexOf(keywords[i]) !== -1){ score += 10; break; }
-  }
-  for(let i = 0; i < opposite.length; i++){
-    if(name.indexOf(opposite[i]) !== -1){ score -= 20; break; }
-  }
-  if(name.indexOf("neural") !== -1) score += 5;
-  if(name.indexOf("google") !== -1) score += 3;
-  if(name.indexOf("natural") !== -1) score += 4;
-  return score;
-}
-
 function detectLanguage(text){
   if(!text) return "en";
   const t = String(text);
@@ -1035,37 +1014,6 @@ function detectLanguage(text){
   }
   if(urduScore >= 2) return "ur";
   return "en";
-}
-
-function pickBestVoice(gender, langCode){
-  if(!availableVoices || availableVoices.length === 0) return null;
-  const langMap = { "en": ["en-","en_"], "ur": ["ur-","ur_","hi-"], "hi": ["hi-","hi_"] };
-  const prefixes = langMap[langCode] || ["en-"];
-  let candidates = availableVoices.filter(function(v){
-    const vl = (v.lang || "").toLowerCase();
-    let langMatch = false;
-    for(let i = 0; i < prefixes.length; i++){
-      if(vl.indexOf(prefixes[i]) === 0){ langMatch = true; break; }
-    }
-    if(!langMatch) return false;
-    return scoreVoiceForGender(v.name, gender) > 0;
-  });
-  if(candidates.length > 0){
-    candidates.sort(function(a,b){ return scoreVoiceForGender(b.name,gender) - scoreVoiceForGender(a.name,gender); });
-    return candidates[0];
-  }
-  candidates = availableVoices.filter(function(v){ return scoreVoiceForGender(v.name, gender) > 0; });
-  if(candidates.length > 0){
-    candidates.sort(function(a,b){ return scoreVoiceForGender(b.name,gender) - scoreVoiceForGender(a.name,gender); });
-    return candidates[0];
-  }
-  candidates = availableVoices.filter(function(v){
-    const vl = (v.lang || "").toLowerCase();
-    for(let i = 0; i < prefixes.length; i++){ if(vl.indexOf(prefixes[i]) === 0) return true; }
-    return false;
-  });
-  if(candidates.length > 0) return candidates[0];
-  return availableVoices[0];
 }
 
 async function loadFolders(){
@@ -2192,22 +2140,12 @@ async function processStream(response, botElement, userPrompt){
             }
           });
         } else {
-          const utterance = new SpeechSynthesisUtterance(speakText);
-          if(availableVoices.length > 0){
-            const lang = detectLanguage(speakText);
-            const v = pickBestVoice(voiceGender, lang);
-            if(v) utterance.voice = v;
-          }
-          utterance.onend = function(){
+          toggleSpeech(speakText, null, function(){
             if(liveVoiceActive){
               updateLiveVoiceStatus("🎤 Listening...");
               setTimeout(startLiveListening, 600);
             }
-          };
-          utterance.onerror = function(){
-            if(liveVoiceActive) setTimeout(startLiveListening, 600);
-          };
-          window.speechSynthesis.speak(utterance);
+          });
         }
       } else {
         setTimeout(function(){
@@ -2358,78 +2296,28 @@ function updateLiveVoiceStatus(text){
 }
 
 /* ============================================================
-   EDGE TTS - Microsoft Neural Voices (Natural Quality)
+   TTS - Microsoft Edge Neural Voices (via /api/tts backend proxy)
 ============================================================ */
-const EDGE_VOICE_MAP = {
-  male:   { en: 'en-US-GuyNeural',   ur: 'ur-PK-AsadNeural',   hi: 'hi-IN-MadhurNeural' },
-  female: { en: 'en-US-AriaNeural',  ur: 'ur-PK-UzmaNeural',   hi: 'hi-IN-SwaraNeural' }
-};
-
-function escapeXml(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
-}
-
-function speakEdgeTTS(text, gender, lang, onEnd){
+async function speakEdgeTTS(text, gender, lang, onEnd){
   try{
-    if(edgeTTSWebSocket){ try{ edgeTTSWebSocket.close(); }catch(e){} edgeTTSWebSocket = null; }
-
-    const voiceMap = EDGE_VOICE_MAP[gender] || EDGE_VOICE_MAP.male;
-    const voiceName = voiceMap[lang] || voiceMap.en;
-
-    const ws = new WebSocket('wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4');
-    ws.binaryType = 'arraybuffer';
-    edgeTTSWebSocket = ws;
-
-    const chunks = [];
-    let finished = false;
-
-    const done = function(){
-      if(finished) return;
-      finished = true;
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, gender: gender, lang: lang })
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      console.warn('TTS API failed:', res.status, errText);
       if(onEnd) onEnd();
-    };
-
-    ws.onopen = function(){
-      const configMsg = 'Content-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}';
-      ws.send(configMsg);
-
-      const ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><voice name='" + voiceName + "'><prosody rate='-5%'>" + escapeXml(text) + "</prosody></voice></speak>";
-      const reqId = (Math.random().toString(36).substring(2) + Date.now().toString(36));
-      const ssmlMsg = 'X-RequestId:' + reqId + '\r\nContent-Type:application/ssml+xml\r\nPath:ssml\r\n\r\n' + ssml;
-      ws.send(ssmlMsg);
-    };
-
-    ws.onmessage = function(event){
-      if(typeof event.data === 'string'){
-        if(event.data.indexOf('Path:turn.end') !== -1){
-          try{ ws.close(); }catch(e){}
-          edgeTTSWebSocket = null;
-          if(chunks.length === 0){ done(); return; }
-          const blob = new Blob(chunks, { type: 'audio/mpeg' });
-          const url = URL.createObjectURL(blob);
-          const audio = new Audio(url);
-          edgeTTSAudioPlayer = audio;
-          audio.onended = function(){ URL.revokeObjectURL(url); edgeTTSAudioPlayer = null; done(); };
-          audio.onerror = function(){ URL.revokeObjectURL(url); edgeTTSAudioPlayer = null; done(); };
-          audio.play().catch(function(e){ console.warn('Audio play failed', e); done(); });
-        }
-      } else {
-        try{
-          const buffer = event.data;
-          if(buffer.byteLength > 2){
-            const headerLen = new DataView(buffer).getUint16(0);
-            const audioData = buffer.slice(2 + headerLen);
-            if(audioData.byteLength > 0) chunks.push(audioData);
-          }
-        }catch(e){}
-      }
-    };
-
-    ws.onerror = function(e){ console.warn('Edge TTS error:', e); done(); };
-    ws.onclose = function(){ if(chunks.length === 0) done(); };
-
-    setTimeout(function(){ if(chunks.length === 0) done(); }, 15000);
-
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    edgeTTSAudioPlayer = audio;
+    audio.onended = function(){ URL.revokeObjectURL(url); edgeTTSAudioPlayer = null; if(onEnd) onEnd(); };
+    audio.onerror = function(){ URL.revokeObjectURL(url); edgeTTSAudioPlayer = null; if(onEnd) onEnd(); };
+    audio.play().catch(function(e){ console.warn('Audio play failed', e); if(onEnd) onEnd(); });
   }catch(e){
     console.warn('Edge TTS failed:', e);
     if(onEnd) onEnd();
@@ -2437,7 +2325,7 @@ function speakEdgeTTS(text, gender, lang, onEnd){
 }
 
 function toggleSpeech(text, button, onEnd){
-  if(currentlySpeakingButton === button && (window.speechSynthesis.speaking || edgeTTSAudioPlayer)){
+  if(currentlySpeakingButton === button && edgeTTSAudioPlayer){
     stopAllSpeech();
     if(onEnd) onEnd();
     return;
@@ -2486,10 +2374,6 @@ function stopAllSpeech(){
       currentGoogleAudio.currentTime = 0;
       currentGoogleAudio = null;
     }catch(e){}
-  }
-  if(edgeTTSWebSocket){
-    try{ edgeTTSWebSocket.close(); }catch(e){}
-    edgeTTSWebSocket = null;
   }
   if(edgeTTSAudioPlayer){
     try{
