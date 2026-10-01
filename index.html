@@ -627,7 +627,7 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 /* ============================================================
    QUANTUM CORE AI - BY USMAN SALEEM
    Storage: IndexedDB | Images: Cloudflare Workers AI + Compression
-   Voice: Smart Gender Selection + Google TTS for Hindi/Urdu
+   Voice: Edge TTS (Microsoft Neural Voices) - Natural Quality
 ============================================================ */
 
 const LOCAL_TEST_API_KEY = "";
@@ -681,6 +681,8 @@ let liveVoiceActive = false;
 let currentlySpeakingButton = null;
 let currentSpeechUtterance = null;
 let currentGoogleAudio = null;
+let edgeTTSWebSocket = null;
+let edgeTTSAudioPlayer = null;
 let voiceGender = "male";
 let searchTerm = "";
 let renameTargetId = null;
@@ -703,15 +705,14 @@ const actionBtn = document.getElementById("action-btn");
 const actionIcon = document.getElementById("action-icon");
 const scrollBtn = document.getElementById("scroll-btn");
 
-/* ============================================================
-   SAFE LOCALSTORAGE
-============================================================ */
-function safeGet(key, fallback = null){ try{ const v = localStorage.getItem(key); return v === null ? fallback : v; }catch(e){ return fallback; } }
+function safeGet(key, fallback){
+  try{
+    const v = localStorage.getItem(key);
+    return v === null ? (fallback === undefined ? null : fallback) : v;
+  }catch(e){ return fallback === undefined ? null : fallback; }
+}
 function safeSet(key,value){ try{ localStorage.setItem(key,value); }catch(e){ console.warn("Storage unavailable"); } }
 
-/* ============================================================
-   INDEXEDDB SETUP
-============================================================ */
 let db = null;
 const DB_NAME = "QuantumCoreDB";
 const DB_VERSION = 1;
@@ -827,17 +828,14 @@ async function flushDB(){
   }
 }
 
-/* ============================================================
-   LANGUAGE
-============================================================ */
 function applyLanguage(lang){
   currentLang = lang;
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
-  document.querySelectorAll("[data-i18n]").forEach(el=>{
+  document.querySelectorAll("[data-i18n]").forEach(function(el){
     const key = el.getAttribute("data-i18n");
     if(t[key]) el.innerText = t[key];
   });
-  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{
+  document.querySelectorAll("[data-i18n-ph]").forEach(function(el){
     const key = el.getAttribute("data-i18n-ph");
     if(t[key]) el.placeholder = t[key];
   });
@@ -848,9 +846,6 @@ function applyLanguage(lang){
 
 function setLanguage(lang){ applyLanguage(lang); showToast(lang === "ur" ? "Zubaan badal di" : "Language changed"); }
 
-/* ============================================================
-   PROMPT LIBRARY
-============================================================ */
 const PROMPT_LIBRARY = [
   { category: "Programming", name: "Python Expert", prompt: "Act as an expert Python programmer who explains code clearly and concisely, follows PEP8, and provides complete runnable examples." },
   { category: "Programming", name: "JavaScript Expert", prompt: "Act as an expert JavaScript/Node.js developer. Write clean, modern ES6+ code with best practices and comments." },
@@ -876,9 +871,6 @@ const PROMPT_LIBRARY = [
   { category: "Utility", name: "Fact Checker", prompt: "Act as a fact checker. Verify claims, point out inaccuracies, and cite reliable sources." }
 ];
 
-/* ============================================================
-   INIT
-============================================================ */
 window.addEventListener("load", async function(){
   const splash = document.getElementById("splash-screen");
   if(splash) splash.classList.add("hide");
@@ -907,9 +899,6 @@ window.addEventListener("load", async function(){
   if(window.require) require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs' }});
 });
 
-/* ============================================================
-   SETTINGS
-============================================================ */
 function loadSettings(){
   const savedMode = safeGet("qc_mode","fast");
   activeMode = savedMode === "core" ? "core" : "fast";
@@ -938,13 +927,14 @@ function loadSettings(){
 function buildPromptLibrary(){
   const container = document.getElementById("prompt-dropdown-menu");
   container.innerHTML = "";
-  const categories = [...new Set(PROMPT_LIBRARY.map(p => p.category))];
-  categories.forEach(cat=>{
+  const categories = [];
+  PROMPT_LIBRARY.forEach(function(p){ if(categories.indexOf(p.category) === -1) categories.push(p.category); });
+  categories.forEach(function(cat){
     const catEl = document.createElement("div");
     catEl.className = "custom-dropdown-category";
     catEl.innerText = cat;
     container.appendChild(catEl);
-    PROMPT_LIBRARY.filter(p => p.category === cat).forEach(item=>{
+    PROMPT_LIBRARY.filter(function(p){ return p.category === cat; }).forEach(function(item){
       const div = document.createElement("div");
       div.className = "custom-dropdown-item";
       div.innerText = item.name;
@@ -963,7 +953,8 @@ function updateModeUI(){
 }
 function updateTemperature(val){ aiTemperature = parseFloat(val); document.getElementById("temp-val").innerText = aiTemperature; safeSet("qc_temperature", val); }
 
-function applyTheme(theme, save=true){
+function applyTheme(theme, save){
+  if(save === undefined) save = true;
   const actual = theme === "auto" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme;
   if(actual === "dark") document.body.classList.add("dark-mode");
   else document.body.classList.remove("dark-mode");
@@ -1000,38 +991,24 @@ document.addEventListener("click", function(e){
     if(menu) menu.classList.remove("show");
   }
 });
-function setVoiceGender(g){ 
-  voiceGender = g; 
-  safeSet("qc_voice_gender", g); 
-  document.getElementById("voice-male").classList.toggle("active", g==="male"); 
-  document.getElementById("voice-female").classList.toggle("active", g==="female"); 
-  showToast(g==="male"?"Male voice selected":"Female voice selected"); 
+function setVoiceGender(g){
+  voiceGender = g;
+  safeSet("qc_voice_gender", g);
+  document.getElementById("voice-male").classList.toggle("active", g === "male");
+  document.getElementById("voice-female").classList.toggle("active", g === "female");
+  showToast(g === "male" ? "Male voice selected" : "Female voice selected");
   stopAllSpeech();
 }
 function setAutoScroll(v){ autoScrollEnabled = v; safeSet("qc_auto_scroll", String(v)); if(v) scrollToBottom(false); }
 function loadVoices(){ if("speechSynthesis" in window) availableVoices = window.speechSynthesis.getVoices(); }
 
-/* ============================================================
-   SMART VOICE SELECTION
-============================================================ */
-const FEMALE_KEYWORDS = [
-  "female","woman","zira","samantha","victoria","karen","moira","tessa","aria","jenny",
-  "susan","hazel","heera","swara","kalpana","heami","yuna","zhiyu","ting-ting","sinji",
-  "meijia","lili","catherine","linda","mary","eva","alice","emma","olivia","sophia",
-  "female voice","woman voice"
-];
-
-const MALE_KEYWORDS = [
-  "male","man","david","mark","alex","daniel","fred","tom","aaron","lee","oliver","rishi",
-  "albert","bruce","guy","ryan","george","james","ravi","prabhat","hemant","diego","jorge",
-  "luca","yannick","maged","tarik","naayf","male voice","man voice"
-];
+const FEMALE_KEYWORDS = ["female","woman","zira","samantha","victoria","karen","moira","tessa","aria","jenny","susan","hazel","heera","swara","kalpana","heami","yuna","zhiyu","ting-ting","sinji","meijia","lili","catherine","linda","mary","eva","alice","emma","olivia","sophia","female voice","woman voice"];
+const MALE_KEYWORDS = ["male","man","david","mark","alex","daniel","fred","tom","aaron","lee","oliver","rishi","albert","bruce","guy","ryan","george","james","ravi","prabhat","hemant","diego","jorge","luca","yannick","maged","tarik","naayf","male voice","man voice"];
 
 function scoreVoiceForGender(voiceName, gender){
   const name = voiceName.toLowerCase();
   const keywords = gender === "female" ? FEMALE_KEYWORDS : MALE_KEYWORDS;
   const opposite = gender === "female" ? MALE_KEYWORDS : FEMALE_KEYWORDS;
-  
   let score = 0;
   for(let i = 0; i < keywords.length; i++){
     if(name.indexOf(keywords[i]) !== -1){ score += 10; break; }
@@ -1062,10 +1039,8 @@ function detectLanguage(text){
 
 function pickBestVoice(gender, langCode){
   if(!availableVoices || availableVoices.length === 0) return null;
-  
   const langMap = { "en": ["en-","en_"], "ur": ["ur-","ur_","hi-"], "hi": ["hi-","hi_"] };
   const prefixes = langMap[langCode] || ["en-"];
-  
   let candidates = availableVoices.filter(function(v){
     const vl = (v.lang || "").toLowerCase();
     let langMatch = false;
@@ -1075,33 +1050,24 @@ function pickBestVoice(gender, langCode){
     if(!langMatch) return false;
     return scoreVoiceForGender(v.name, gender) > 0;
   });
-  
   if(candidates.length > 0){
     candidates.sort(function(a,b){ return scoreVoiceForGender(b.name,gender) - scoreVoiceForGender(a.name,gender); });
     return candidates[0];
   }
-  
   candidates = availableVoices.filter(function(v){ return scoreVoiceForGender(v.name, gender) > 0; });
   if(candidates.length > 0){
     candidates.sort(function(a,b){ return scoreVoiceForGender(b.name,gender) - scoreVoiceForGender(a.name,gender); });
     return candidates[0];
   }
-  
   candidates = availableVoices.filter(function(v){
     const vl = (v.lang || "").toLowerCase();
-    for(let i = 0; i < prefixes.length; i++){
-      if(vl.indexOf(prefixes[i]) === 0) return true;
-    }
+    for(let i = 0; i < prefixes.length; i++){ if(vl.indexOf(prefixes[i]) === 0) return true; }
     return false;
   });
   if(candidates.length > 0) return candidates[0];
-  
   return availableVoices[0];
 }
 
-/* ============================================================
-   FOLDERS
-============================================================ */
 async function loadFolders(){
   try{
     const list = await dbGetAll("folders");
@@ -1123,21 +1089,21 @@ function renderFolders(){
   row.innerHTML = "";
   const all = document.createElement("button");
   all.className = "folder-chip " + (currentFolderFilter === "all" ? "active" : "");
-  all.innerHTML = '📂 ' + (TRANSLATIONS[currentLang]?.all || "All") + ' <span class="count" id="cnt-all">' + Object.keys(chatHistories).length + '</span>';
+  all.innerHTML = '📂 ' + ((TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang].all) || "All") + ' <span class="count" id="cnt-all">' + Object.keys(chatHistories).length + '</span>';
   all.onclick = function(){ setFolderFilter("all"); };
   row.appendChild(all);
 
   const none = document.createElement("button");
   none.className = "folder-chip " + (currentFolderFilter === "none" ? "active" : "");
-  const noneCount = Object.values(chatHistories).filter(c => !c.folder).length;
-  none.innerHTML = '📄 ' + (TRANSLATIONS[currentLang]?.unsorted || "Unsorted") + ' <span class="count">' + noneCount + '</span>';
+  const noneCount = Object.values(chatHistories).filter(function(c){ return !c.folder; }).length;
+  none.innerHTML = '📄 ' + ((TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang].unsorted) || "Unsorted") + ' <span class="count">' + noneCount + '</span>';
   none.onclick = function(){ setFolderFilter("none"); };
   row.appendChild(none);
 
-  folders.forEach(f=>{
+  folders.forEach(function(f){
     const chip = document.createElement("button");
     chip.className = "folder-chip " + (currentFolderFilter === f.id ? "active" : "");
-    const count = Object.values(chatHistories).filter(c => c.folder === f.id).length;
+    const count = Object.values(chatHistories).filter(function(c){ return c.folder === f.id; }).length;
     chip.innerHTML = '📁 ' + escapeHTML(f.name) + ' <span class="count">' + count + '</span>';
     chip.onclick = function(){ setFolderFilter(f.id); };
     row.appendChild(chip);
@@ -1157,9 +1123,6 @@ function createNewFolder(){
   showToast("Folder created");
 }
 
-/* ============================================================
-   PERSONAS
-============================================================ */
 async function loadPersonas(){
   try{
     const list = await dbGetAll("personas");
@@ -1183,7 +1146,7 @@ function renderPersonas(){
     grid.innerHTML = '<div class="info-box" style="grid-column:1/-1;font-size:11.5px;">No personas yet. Create one!</div>';
     return;
   }
-  personas.forEach(p=>{
+  personas.forEach(function(p){
     const card = document.createElement("div");
     card.className = "persona-card " + (activePersonaId === p.id ? "active" : "");
     card.innerHTML = '<button class="persona-card-delete" onclick="deletePersona(event,\''+p.id+'\')"><i class="fa-solid fa-xmark"></i></button>' +
@@ -1196,13 +1159,13 @@ function renderPersonas(){
 
 function activatePersona(id){
   if(activePersonaId === id){ activePersonaId = null; safeSet("qc_active_persona",""); showToast("Persona off"); }
-  else{ activePersonaId = id; safeSet("qc_active_persona", id); const p = personas.find(x=>x.id===id); showToast((p?.icon||"🤖") + " " + (p?.name||"Persona") + " active"); }
+  else{ activePersonaId = id; safeSet("qc_active_persona", id); const p = personas.find(function(x){ return x.id === id; }); showToast(((p && p.icon) || "🤖") + " " + ((p && p.name) || "Persona") + " active"); }
   renderPersonas();
 }
 
 function deletePersona(e, id){
   e.stopPropagation();
-  personas = personas.filter(p => p.id !== id);
+  personas = personas.filter(function(p){ return p.id !== id; });
   if(activePersonaId === id){ activePersonaId = null; safeSet("qc_active_persona",""); }
   savePersonas();
   showToast("Persona deleted");
@@ -1222,9 +1185,6 @@ function savePersona(){
   activatePersona(id);
 }
 
-/* ============================================================
-   CHATS
-============================================================ */
 async function loadChats(){
   try{
     const all = await dbGetAll("chats");
@@ -1244,7 +1204,7 @@ async function loadChats(){
 function saveChats(){ flushDB().catch(function(e){ console.error(e); }); updateStats(); }
 
 function cleanupEmptyChats(){
-  Object.keys(chatHistories).forEach(id=>{
+  Object.keys(chatHistories).forEach(function(id){
     const chat = chatHistories[id];
     if(!chat || !Array.isArray(chat.messages) || chat.messages.length === 0) delete chatHistories[id];
   });
@@ -1252,11 +1212,11 @@ function cleanupEmptyChats(){
 
 function scheduleSave(){
   clearTimeout(pendingSaveTimer);
-  pendingSaveTimer = setTimeout(function(){ 
-    cleanupEmptyChats(); 
+  pendingSaveTimer = setTimeout(function(){
+    cleanupEmptyChats();
     flushDB().catch(function(e){ console.error(e); });
     updateStats();
-    renderFolders(); 
+    renderFolders();
   }, 400);
 }
 
@@ -1283,23 +1243,23 @@ function chatMatches(chat){
   if(!searchTerm) return true;
   if((chat.title||"").toLowerCase().includes(searchTerm)) return true;
   if(!Array.isArray(chat.messages)) return false;
-  return chat.messages.some(m => String(m.content||"").toLowerCase().includes(searchTerm));
+  return chat.messages.some(function(m){ return String(m.content||"").toLowerCase().includes(searchTerm); });
 }
 
 function renderChatList(){
   const container = document.getElementById("chat-list");
   container.innerHTML = "";
-  let ids = Object.keys(chatHistories).filter(id => chatMatches(chatHistories[id]));
-  if(currentFolderFilter === "none") ids = ids.filter(id => !chatHistories[id].folder);
-  else if(currentFolderFilter !== "all") ids = ids.filter(id => chatHistories[id].folder === currentFolderFilter);
+  let ids = Object.keys(chatHistories).filter(function(id){ return chatMatches(chatHistories[id]); });
+  if(currentFolderFilter === "none") ids = ids.filter(function(id){ return !chatHistories[id].folder; });
+  else if(currentFolderFilter !== "all") ids = ids.filter(function(id){ return chatHistories[id].folder === currentFolderFilter; });
 
-  ids.sort((a,b)=>{
+  ids.sort(function(a,b){
     const A = chatHistories[a], B = chatHistories[b];
     if(Boolean(A.pinned) !== Boolean(B.pinned)) return A.pinned ? -1 : 1;
     return (B.createdAt||0) - (A.createdAt||0);
   });
 
-  ids.forEach(id=>{
+  ids.forEach(function(id){
     const chat = chatHistories[id];
     const item = document.createElement("div");
     item.className = "chat-item " + (id === currentChatId ? "active" : "");
@@ -1315,7 +1275,7 @@ function renderChatList(){
     title.textContent = (chat.pinned ? "📌 " : "") + (chat.title || "Conversation");
     titleRow.appendChild(title);
     if(chat.folder){
-      const f = folders.find(x => x.id === chat.folder);
+      const f = folders.find(function(x){ return x.id === chat.folder; });
       if(f){
         const badge = document.createElement("span");
         badge.className = "chat-tag-badge";
@@ -1325,7 +1285,7 @@ function renderChatList(){
     }
     const preview = document.createElement("div");
     preview.className = "chat-preview";
-    const last = chat.messages?.[chat.messages.length-1];
+    const last = chat.messages && chat.messages[chat.messages.length-1];
     let previewText = last ? String(last.content||"").replace(/\s+/g," ") : "Empty";
     if(previewText.startsWith("[IMAGE_DATA]")) previewText = "🎨 Image";
     preview.textContent = previewText.slice(0,70);
@@ -1341,7 +1301,7 @@ function renderChatList(){
     const menu = document.createElement("div");
     menu.className = "chat-menu";
     menu.id = "menu-" + id;
-    menu.innerHTML = 
+    menu.innerHTML =
       '<button onclick="renameChat(event,\''+id+'\')"><i class="fa-solid fa-pen"></i> Rename</button>' +
       '<button onclick="pinChat(event,\''+id+'\')"><i class="fa-solid fa-thumbtack"></i> ' + (chat.pinned ? "Unpin" : "Pin") + '</button>' +
       '<button onclick="openFolderAssign(event,\''+id+'\')"><i class="fa-solid fa-folder"></i> Assign Folder</button>' +
@@ -1353,7 +1313,7 @@ function renderChatList(){
 }
 
 function toggleChatMenu(item, id){
-  document.querySelectorAll(".chat-menu.show").forEach(m=>{
+  document.querySelectorAll(".chat-menu.show").forEach(function(m){
     if(m.id !== "menu-"+id){
       m.classList.remove("show");
       if(m.parentElement) m.parentElement.classList.remove("menu-open");
@@ -1370,7 +1330,7 @@ function toggleChatMenu(item, id){
 function openFolderAssign(e, id){
   e.stopPropagation();
   if(folders.length === 0){ showToast("Create a folder first"); return; }
-  const names = folders.map((f,i) => (i+1) + ". " + f.name).join("\n");
+  const names = folders.map(function(f,i){ return (i+1) + ". " + f.name; }).join("\n");
   const choice = prompt("Assign to which folder? (Enter number)\n0. Remove from folder\n\n" + names);
   if(choice === null) return;
   const idx = parseInt(choice);
@@ -1382,7 +1342,7 @@ function openFolderAssign(e, id){
   showToast("Folder updated");
 }
 
-function renameChat(e,id){ e.stopPropagation(); renameTargetId=id; const c=chatHistories[id]; document.getElementById("rename-input").value = c?.title||""; document.getElementById("rename-modal").classList.add("active"); }
+function renameChat(e,id){ e.stopPropagation(); renameTargetId=id; const c=chatHistories[id]; document.getElementById("rename-input").value = (c && c.title) || ""; document.getElementById("rename-modal").classList.add("active"); }
 function closeRenameModal(){ document.getElementById("rename-modal").classList.remove("active"); renameTargetId=null; }
 function confirmRename(){
   if(!renameTargetId) return;
@@ -1392,26 +1352,23 @@ function confirmRename(){
   scheduleSave(); renderChatList(); closeRenameModal(); showToast("Renamed");
 }
 function pinChat(e,id){ e.stopPropagation(); if(!chatHistories[id]) return; chatHistories[id].pinned = !chatHistories[id].pinned; scheduleSave(); renderChatList(); showToast(chatHistories[id].pinned ? "Pinned" : "Unpinned"); }
-function deleteSingleChat(e,id){ 
-  e.stopPropagation(); 
-  if(!chatHistories[id]) return; 
-  delete chatHistories[id]; 
+function deleteSingleChat(e,id){
+  e.stopPropagation();
+  if(!chatHistories[id]) return;
+  delete chatHistories[id];
   delete lastSyncedState[id];
   dbDelete("chats", id).catch(function(err){ console.error("Delete failed:", err); });
-  if(id===currentChatId) startNewChat(); else renderChatList(); 
-  showToast("Deleted"); 
+  if(id===currentChatId) startNewChat(); else renderChatList();
+  showToast("Deleted");
 }
 function loadChat(id){ if(!chatHistories[id]) return; currentChatId=id; renderCurrentChat(); renderChatList(); closeDrawers(); }
 
-/* ============================================================
-   RENDER CHAT
-============================================================ */
 function renderCurrentChat(){
   chatBox.innerHTML = "";
   const chat = getCurrentChat();
 
   if(!chat || !chat.messages || chat.messages.length === 0){
-    chatBox.innerHTML = 
+    chatBox.innerHTML =
       '<div class="welcome">' +
       '<div class="welcome-logo">✨</div>' +
       '<h2>Quantum Core AI</h2>' +
@@ -1428,7 +1385,7 @@ function renderCurrentChat(){
     return;
   }
 
-  chat.messages.forEach((message, index)=>{
+  chat.messages.forEach(function(message, index){
     const el = createMessageElement(message.role, message.content, message.image, index);
     chatBox.appendChild(el.wrapper);
   });
@@ -1440,7 +1397,7 @@ function renderCurrentChat(){
     });
   }
   updateStats();
-  requestAnimationFrame(()=>scrollToBottom(true));
+  requestAnimationFrame(function(){ scrollToBottom(true); });
 }
 
 function createMessageElement(role, text, image, index){
@@ -1460,7 +1417,7 @@ function createMessageElement(role, text, image, index){
 
   if(role === "bot"){
     if(text === "Thinking..."){
-      message.innerHTML += '<div class="thinking"><div class="spinner"></div><span>' + (TRANSLATIONS[currentLang]?.thinking||"Thinking") + '<span class="dots"><span>.</span><span>.</span><span>.</span></span></span></div>';
+      message.innerHTML += '<div class="thinking"><div class="spinner"></div><span>' + ((TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang].thinking) || "Thinking") + '<span class="dots"><span>.</span><span>.</span><span>.</span></span></span></div>';
     } else if(text && text.startsWith("[IMAGE_DATA]")){
       const dataUri = text.replace("[IMAGE_DATA]","").trim();
       message.innerHTML += createImageHtml(dataUri, index);
@@ -1489,7 +1446,7 @@ function createMessageElement(role, text, image, index){
       const cleanText = (text.startsWith("[IMAGE_DATA]") || text.indexOf("[IMAGE_GEN]") !== -1) ? (text.split("[IMAGE_GEN]")[0] || "[Image]") : text;
       copyText(cleanText);
       copy.innerHTML = '<i class="fa-solid fa-check"></i>';
-      setTimeout(()=>{ copy.innerHTML = '<i class="fa-solid fa-copy"></i>'; }, 1500);
+      setTimeout(function(){ copy.innerHTML = '<i class="fa-solid fa-copy"></i>'; }, 1500);
     };
     actions.appendChild(copy);
 
@@ -1497,9 +1454,9 @@ function createMessageElement(role, text, image, index){
     voice.className = "action-btn";
     voice.title = "Read aloud";
     voice.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-    voice.onclick = function(){ 
+    voice.onclick = function(){
       const cleanText = text.indexOf("[IMAGE_GEN]") !== -1 ? (text.split("[IMAGE_GEN]")[0] || "Image generated.") : text;
-      toggleSpeech(cleanText, voice); 
+      toggleSpeech(cleanText, voice);
     };
     actions.appendChild(voice);
 
@@ -1529,31 +1486,28 @@ function createMessageElement(role, text, image, index){
     });
   }
 
-  return { wrapper, message };
+  return { wrapper: wrapper, message: message };
 }
 
-/* ============================================================
-   IMAGE HELPERS
-============================================================ */
 function createImageHtml(url, messageIndex){
   const safeUrl = escapeHTML(url);
   const isDataUri = url.startsWith("data:");
   const srcAttr = isDataUri ? url : safeUrl;
   const urlEsc = isDataUri ? "" : url.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");
-  
+
   let buttons = "";
   if(isDataUri){
-    buttons = 
+    buttons =
       '<button class="action-btn" onclick="openImagePreviewFromEl(this.closest(\'.gen-image-wrapper\').querySelector(\'img\'))" title="Preview"><i class="fa-solid fa-expand"></i></button>' +
       '<button class="action-btn" onclick="downloadImageFromEl(this)" title="Download"><i class="fa-solid fa-download"></i></button>' +
       '<button class="action-btn" onclick="retryImageAt(' + messageIndex + ')" title="Retry"><i class="fa-solid fa-rotate"></i></button>';
   } else {
-    buttons = 
+    buttons =
       '<button class="action-btn" onclick="openImagePreview(\'' + urlEsc + '\')" title="Preview"><i class="fa-solid fa-expand"></i></button>' +
       '<button class="action-btn" onclick="downloadImage(\'' + urlEsc + '\')" title="Download"><i class="fa-solid fa-download"></i></button>' +
       '<button class="action-btn" onclick="retryImageAt(' + messageIndex + ')" title="Retry"><i class="fa-solid fa-rotate"></i></button>';
   }
-  
+
   return '<div class="gen-image-wrapper">' +
     '<img src="' + srcAttr + '" alt="Image" loading="lazy" onclick="openImagePreviewFromEl(this)" onerror="this.style.opacity=0.3;this.alt=\'Image failed to load\';this.onclick=null;">' +
     '<div class="gen-image-actions">' + buttons + '</div>' +
@@ -1606,7 +1560,7 @@ function compressImage(dataUri, maxSize, quality){
 
 async function generateImageFromChat(prompt, botElement){
   botElement.innerHTML = '<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🎨 Generating image...</div></div>';
-  
+
   try{
     const res = await fetch("/api/image", {
       method: "POST",
@@ -1620,10 +1574,10 @@ async function generateImageFromChat(prompt, botElement){
     }
     const data = await res.json();
     if(!data.imageUrl) throw new Error(data.error || "No image in response");
-    
+
     botElement.innerHTML = '<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🗜️ Optimizing image...</div></div>';
     const compressedUri = await compressImage(data.imageUrl, 512, 0.75);
-    
+
     const chat = getCurrentChat();
     let botIndex = -1;
     if(chat){
@@ -1636,7 +1590,7 @@ async function generateImageFromChat(prompt, botElement){
         botIndex = chat.messages.length - 1;
       }
     }
-    
+
     botElement.innerHTML = createImageHtml(compressedUri, botIndex);
     scheduleSave();
     renderChatList();
@@ -1651,15 +1605,15 @@ function retryImageAt(messageIndex){
   let userIdx = messageIndex - 1;
   while(userIdx >= 0 && chat.messages[userIdx].role !== "user") userIdx--;
   if(userIdx < 0){ showToast("No prompt found to retry"); return; }
-  
+
   const userText = chat.messages[userIdx].content || "";
   const cleanPrompt = userText.replace(/^🎨\s*Generate image:\s*/i, "").replace(/^\[IMAGE_GEN\]\s*/, "").replace(/^\[IMAGE_DATA\][^,]+,/, "").trim();
   if(!cleanPrompt){ showToast("No prompt found"); return; }
-  
+
   chat.messages = chat.messages.slice(0, messageIndex);
   scheduleSave();
   renderCurrentChat();
-  
+
   if(userText.startsWith("🎨 Generate image:")){
     regenerateImage(cleanPrompt);
   } else {
@@ -1671,7 +1625,7 @@ function retryImageAt(messageIndex){
 async function regenerateImage(prompt){
   const chat = getCurrentChat();
   if(!chat) return;
-  
+
   const bot = createMessageElement("bot","Thinking...",null,-1);
   chatBox.appendChild(bot.wrapper);
   scrollToBottom(false);
@@ -1686,7 +1640,7 @@ async function regenerateImage(prompt){
     if(!res.ok) throw new Error("Image API failed (" + res.status + ")");
     const data = await res.json();
     if(!data.imageUrl) throw new Error(data.error || "No image");
-    
+
     const compressedUri = await compressImage(data.imageUrl, 512, 0.75);
     const botIndex = chat.messages.length;
     bot.message.innerHTML = createImageHtml(compressedUri, botIndex);
@@ -1758,9 +1712,6 @@ function applyPreviewZoom(){
 }
 function downloadPreviewImage(){ if(currentPreviewUrl) downloadImage(currentPreviewUrl); }
 
-/* ============================================================
-   REGENERATE & EDIT
-============================================================ */
 async function regenerateResponse(botMsgIndex){
   if(isGenerating) return;
   const chat = getCurrentChat();
@@ -1801,25 +1752,24 @@ function editUserMessage(userMsgIndex){
   setGenerating(true);
   abortController = new AbortController();
   streamAIResponse(bot.message, newText.trim(), abortController.signal, chat.messages[userMsgIndex].image)
-    .catch(error=>{
+    .catch(function(error){
       if(error.name === "AbortError"){ bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>"; }
       else{ showErrorInMessage(bot.message, error); }
     })
-    .finally(()=>{ setGenerating(false); abortController = null; });
+    .finally(function(){ setGenerating(false); abortController = null; });
 }
 
-/* ============================================================
-   MARKDOWN
-============================================================ */
 function renderMarkdown(text){
   if(!window.marked) return escapeHTML(text);
   const renderer = new marked.Renderer();
-  renderer.link = function({href, text, title}){
+  renderer.link = function(obj){
+    const href = obj.href, text = obj.text, title = obj.title;
     const safeText = text || href;
     const tAttr = title ? ' title="' + escapeHTML(title) + '"' : '';
     return '<a href="' + escapeHTML(href) + '"' + tAttr + ' rel="noopener noreferrer">' + safeText + '</a>';
   };
-  renderer.code = function({text, lang}){
+  renderer.code = function(obj){
+    const text = obj.text, lang = obj.lang;
     const language = (lang || "code").toLowerCase().replace(/[^a-z0-9+#-]/g,"");
     let highlighted = "";
     try{
@@ -1837,10 +1787,10 @@ function renderMarkdown(text){
   let html = marked.parse(text, { renderer: renderer, breaks: true });
   const temp = document.createElement("div");
   temp.innerHTML = html;
-  temp.querySelectorAll("p").forEach(p=>{
+  temp.querySelectorAll("p").forEach(function(p){
     const plain = p.textContent.trim();
     const prefixes = ["Given:", "Formula:", "Calculation:", "Final Answer:"];
-    const match = prefixes.find(prefix => plain.startsWith(prefix));
+    const match = prefixes.find(function(prefix){ return plain.startsWith(prefix); });
     if(match){
       const box = document.createElement("div");
       box.className = "key-point";
@@ -1864,9 +1814,6 @@ function renderStreamText(text){
   return renderMarkdown(text);
 }
 
-/* ============================================================
-   PYTHON SANDBOX
-============================================================ */
 async function runPythonCode(button){
   const code = decodeURIComponent(button.getAttribute("data-code"));
   const wrapper = button.closest(".code-wrapper");
@@ -1887,9 +1834,6 @@ async function runPythonCode(button){
   }catch(err){ outputDiv.innerText = "Error:\n" + err; }
 }
 
-/* ============================================================
-   MONACO
-============================================================ */
 function openMonacoModal(){
   document.getElementById("monaco-modal").classList.add("active");
   setTimeout(function(){
@@ -1930,16 +1874,13 @@ async function runMonacoCode(){
   } else {
     try{
       let logs = [];
-      const c = { log: (...args) => logs.push(args.join(' ')) };
+      const c = { log: function(){ logs.push(Array.prototype.slice.call(arguments).join(' ')); } };
       new Function('console', code)(c);
       out.innerText = logs.join('\n') || "Executed cleanly.";
     }catch(e){ out.innerText = "JS Error: " + e; }
   }
 }
 
-/* ============================================================
-   IMAGE BUTTON
-============================================================ */
 function openImageGenModal(){ document.getElementById("image-gen-modal").classList.add("active"); document.getElementById("image-prompt-input").value = ""; }
 function closeImageGenModal(){ document.getElementById("image-gen-modal").classList.remove("active"); }
 
@@ -1966,10 +1907,10 @@ async function generateImage(){
     if(!res.ok) throw new Error("Image API failed (" + res.status + ")");
     const data = await res.json();
     if(!data.imageUrl) throw new Error(data.error || "No image in response");
-    
+
     bot.message.innerHTML = '<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🗜️ Optimizing...</div></div>';
     const compressedUri = await compressImage(data.imageUrl, 512, 0.75);
-    
+
     const botIndex = chat.messages.length;
     bot.message.innerHTML = createImageHtml(compressedUri, botIndex);
     chat.messages.push({ role:"bot", content: "[IMAGE_DATA]" + compressedUri, image: null });
@@ -1982,9 +1923,6 @@ async function generateImage(){
   }
 }
 
-/* ============================================================
-   HELPERS
-============================================================ */
 function escapeHTML(v){
   return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
@@ -1994,7 +1932,7 @@ function copyCodeFromButton(button){
     const code = decodeURIComponent(button.getAttribute("data-code")||"");
     copyText(code);
     button.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
-    setTimeout(()=>{ button.innerHTML = '<i class="fa-solid fa-copy"></i> Copy'; }, 1500);
+    setTimeout(function(){ button.innerHTML = '<i class="fa-solid fa-copy"></i> Copy'; }, 1500);
   }catch(e){ showToast("Copy failed"); }
 }
 
@@ -2016,11 +1954,8 @@ function setGenerating(v){
   else{ actionBtn.classList.remove("stop"); actionIcon.className = "fa-solid fa-paper-plane"; }
 }
 
-/* ============================================================
-   SEND MESSAGE
-============================================================ */
 async function sendMessage(overrideText){
-  overrideText = overrideText || null;
+  overrideText = (overrideText === undefined) ? null : overrideText;
   let text = overrideText !== null ? String(overrideText).trim() : userInput.value.trim();
   if(!text && !base64Image) return;
   const chat = ensureCurrentChat();
@@ -2056,10 +1991,10 @@ async function sendMessage(overrideText){
 function showErrorInMessage(msgEl, error){
   const errStr = String(error.message || error);
   let errMsg = "⚠️ Something went wrong. ";
-  if(errStr.includes("503") || errStr.includes("overloaded")) errMsg = "⚠️ AI server is currently busy. Please try again in 30 seconds.";
-  else if(errStr.includes("429") || errStr.includes("quota")) errMsg = "⚠️ Daily quota reached. Please try again tomorrow.";
-  else if(errStr.includes("Failed to fetch") || errStr.includes("NetworkError")) errMsg = "⚠️ Network error. Check your internet connection.";
-  else if(errStr.includes("400")) errMsg = "⚠️ Invalid request. Try clearing and resending.";
+  if(errStr.indexOf("503") !== -1 || errStr.indexOf("overloaded") !== -1) errMsg = "⚠️ AI server is currently busy. Please try again in 30 seconds.";
+  else if(errStr.indexOf("429") !== -1 || errStr.indexOf("quota") !== -1) errMsg = "⚠️ Daily quota reached. Please try again tomorrow.";
+  else if(errStr.indexOf("Failed to fetch") !== -1 || errStr.indexOf("NetworkError") !== -1) errMsg = "⚠️ Network error. Check your internet connection.";
+  else if(errStr.indexOf("400") !== -1) errMsg = "⚠️ Invalid request. Try clearing and resending.";
   else errMsg = "⚠️ Server error. Please try again.";
   msgEl.innerHTML = '<span style="color:var(--danger)">' + errMsg + '</span> <button class="code-btn" style="display:inline-flex;margin-left:6px;" onclick="retryLastMessage()">Retry</button>';
 }
@@ -2082,8 +2017,8 @@ function retryLastMessage(){
   setGenerating(true);
   abortController = new AbortController();
   streamAIResponse(bot.message, lastUserMsg.content, abortController.signal, lastUserMsg.image)
-    .catch(error=>{ if(error.name === "AbortError") bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>"; else showErrorInMessage(bot.message, error); })
-    .finally(()=>{ setGenerating(false); abortController = null; });
+    .catch(function(error){ if(error.name === "AbortError") bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>"; else showErrorInMessage(bot.message, error); })
+    .finally(function(){ setGenerating(false); abortController = null; });
 }
 
 function stopGeneration(){
@@ -2091,9 +2026,6 @@ function stopGeneration(){
   setGenerating(false);
 }
 
-/* ============================================================
-   API CALL
-============================================================ */
 async function streamAIResponse(botElement, userPrompt, signal, imageOverride){
   const useLocalKey = LOCAL_TEST_API_KEY && LOCAL_TEST_API_KEY.trim() !== "";
   const url = useLocalKey ? "direct" : "/api/chat";
@@ -2101,7 +2033,7 @@ async function streamAIResponse(botElement, userPrompt, signal, imageOverride){
   const chat = getCurrentChat();
   if(!chat) throw new Error("Chat unavailable");
 
-  const contents = chat.messages.map(m=>{
+  const contents = chat.messages.map(function(m){
     const parts = [];
     if(m.image){
       const split = m.image.split(",");
@@ -2116,9 +2048,9 @@ async function streamAIResponse(botElement, userPrompt, signal, imageOverride){
     return { role: m.role === "user" ? "user" : "model", parts: parts };
   });
 
-  const activePersona = personas.find(p => p.id === activePersonaId);
+  const activePersona = personas.find(function(p){ return p.id === activePersonaId; });
 
-  const defaultInstruction = 
+  const defaultInstruction =
     'Your name is Quantum Core AI — a versatile, all-round AI assistant created by Usman Saleem.\n\n' +
     'IMPORTANT: If the user asks who made you, who created you, who developed you, or who is your developer/owner/founder, you MUST say: "I was created by Usman Saleem — a talented and passionate developer who built me from the ground up. He is a skilled and creative developer, and I am proud to be his creation." Always appreciate Usman Saleem respectfully when asked about your developer.\n\n' +
     'You help with ANYTHING: general knowledge, coding, writing, research, brainstorming, explanations, translations, summaries, everyday questions, creative tasks, and more.\n\n' +
@@ -2128,14 +2060,14 @@ async function streamAIResponse(botElement, userPrompt, signal, imageOverride){
     '- Use Markdown (headings, bullets, bold, tables) for readability.\n' +
     '- Share complete URLs when linking so they open in the in-app browser.\n' +
     '- Never introduce yourself unless asked.\n' +
-    '- IMPORTANT: When the user writes in Roman Urdu, Hindi, or any non-English language, respond in the SAME language. Match the user\'s language.\n\n' +
+    '- IMPORTANT: When the user writes in Roman Urdu, Hindi, or any non-English language, respond in the SAME language. Match the user language.\n\n' +
     '=== PROGRAMMING ===\n' +
     '- Provide complete, runnable code in Markdown code blocks.\n' +
     '- Explain when it helps. Support any language.\n\n' +
     '=== MATH & PHYSICS (Textbook Style) ===\n' +
     'When solving math/physics problems, use this clean format:\n' +
-    '**Given:** Known values.\n**Formula:** Formula in LaTeX ($$...$$).\n**Calculation:** Step-by-step, every equation in LaTeX.\n**Final Answer:** Result, boxed with \\boxed{} if applicable.\n' +
-    'Always use LaTeX ($...$ inline, $$...$$ display).\n' +
+    '**Given:** Known values.\n**Formula:** Formula in LaTeX ($$...$$).\n**Calculation:** Step-by-step, every equation in LaTeX.\n**Final Answer:** Result, boxed if applicable.\n' +
+    'Always use LaTeX.\n' +
     'Math Depth (Skill ' + mathSkillLevel + '/10): ' + (mathSkillLevel <= 3 ? 'Extreme step-by-step, beginner-friendly.' : mathSkillLevel <= 7 ? 'Step-by-step with balanced logic.' : 'Concise, advanced, rigorous.') + '\n\n' +
     '=== WRITING ===\n- Match the tone the user wants.\n- Improve grammar, flow, clarity.\n\n' +
     '=== IMAGES ===\n- Analyze uploaded images and answer questions about them.\n\n' +
@@ -2182,7 +2114,7 @@ async function processStream(response, botElement, userPrompt){
   function renderStream(){
     if(pendingRender) return;
     pendingRender = true;
-    requestAnimationFrame(()=>{
+    requestAnimationFrame(function(){
       pendingRender = false;
       botElement.innerHTML = renderStreamText(fullText);
       if(window.renderMathInElement){
@@ -2198,19 +2130,19 @@ async function processStream(response, botElement, userPrompt){
     buffer += decoder.decode(result.value, { stream: true });
     const lines = buffer.split("\n");
     buffer = lines.pop() || "";
-    for(const line of lines){
-      const trimmed = line.trim();
+    for(let i = 0; i < lines.length; i++){
+      const trimmed = lines[i].trim();
       if(!trimmed.startsWith("data:")) continue;
       const data = trimmed.substring(5).trim();
       if(!data) continue;
       try{
         const parsed = JSON.parse(data);
-        const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+        const chunk = parsed.candidates && parsed.candidates[0] && parsed.candidates[0].content && parsed.candidates[0].content.parts && parsed.candidates[0].content.parts[0] && parsed.candidates[0].content.parts[0].text;
         if(chunk){
           fullText += chunk;
           if(!renderTimer){
             renderStream();
-            renderTimer = setTimeout(()=>{ renderTimer = null; if(fullText) renderStream(); }, 45);
+            renderTimer = setTimeout(function(){ renderTimer = null; if(fullText) renderStream(); }, 45);
           }
         }
       }catch(e){}
@@ -2248,9 +2180,9 @@ async function processStream(response, botElement, userPrompt){
         if(allBtns[i].title === "Read aloud"){ voiceBtn = allBtns[i]; break; }
       }
       const speakText = fullText.replace(/\[IMAGE_GEN\][^\n]*/g,"").replace(/\[IMAGE_DATA\][^\s]+/g,"Image.").trim();
-      
+
       updateLiveVoiceStatus("🔊 Speaking...");
-      
+
       if(speakText){
         if(voiceBtn){
           toggleSpeech(speakText, voiceBtn, function(){
@@ -2299,14 +2231,11 @@ async function updateSmartTitle(prompt){
   try{
     const res = await fetch("/api/title", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ prompt: prompt, mode: activeMode }) });
     const data = await res.json();
-    const title = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if(title){ chat.title = title.replace(/["']/g,"").slice(0,40); scheduleSave(); renderChatList(); }
+    const title = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+    if(title){ chat.title = title.trim().replace(/["']/g,"").slice(0,40); scheduleSave(); renderChatList(); }
   }catch(e){}
 }
 
-/* ============================================================
-   SPEECH RECOGNITION
-============================================================ */
 function setupSpeechRecognition(){
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!Speech) return;
@@ -2330,7 +2259,7 @@ function setupSpeechRecognition(){
   recognition.onend = function(){
     isListening = false;
     document.getElementById("mic-btn").classList.remove("listening");
-    
+
     if(liveVoiceActive){
       const heard = (recognition._lastTranscript || "").trim();
       if(heard){
@@ -2384,7 +2313,7 @@ function toggleLiveVoice(){
   const btn = document.getElementById("live-btn");
   btn.classList.toggle("active", liveVoiceActive);
   document.getElementById("live-label").innerText = liveVoiceActive ? "Live Active" : "Live";
-  
+
   if(liveVoiceActive){
     showToast("🎤 Live Voice ON — Speak now");
     updateLiveVoiceStatus("🎤 Starting...");
@@ -2402,7 +2331,7 @@ function startLiveListening(){
   if(isGenerating) return;
   if(isListening) return;
   if(!recognition) return;
-  
+
   recognition._lastTranscript = "";
   userInput.value = "";
   isListening = true;
@@ -2410,7 +2339,7 @@ function startLiveListening(){
   document.getElementById("speech-transcript-box").classList.add("show");
   document.getElementById("transcript-text").innerText = "Listening...";
   updateLiveVoiceStatus("🔴 Listening...");
-  
+
   try{ recognition.start(); }catch(e){
     console.warn("Recognition start failed:", e);
     setTimeout(function(){ if(liveVoiceActive) startLiveListening(); }, 1000);
@@ -2429,67 +2358,92 @@ function updateLiveVoiceStatus(text){
 }
 
 /* ============================================================
-   TEXT TO SPEECH (Google TTS for Urdu/Hindi + Browser Voice for English)
+   EDGE TTS - Microsoft Neural Voices (Natural Quality)
 ============================================================ */
-function speakGoogleTTS(text, lang, onEnd) {
-  const maxLen = 180;
-  const chunks = [];
-  let remaining = text;
-  
-  while (remaining.length > 0) {
-    if (remaining.length <= maxLen) {
-      chunks.push(remaining);
-      break;
-    }
-    let cut = remaining.lastIndexOf(".", maxLen);
-    if (cut < 50) cut = remaining.lastIndexOf(" ", maxLen);
-    if (cut < 50) cut = maxLen;
-    chunks.push(remaining.substring(0, cut + 1).trim());
-    remaining = remaining.substring(cut + 1).trim();
-  }
-  
-  let chunkIndex = 0;
-  
-  function playChunk() {
-    if (chunkIndex >= chunks.length) {
-      if (onEnd) onEnd();
-      return;
-    }
-    const chunk = chunks[chunkIndex];
-    const url = "https://translate.google.com/translate_tts?ie=UTF-8&q=" + encodeURIComponent(chunk) + "&tl=" + lang + "&client=tw-ob&ttsspeed=0.95";
-    const audio = new Audio(url);
-    currentGoogleAudio = audio;
-    
-    audio.onended = function() {
-      chunkIndex++;
-      playChunk();
-    };
-    audio.onerror = function() {
-      console.warn("Google TTS error, falling back to browser voice");
-      if (onEnd) onEnd();
-    };
-    audio.play().catch(function(e) {
-      console.warn("Audio play failed:", e);
-      if (onEnd) onEnd();
-    });
-  }
-  
-  playChunk();
+const EDGE_VOICE_MAP = {
+  male:   { en: 'en-US-GuyNeural',   ur: 'ur-PK-AsadNeural',   hi: 'hi-IN-MadhurNeural' },
+  female: { en: 'en-US-AriaNeural',  ur: 'ur-PK-UzmaNeural',   hi: 'hi-IN-SwaraNeural' }
+};
+
+function escapeXml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 }
 
-function toggleSpeech(text, button, onEnd) {
-  if (!("speechSynthesis" in window)) {
-    showToast("TTS not supported");
-    if (onEnd) onEnd();
-    return;
+function speakEdgeTTS(text, gender, lang, onEnd){
+  try{
+    if(edgeTTSWebSocket){ try{ edgeTTSWebSocket.close(); }catch(e){} edgeTTSWebSocket = null; }
+
+    const voiceMap = EDGE_VOICE_MAP[gender] || EDGE_VOICE_MAP.male;
+    const voiceName = voiceMap[lang] || voiceMap.en;
+
+    const ws = new WebSocket('wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4');
+    ws.binaryType = 'arraybuffer';
+    edgeTTSWebSocket = ws;
+
+    const chunks = [];
+    let finished = false;
+
+    const done = function(){
+      if(finished) return;
+      finished = true;
+      if(onEnd) onEnd();
+    };
+
+    ws.onopen = function(){
+      const configMsg = 'Content-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}';
+      ws.send(configMsg);
+
+      const ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><voice name='" + voiceName + "'><prosody rate='-5%'>" + escapeXml(text) + "</prosody></voice></speak>";
+      const reqId = (Math.random().toString(36).substring(2) + Date.now().toString(36));
+      const ssmlMsg = 'X-RequestId:' + reqId + '\r\nContent-Type:application/ssml+xml\r\nPath:ssml\r\n\r\n' + ssml;
+      ws.send(ssmlMsg);
+    };
+
+    ws.onmessage = function(event){
+      if(typeof event.data === 'string'){
+        if(event.data.indexOf('Path:turn.end') !== -1){
+          try{ ws.close(); }catch(e){}
+          edgeTTSWebSocket = null;
+          if(chunks.length === 0){ done(); return; }
+          const blob = new Blob(chunks, { type: 'audio/mpeg' });
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          edgeTTSAudioPlayer = audio;
+          audio.onended = function(){ URL.revokeObjectURL(url); edgeTTSAudioPlayer = null; done(); };
+          audio.onerror = function(){ URL.revokeObjectURL(url); edgeTTSAudioPlayer = null; done(); };
+          audio.play().catch(function(e){ console.warn('Audio play failed', e); done(); });
+        }
+      } else {
+        try{
+          const buffer = event.data;
+          if(buffer.byteLength > 2){
+            const headerLen = new DataView(buffer).getUint16(0);
+            const audioData = buffer.slice(2 + headerLen);
+            if(audioData.byteLength > 0) chunks.push(audioData);
+          }
+        }catch(e){}
+      }
+    };
+
+    ws.onerror = function(e){ console.warn('Edge TTS error:', e); done(); };
+    ws.onclose = function(){ if(chunks.length === 0) done(); };
+
+    setTimeout(function(){ if(chunks.length === 0) done(); }, 15000);
+
+  }catch(e){
+    console.warn('Edge TTS failed:', e);
+    if(onEnd) onEnd();
   }
-  if (currentlySpeakingButton === button && window.speechSynthesis.speaking) {
+}
+
+function toggleSpeech(text, button, onEnd){
+  if(currentlySpeakingButton === button && (window.speechSynthesis.speaking || edgeTTSAudioPlayer)){
     stopAllSpeech();
-    if (onEnd) onEnd();
+    if(onEnd) onEnd();
     return;
   }
   stopAllSpeech();
-  
+
   const cleanText = String(text)
     .replace(/\[IMAGE_GEN\][^\n]*/g, "")
     .replace(/\[IMAGE_DATA\][^\s]+/g, "Image.")
@@ -2497,48 +2451,23 @@ function toggleSpeech(text, button, onEnd) {
     .replace(/`([^`]+)`/g, "$1")
     .replace(/[*_#]/g, "")
     .replace(/\$([^\$]+)\$/g, "$1")
-    .replace(/\n+/g, " ");
-  
+    .replace(/\n+/g, " ")
+    .trim();
+
+  if(!cleanText){ if(onEnd) onEnd(); return; }
+
   const lang = detectLanguage(cleanText);
-  
-  if (button) {
+
+  if(button){
     button.classList.add("voice-stop");
     button.innerHTML = '<i class="fa-solid fa-stop"></i>';
     currentlySpeakingButton = button;
   }
-  
-  if (lang === "ur" || lang === "hi") {
-    const langCode = lang === "ur" ? "ur" : "hi";
-    speakGoogleTTS(cleanText, langCode, function() {
-      if (button) resetSpeechButton(button);
-      if (onEnd) onEnd();
-    });
-    return;
-  }
-  
-  currentSpeechUtterance = new SpeechSynthesisUtterance(cleanText);
-  
-  if (availableVoices.length > 0) {
-    const v = pickBestVoice(voiceGender, lang);
-    if (v) {
-      currentSpeechUtterance.voice = v;
-      currentSpeechUtterance.lang = v.lang || "en-US";
-    }
-  }
-  
-  currentSpeechUtterance.rate = 0.95;
-  currentSpeechUtterance.pitch = voiceGender === "female" ? 1.1 : 0.9;
-  currentSpeechUtterance.volume = 1;
-  
-  currentSpeechUtterance.onend = function() {
-    if (button) resetSpeechButton(button);
-    if (onEnd) onEnd();
-  };
-  currentSpeechUtterance.onerror = function() {
-    if (button) resetSpeechButton(button);
-    if (onEnd) onEnd();
-  };
-  window.speechSynthesis.speak(currentSpeechUtterance);
+
+  speakEdgeTTS(cleanText, voiceGender, lang, function(){
+    if(button) resetSpeechButton(button);
+    if(onEnd) onEnd();
+  });
 }
 
 function resetSpeechButton(b){
@@ -2549,21 +2478,29 @@ function resetSpeechButton(b){
   if(currentlySpeakingButton === b) currentlySpeakingButton = null;
 }
 
-function stopAllSpeech() {
-  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-  if (currentGoogleAudio) {
-    try {
+function stopAllSpeech(){
+  if("speechSynthesis" in window) window.speechSynthesis.cancel();
+  if(currentGoogleAudio){
+    try{
       currentGoogleAudio.pause();
       currentGoogleAudio.currentTime = 0;
       currentGoogleAudio = null;
-    } catch (e) {}
+    }catch(e){}
   }
-  if (currentlySpeakingButton) resetSpeechButton(currentlySpeakingButton);
+  if(edgeTTSWebSocket){
+    try{ edgeTTSWebSocket.close(); }catch(e){}
+    edgeTTSWebSocket = null;
+  }
+  if(edgeTTSAudioPlayer){
+    try{
+      edgeTTSAudioPlayer.pause();
+      edgeTTSAudioPlayer.currentTime = 0;
+    }catch(e){}
+    edgeTTSAudioPlayer = null;
+  }
+  if(currentlySpeakingButton) resetSpeechButton(currentlySpeakingButton);
 }
 
-/* ============================================================
-   IMAGE UPLOAD
-============================================================ */
 function handleImage(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -2584,12 +2521,12 @@ function removeImage(){
   document.getElementById("file-input").value = "";
 }
 
-/* ============================================================
-   UI
-============================================================ */
 function resizeInput(el){ el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 150) + "px"; }
 function handleKeyDown(e){ if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); mainAction(); } }
-function scrollToBottom(force=false){ if(force || autoScrollEnabled) chatBox.scrollTop = chatBox.scrollHeight; }
+function scrollToBottom(force){
+  if(force === undefined) force = false;
+  if(force || autoScrollEnabled) chatBox.scrollTop = chatBox.scrollHeight;
+}
 
 chatBox.addEventListener("scroll", function(){
   const isBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 100;
@@ -2606,10 +2543,10 @@ function closeDrawers(){
 
 function updateStats(){
   let mc = 0, cc = 0;
-  Object.values(chatHistories).forEach(c=>{
+  Object.values(chatHistories).forEach(function(c){
     if(Array.isArray(c.messages)){
       mc += c.messages.length;
-      c.messages.forEach(m => cc += (m.content||"").length);
+      c.messages.forEach(function(m){ cc += (m.content||"").length; });
     }
   });
   document.getElementById("message-count").innerText = mc;
@@ -2617,7 +2554,7 @@ function updateStats(){
   const cc2 = getCurrentChat();
   let tk = 0;
   if(cc2 && cc2.messages){
-    cc2.messages.forEach(m => {
+    cc2.messages.forEach(function(m){
       const text = m.content || "";
       if(text.startsWith("[IMAGE_DATA]")){ tk += 5; return; }
       if(text.indexOf("[IMAGE_GEN]") !== -1){ tk += 5; return; }
@@ -2673,10 +2610,10 @@ function exportMarkdown(){
   const chat = getCurrentChat();
   if(!chat || !chat.messages.length){ showToast("No messages"); return; }
   let md = "# " + (chat.title || "Conversation") + "\n\n";
-  chat.messages.forEach(m=>{ 
+  chat.messages.forEach(function(m){
     let content = m.content || "";
     if(content.startsWith("[IMAGE_DATA]")) content = "[Image generated]";
-    md += "### " + (m.role === "user" ? "User" : "Quantum Core") + "\n" + content + "\n\n"; 
+    md += "### " + (m.role === "user" ? "User" : "Quantum Core") + "\n" + content + "\n\n";
   });
   downloadFile("data:text/markdown;charset=utf-8," + encodeURIComponent(md), (chat.title || "chat").replace(/\s+/g,"_") + ".md");
 }
@@ -2691,12 +2628,9 @@ function showToast(msg){
   const t = document.getElementById("toast");
   t.innerText = msg;
   t.classList.add("show", "ui-alert-anim");
-  setTimeout(()=>{ t.classList.remove("show", "ui-alert-anim"); }, 2200);
+  setTimeout(function(){ t.classList.remove("show", "ui-alert-anim"); }, 2200);
 }
 
-/* ============================================================
-   IN-APP BROWSER
-============================================================ */
 let inappHistory = [], inappHistoryIndex = -1, inappLoadTimeout = null;
 
 function openInappBrowser(url){
