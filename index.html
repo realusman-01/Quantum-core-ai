@@ -611,7 +611,7 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 </div>
 <div class="inapp-frame-wrap">
 <div class="inapp-loader" id="inapp-loader"><div class="spinner"></div><span>Loading...</span></div>
-<iframe id="inapp-frame" class="inapp-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" onload="inappFrameLoaded()"></iframe>
+<iframe id="inapp-frame" class="inapp-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" onload="if(typeof inappFrameLoaded === 'function') inappFrameLoaded();"></iframe>
 <div class="inapp-blocked" id="inapp-blocked">
 <i class="fa-solid fa-triangle-exclamation"></i>
 <p>This website blocks in-app view.</p>
@@ -627,7 +627,7 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 /* ============================================================
    QUANTUM CORE AI - BY USMAN SALEEM
    Storage: IndexedDB | Images: Cloudflare Workers AI + Compression
-   Live Voice: Auto-listen → Auto-send → Auto-speak → Loop
+   Voice: Smart Gender Selection + Google TTS for Hindi/Urdu
 ============================================================ */
 
 const LOCAL_TEST_API_KEY = "";
@@ -680,6 +680,7 @@ let isListening = false;
 let liveVoiceActive = false;
 let currentlySpeakingButton = null;
 let currentSpeechUtterance = null;
+let currentGoogleAudio = null;
 let voiceGender = "male";
 let searchTerm = "";
 let renameTargetId = null;
@@ -923,6 +924,8 @@ function loadSettings(){
   autoScrollEnabled = auto !== "false";
   document.getElementById("auto-scroll-toggle").checked = autoScrollEnabled;
   voiceGender = safeGet("qc_voice_gender", "male");
+  document.getElementById("voice-male").classList.toggle("active", voiceGender === "male");
+  document.getElementById("voice-female").classList.toggle("active", voiceGender === "female");
   aiTemperature = parseFloat(safeGet("qc_temperature", "0.7"));
   document.getElementById("temp-slider").value = aiTemperature;
   document.getElementById("temp-val").innerText = aiTemperature;
@@ -997,9 +1000,104 @@ document.addEventListener("click", function(e){
     if(menu) menu.classList.remove("show");
   }
 });
-function setVoiceGender(g){ voiceGender = g; safeSet("qc_voice_gender", g); document.getElementById("voice-male").classList.toggle("active", g==="male"); document.getElementById("voice-female").classList.toggle("active", g==="female"); showToast(g==="male"?"Male voice":"Female voice"); }
+function setVoiceGender(g){ 
+  voiceGender = g; 
+  safeSet("qc_voice_gender", g); 
+  document.getElementById("voice-male").classList.toggle("active", g==="male"); 
+  document.getElementById("voice-female").classList.toggle("active", g==="female"); 
+  showToast(g==="male"?"Male voice selected":"Female voice selected"); 
+  stopAllSpeech();
+}
 function setAutoScroll(v){ autoScrollEnabled = v; safeSet("qc_auto_scroll", String(v)); if(v) scrollToBottom(false); }
 function loadVoices(){ if("speechSynthesis" in window) availableVoices = window.speechSynthesis.getVoices(); }
+
+/* ============================================================
+   SMART VOICE SELECTION
+============================================================ */
+const FEMALE_KEYWORDS = [
+  "female","woman","zira","samantha","victoria","karen","moira","tessa","aria","jenny",
+  "susan","hazel","heera","swara","kalpana","heami","yuna","zhiyu","ting-ting","sinji",
+  "meijia","lili","catherine","linda","mary","eva","alice","emma","olivia","sophia",
+  "female voice","woman voice"
+];
+
+const MALE_KEYWORDS = [
+  "male","man","david","mark","alex","daniel","fred","tom","aaron","lee","oliver","rishi",
+  "albert","bruce","guy","ryan","george","james","ravi","prabhat","hemant","diego","jorge",
+  "luca","yannick","maged","tarik","naayf","male voice","man voice"
+];
+
+function scoreVoiceForGender(voiceName, gender){
+  const name = voiceName.toLowerCase();
+  const keywords = gender === "female" ? FEMALE_KEYWORDS : MALE_KEYWORDS;
+  const opposite = gender === "female" ? MALE_KEYWORDS : FEMALE_KEYWORDS;
+  
+  let score = 0;
+  for(let i = 0; i < keywords.length; i++){
+    if(name.indexOf(keywords[i]) !== -1){ score += 10; break; }
+  }
+  for(let i = 0; i < opposite.length; i++){
+    if(name.indexOf(opposite[i]) !== -1){ score -= 20; break; }
+  }
+  if(name.indexOf("neural") !== -1) score += 5;
+  if(name.indexOf("google") !== -1) score += 3;
+  if(name.indexOf("natural") !== -1) score += 4;
+  return score;
+}
+
+function detectLanguage(text){
+  if(!text) return "en";
+  const t = String(text);
+  if(/[\u0600-\u06FF]/.test(t)) return "ur";
+  if(/[\u0900-\u097F]/.test(t)) return "hi";
+  const romanUrduWords = ["kya","hai","kaise","kahan","kyun","aap","tum","mera","tera","nahi","haan","acha","theek","bhai","yaar"];
+  const lower = t.toLowerCase();
+  let urduScore = 0;
+  for(let i = 0; i < romanUrduWords.length; i++){
+    if(lower.indexOf(romanUrduWords[i]) !== -1) urduScore++;
+  }
+  if(urduScore >= 2) return "ur";
+  return "en";
+}
+
+function pickBestVoice(gender, langCode){
+  if(!availableVoices || availableVoices.length === 0) return null;
+  
+  const langMap = { "en": ["en-","en_"], "ur": ["ur-","ur_","hi-"], "hi": ["hi-","hi_"] };
+  const prefixes = langMap[langCode] || ["en-"];
+  
+  let candidates = availableVoices.filter(function(v){
+    const vl = (v.lang || "").toLowerCase();
+    let langMatch = false;
+    for(let i = 0; i < prefixes.length; i++){
+      if(vl.indexOf(prefixes[i]) === 0){ langMatch = true; break; }
+    }
+    if(!langMatch) return false;
+    return scoreVoiceForGender(v.name, gender) > 0;
+  });
+  
+  if(candidates.length > 0){
+    candidates.sort(function(a,b){ return scoreVoiceForGender(b.name,gender) - scoreVoiceForGender(a.name,gender); });
+    return candidates[0];
+  }
+  
+  candidates = availableVoices.filter(function(v){ return scoreVoiceForGender(v.name, gender) > 0; });
+  if(candidates.length > 0){
+    candidates.sort(function(a,b){ return scoreVoiceForGender(b.name,gender) - scoreVoiceForGender(a.name,gender); });
+    return candidates[0];
+  }
+  
+  candidates = availableVoices.filter(function(v){
+    const vl = (v.lang || "").toLowerCase();
+    for(let i = 0; i < prefixes.length; i++){
+      if(vl.indexOf(prefixes[i]) === 0) return true;
+    }
+    return false;
+  });
+  if(candidates.length > 0) return candidates[0];
+  
+  return availableVoices[0];
+}
 
 /* ============================================================
    FOLDERS
@@ -2029,7 +2127,8 @@ async function streamAIResponse(botElement, userPrompt, signal, imageOverride){
     '- Match depth to the question: simple → simple, complex → detailed.\n' +
     '- Use Markdown (headings, bullets, bold, tables) for readability.\n' +
     '- Share complete URLs when linking so they open in the in-app browser.\n' +
-    '- Never introduce yourself unless asked.\n\n' +
+    '- Never introduce yourself unless asked.\n' +
+    '- IMPORTANT: When the user writes in Roman Urdu, Hindi, or any non-English language, respond in the SAME language. Match the user\'s language.\n\n' +
     '=== PROGRAMMING ===\n' +
     '- Provide complete, runnable code in Markdown code blocks.\n' +
     '- Explain when it helps. Support any language.\n\n' +
@@ -2163,9 +2262,8 @@ async function processStream(response, botElement, userPrompt){
         } else {
           const utterance = new SpeechSynthesisUtterance(speakText);
           if(availableVoices.length > 0){
-            let v = null;
-            if(voiceGender === "female") v = availableVoices.find(x=>x.name.toLowerCase().includes("female")||x.name.toLowerCase().includes("zira")||x.name.toLowerCase().includes("samantha"));
-            else v = availableVoices.find(x=>x.name.toLowerCase().includes("male")||x.name.toLowerCase().includes("david")||x.name.toLowerCase().includes("mark"));
+            const lang = detectLanguage(speakText);
+            const v = pickBestVoice(voiceGender, lang);
             if(v) utterance.voice = v;
           }
           utterance.onend = function(){
@@ -2207,7 +2305,7 @@ async function updateSmartTitle(prompt){
 }
 
 /* ============================================================
-   SPEECH RECOGNITION (With Live Voice Support)
+   SPEECH RECOGNITION
 ============================================================ */
 function setupSpeechRecognition(){
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2330,42 +2428,138 @@ function updateLiveVoiceStatus(text){
   document.getElementById("transcript-text").innerText = text;
 }
 
-function toggleSpeech(text, button, onEnd){
-  if(!("speechSynthesis" in window)){ showToast("TTS not supported"); if(onEnd) onEnd(); return; }
-  if(currentlySpeakingButton === button && window.speechSynthesis.speaking){ stopAllSpeech(); if(onEnd) onEnd(); return; }
-  stopAllSpeech();
-  const cleanText = String(text)
-    .replace(/\[IMAGE_GEN\][^\n]*/g,"")
-    .replace(/\[IMAGE_DATA\][^\s]+/g,"Image.")
-    .replace(/```[\s\S]*?```/g,"Code omitted.")
-    .replace(/`([^`]+)`/g,"$1")
-    .replace(/[*_#]/g,"")
-    .replace(/\$([^\$]+)\$/g,"$1");
-  currentSpeechUtterance = new SpeechSynthesisUtterance(cleanText);
-  if(availableVoices.length > 0){
-    let v = null;
-    if(voiceGender === "female") v = availableVoices.find(x=>x.name.toLowerCase().includes("female")||x.name.toLowerCase().includes("zira")||x.name.toLowerCase().includes("samantha"));
-    else v = availableVoices.find(x=>x.name.toLowerCase().includes("male")||x.name.toLowerCase().includes("david")||x.name.toLowerCase().includes("mark"));
-    if(v) currentSpeechUtterance.voice = v;
+/* ============================================================
+   TEXT TO SPEECH (Google TTS for Urdu/Hindi + Browser Voice for English)
+============================================================ */
+function speakGoogleTTS(text, lang, onEnd) {
+  const maxLen = 180;
+  const chunks = [];
+  let remaining = text;
+  
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLen) {
+      chunks.push(remaining);
+      break;
+    }
+    let cut = remaining.lastIndexOf(".", maxLen);
+    if (cut < 50) cut = remaining.lastIndexOf(" ", maxLen);
+    if (cut < 50) cut = maxLen;
+    chunks.push(remaining.substring(0, cut + 1).trim());
+    remaining = remaining.substring(cut + 1).trim();
   }
-  if(button){
+  
+  let chunkIndex = 0;
+  
+  function playChunk() {
+    if (chunkIndex >= chunks.length) {
+      if (onEnd) onEnd();
+      return;
+    }
+    const chunk = chunks[chunkIndex];
+    const url = "https://translate.google.com/translate_tts?ie=UTF-8&q=" + encodeURIComponent(chunk) + "&tl=" + lang + "&client=tw-ob&ttsspeed=0.95";
+    const audio = new Audio(url);
+    currentGoogleAudio = audio;
+    
+    audio.onended = function() {
+      chunkIndex++;
+      playChunk();
+    };
+    audio.onerror = function() {
+      console.warn("Google TTS error, falling back to browser voice");
+      if (onEnd) onEnd();
+    };
+    audio.play().catch(function(e) {
+      console.warn("Audio play failed:", e);
+      if (onEnd) onEnd();
+    });
+  }
+  
+  playChunk();
+}
+
+function toggleSpeech(text, button, onEnd) {
+  if (!("speechSynthesis" in window)) {
+    showToast("TTS not supported");
+    if (onEnd) onEnd();
+    return;
+  }
+  if (currentlySpeakingButton === button && window.speechSynthesis.speaking) {
+    stopAllSpeech();
+    if (onEnd) onEnd();
+    return;
+  }
+  stopAllSpeech();
+  
+  const cleanText = String(text)
+    .replace(/\[IMAGE_GEN\][^\n]*/g, "")
+    .replace(/\[IMAGE_DATA\][^\s]+/g, "Image.")
+    .replace(/```[\s\S]*?```/g, "Code omitted.")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/[*_#]/g, "")
+    .replace(/\$([^\$]+)\$/g, "$1")
+    .replace(/\n+/g, " ");
+  
+  const lang = detectLanguage(cleanText);
+  
+  if (button) {
     button.classList.add("voice-stop");
     button.innerHTML = '<i class="fa-solid fa-stop"></i>';
     currentlySpeakingButton = button;
   }
-  currentSpeechUtterance.onend = function(){ 
-    if(button) resetSpeechButton(button); 
-    if(onEnd) onEnd(); 
+  
+  if (lang === "ur" || lang === "hi") {
+    const langCode = lang === "ur" ? "ur" : "hi";
+    speakGoogleTTS(cleanText, langCode, function() {
+      if (button) resetSpeechButton(button);
+      if (onEnd) onEnd();
+    });
+    return;
+  }
+  
+  currentSpeechUtterance = new SpeechSynthesisUtterance(cleanText);
+  
+  if (availableVoices.length > 0) {
+    const v = pickBestVoice(voiceGender, lang);
+    if (v) {
+      currentSpeechUtterance.voice = v;
+      currentSpeechUtterance.lang = v.lang || "en-US";
+    }
+  }
+  
+  currentSpeechUtterance.rate = 0.95;
+  currentSpeechUtterance.pitch = voiceGender === "female" ? 1.1 : 0.9;
+  currentSpeechUtterance.volume = 1;
+  
+  currentSpeechUtterance.onend = function() {
+    if (button) resetSpeechButton(button);
+    if (onEnd) onEnd();
   };
-  currentSpeechUtterance.onerror = function(){ 
-    if(button) resetSpeechButton(button); 
-    if(onEnd) onEnd(); 
+  currentSpeechUtterance.onerror = function() {
+    if (button) resetSpeechButton(button);
+    if (onEnd) onEnd();
   };
   window.speechSynthesis.speak(currentSpeechUtterance);
 }
 
-function resetSpeechButton(b){ if(b){ b.classList.remove("voice-stop"); b.innerHTML = '<i class="fa-solid fa-volume-high"></i>'; } if(currentlySpeakingButton === b) currentlySpeakingButton = null; }
-function stopAllSpeech(){ if("speechSynthesis" in window) window.speechSynthesis.cancel(); if(currentlySpeakingButton) resetSpeechButton(currentlySpeakingButton); }
+function resetSpeechButton(b){
+  if(b){
+    b.classList.remove("voice-stop");
+    b.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+  }
+  if(currentlySpeakingButton === b) currentlySpeakingButton = null;
+}
+
+function stopAllSpeech() {
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  if (currentGoogleAudio) {
+    try {
+      currentGoogleAudio.pause();
+      currentGoogleAudio.currentTime = 0;
+      currentGoogleAudio = null;
+    } catch (e) {}
+  }
+  if (currentlySpeakingButton) resetSpeechButton(currentlySpeakingButton);
+}
 
 /* ============================================================
    IMAGE UPLOAD
