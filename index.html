@@ -16,6 +16,11 @@
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs/loader.min.js"></script>
 
+<script type="module">
+  import { VoiPi } from "https://cdn.jsdelivr.net/npm/voipi@latest/dist/voipi.js";
+  window.VoiPi = VoiPi;
+</script>
+
 <style>
 :root{
 --bg:#f8fafc;--card:#ffffff;--primary:#2563eb;--accent:#0f172a;--text:#1e293b;--muted:#64748b;
@@ -627,7 +632,7 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 /* ============================================================
    QUANTUM CORE AI - BY USMAN SALEEM
    Storage: IndexedDB | Images: Cloudflare Workers AI + Compression
-   Voice: Microsoft Edge Neural TTS (via backend proxy /api/tts)
+   Voice: VoiPi (Microsoft Edge Neural Voices - Browser-based)
 ============================================================ */
 
 const LOCAL_TEST_API_KEY = "";
@@ -682,6 +687,7 @@ let currentlySpeakingButton = null;
 let currentSpeechUtterance = null;
 let currentGoogleAudio = null;
 let edgeTTSAudioPlayer = null;
+let activeVoipiInstance = null;
 let voiceGender = "male";
 let searchTerm = "";
 let renameTargetId = null;
@@ -2296,36 +2302,88 @@ function updateLiveVoiceStatus(text){
 }
 
 /* ============================================================
-   TTS - Microsoft Edge Neural Voices (via /api/tts backend proxy)
+   TTS - VoiPi (Microsoft Edge Neural Voices - Browser-based)
 ============================================================ */
 async function speakEdgeTTS(text, gender, lang, onEnd){
   try{
-    const res = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text, gender: gender, lang: lang })
-    });
-    if(!res.ok){
-      const errText = await res.text();
-      console.warn('TTS API failed:', res.status, errText);
+    if(!window.VoiPi){
+      console.warn('VoiPi not loaded, falling back to browser voice');
       if(onEnd) onEnd();
       return;
     }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    edgeTTSAudioPlayer = audio;
-    audio.onended = function(){ URL.revokeObjectURL(url); edgeTTSAudioPlayer = null; if(onEnd) onEnd(); };
-    audio.onerror = function(){ URL.revokeObjectURL(url); edgeTTSAudioPlayer = null; if(onEnd) onEnd(); };
-    audio.play().catch(function(e){ console.warn('Audio play failed', e); if(onEnd) onEnd(); });
-  }catch(e){
-    console.warn('Edge TTS failed:', e);
+
+    const VOICE_MAP = {
+      male:   { en: 'en-US-GuyNeural',   ur: 'ur-PK-AsadNeural',   hi: 'hi-IN-MadhurNeural' },
+      female: { en: 'en-US-AriaNeural',  ur: 'ur-PK-UzmaNeural',   hi: 'hi-IN-SwaraNeural' }
+    };
+
+    const voiceMap = VOICE_MAP[gender] || VOICE_MAP.male;
+    const voiceName = voiceMap[lang] || voiceMap.en;
+
+    const voipi = new window.VoiPi({
+      providers: [
+        ['edge-tts', { voice: voiceName }],
+        'browser-tts'
+      ]
+    });
+
+    activeVoipiInstance = voipi;
+
+    await voipi.speak(text, {
+      voice: voiceName,
+      rate: 0.95
+    });
+
+    activeVoipiInstance = null;
     if(onEnd) onEnd();
+  }catch(e){
+    console.warn('VoiPi failed, falling back to browser voice:', e);
+    activeVoipiInstance = null;
+    // Fallback to browser voice
+    try{
+      if(!("speechSynthesis" in window)){ if(onEnd) onEnd(); return; }
+      const utterance = new SpeechSynthesisUtterance(text);
+      if(availableVoices.length > 0){
+        const v = pickBestVoice(voiceGender, lang);
+        if(v) utterance.voice = v;
+      }
+      utterance.rate = 0.95;
+      utterance.pitch = gender === 'female' ? 1.1 : 0.9;
+      utterance.onend = function(){ if(onEnd) onEnd(); };
+      utterance.onerror = function(){ if(onEnd) onEnd(); };
+      window.speechSynthesis.speak(utterance);
+    }catch(e2){
+      if(onEnd) onEnd();
+    }
   }
 }
 
+function pickBestVoice(gender, langCode){
+  if(!availableVoices || availableVoices.length === 0) return null;
+  const FEMALE_KEYWORDS = ["female","woman","zira","samantha","aria","jenny","swara","uzma"];
+  const MALE_KEYWORDS = ["male","man","david","mark","guy","asad","madhur"];
+  const keywords = gender === "female" ? FEMALE_KEYWORDS : MALE_KEYWORDS;
+  const opposite = gender === "female" ? MALE_KEYWORDS : FEMALE_KEYWORDS;
+  
+  function score(name){
+    const n = name.toLowerCase();
+    let s = 0;
+    for(let i = 0; i < keywords.length; i++){ if(n.indexOf(keywords[i]) !== -1){ s += 10; break; } }
+    for(let i = 0; i < opposite.length; i++){ if(n.indexOf(opposite[i]) !== -1){ s -= 20; break; } }
+    if(n.indexOf("neural") !== -1) s += 5;
+    return s;
+  }
+  
+  let candidates = availableVoices.filter(function(v){ return score(v.name) > 0; });
+  if(candidates.length > 0){
+    candidates.sort(function(a,b){ return score(b.name) - score(a.name); });
+    return candidates[0];
+  }
+  return availableVoices[0];
+}
+
 function toggleSpeech(text, button, onEnd){
-  if(currentlySpeakingButton === button && edgeTTSAudioPlayer){
+  if(currentlySpeakingButton === button && (window.speechSynthesis.speaking || activeVoipiInstance)){
     stopAllSpeech();
     if(onEnd) onEnd();
     return;
@@ -2374,6 +2432,13 @@ function stopAllSpeech(){
       currentGoogleAudio.currentTime = 0;
       currentGoogleAudio = null;
     }catch(e){}
+  }
+  if(activeVoipiInstance){
+    try{
+      if(typeof activeVoipiInstance.stop === 'function') activeVoipiInstance.stop();
+      if(typeof activeVoipiInstance.destroy === 'function') activeVoipiInstance.destroy();
+    }catch(e){}
+    activeVoipiInstance = null;
   }
   if(edgeTTSAudioPlayer){
     try{
