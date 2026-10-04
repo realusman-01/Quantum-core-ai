@@ -1364,29 +1364,25 @@ async function processStream(response,botElement,userPrompt,botRef){
       if(!data)continue;
       try{
         const parsed=JSON.parse(data);
-        if(parsed.type === "status") {
-          botElement.innerText = parsed.status || "🧠 Thinking...";
-          if(autoScrollEnabled) chatBox.scrollTop = chatBox.scrollHeight;
+
+        // Backend status events (Think / Web Search / Sources / Writing)
+        if(parsed.type==="status" && parsed.status){
+          botElement.innerHTML='<div class="thinking"><div class="spinner"></div><span>'+String(parsed.status).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];})+'</span></div>';
+          if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
           continue;
         }
-        if(parsed.error) {
-          throw new Error(parsed.error + (parsed.details ? ": " + parsed.details : ""));
+
+        // Backend error events
+        if(parsed.error){
+          throw new Error(parsed.error+(parsed.details?' — '+parsed.details:''));
         }
+
         const chunk=parsed.candidates&&parsed.candidates[0]&&parsed.candidates[0].content&&parsed.candidates[0].content.parts&&parsed.candidates[0].content.parts[0]&&parsed.candidates[0].content.parts[0].text;
-        if(parsed.type==="status" && parsed.status){
-  botElement.innerHTML='<div class="thinking"><div class="spinner"></div><span>'+parsed.status+'</span></div>';
-  if(autoScrollEnabled){
-    chatBox.scrollTop=chatBox.scrollHeight;
-  }
-  continue;
-}
         if(chunk){
           fullText+=chunk;
           scheduleRender();
         }
-      }catch(e){
-        if(e && e.message && !e.message.includes("Unexpected token")) throw e;
-      }
+      }catch(e){}
     }
   }
   if(rafId){clearTimeout(rafId);rafId=null;}
