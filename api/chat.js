@@ -4,12 +4,12 @@ export const config = {
 };
 
 const MODEL_CHAIN = {
-  fast: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
+  fast: ['gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'],
   core: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
 };
 
-// ⚡ Timeout helper - agar 8 second mein jawab nahi, toh cancel
-async function fetchWithTimeout(url, options, timeoutMs = 8000) {
+// ⚡ Timeout helper
+async function fetchWithTimeout(url, options, timeoutMs = 15000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -20,6 +20,40 @@ async function fetchWithTimeout(url, options, timeoutMs = 8000) {
     clearTimeout(timeoutId);
     throw err;
   }
+}
+
+// 🎯 CRITICAL — Stream chunks one-by-one as they arrive (NO buffering)
+async function pipeGeminiStream(geminiRes, res) {
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('Content-Encoding', 'none');
+
+  // Flush headers immediately
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  const reader = geminiRes.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      if (chunk) {
+        res.write(chunk);
+        // Flush if available (helps bypass any buffering proxy)
+        if (typeof res.flush === 'function') res.flush();
+      }
+    }
+    // Final flush of any remaining buffer
+    const tail = decoder.decode();
+    if (tail) res.write(tail);
+  } finally {
+    try { reader.releaseLock(); } catch (e) {}
+  }
+  res.end();
 }
 
 export default async function handler(req, res) {
@@ -43,73 +77,42 @@ export default async function handler(req, res) {
   let lastError = null;
   const startTime = Date.now();
 
-  // ⚡ Har model ko ek hi baar try karo - no retries, no waiting
+  // Try each model in the chain until one connects successfully
   for (const modelName of modelChain) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
-    
+
     try {
       console.log(`⚡ Trying: ${modelName} (elapsed: ${Date.now() - startTime}ms)`);
-      
+
       const geminiRes = await fetchWithTimeout(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(geminiBody)
-      }, 8000);
+      }, 15000);
 
       if (geminiRes.ok) {
-        console.log(`✅ Success: ${modelName} (elapsed: ${Date.now() - startTime}ms)`);
-        
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache, no-transform');
-        res.setHeader('Connection', 'keep-alive');
-        res.setHeader('X-Accel-Buffering', 'no');
+        console.log(`✅ Streaming: ${modelName} (elapsed: ${Date.now() - startTime}ms)`);
         res.setHeader('X-Model-Used', modelName);
-
-        const buffer = await geminiRes.arrayBuffer();
-        res.write(Buffer.from(new Uint8Array(buffer)));
-        return res.end();
+        // 🔥 STREAM IT — no arrayBuffer(), no buffering
+        await pipeGeminiStream(geminiRes, res);
+        return;
       } else {
-        // 503/429 ya koi bhi fail → turant agla model, koi wait nahi
         console.warn(`⚠️ ${modelName} failed: ${geminiRes.status} → trying next...`);
         lastError = new Error(`Model ${modelName} failed: ${geminiRes.status}`);
       }
     } catch (err) {
-      // Timeout ya network error → turant agla model
       console.error(`❌ ${modelName} error: ${err.message} → trying next...`);
       lastError = err;
     }
   }
 
-  // Sab fail ho gaye toh ek chhota wait + ek final retry
-  console.log(`🔄 All models failed, waiting 2s for one final retry...`);
-  await new Promise(r => setTimeout(r, 2000));
-
-  const primaryModel = modelChain[0];
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${primaryModel}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
-
-  try {
-    const finalRes = await fetchWithTimeout(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(geminiBody)
-    }, 15000);
-
-    if (finalRes.ok) {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache, no-transform');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no');
-
-      const buffer = await finalRes.arrayBuffer();
-      res.write(Buffer.from(new Uint8Array(buffer)));
-      return res.end();
-    }
-  } catch (err) {
-    lastError = err;
+  // All models failed — send error response (only if headers not yet sent)
+  if (!res.headersSent) {
+    return res.status(502).json({
+      error: 'All models failed. Please try again.',
+      details: lastError ? lastError.message : 'Unknown'
+    });
+  } else {
+    try { res.end(); } catch (e) {}
   }
-
-  return res.status(502).json({
-    error: 'All models failed. Please try again.',
-    details: lastError ? lastError.message : 'Unknown'
-  });
 }
