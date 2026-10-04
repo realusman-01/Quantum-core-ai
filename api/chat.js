@@ -3,8 +3,15 @@ export const config = {
 };
 
 const MODEL_CHAIN = {
-  fast: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
-  core: ['gemini-3.6-flash', 'gemini-3.1-flash-lite']
+  fast: [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite'
+  ],
+  core: [
+    'gemini-3.6-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite'
+  ]
 };
 
 const CORS_HEADERS = {
@@ -31,24 +38,95 @@ async function fetchWithTimeout(url, options, timeoutMs = 15000) {
   }
 }
 
-/* =========================================================
-   GET ALL TEXT FROM CONVERSATION
-========================================================= */
+/* =========================
+   WEB SEARCH DECISION
+========================= */
 
-function getConversationText(contents) {
-  return (contents || [])
+function needsWebSearch(contents) {
+  const text = (contents || [])
     .map(m =>
       (m.parts || [])
         .map(p => p.text || '')
         .join(' ')
     )
     .join('\n')
-    .trim();
+    .toLowerCase();
+
+  const triggers = [
+    // English
+    'today',
+    "today's",
+    'todays',
+    'current',
+    'currently',
+    'right now',
+    'latest',
+    'recent',
+    'news',
+    'this week',
+    'this month',
+    'this year',
+    'new update',
+    'latest update',
+    'release date',
+    'released',
+    'release',
+    'season 2',
+    'season 3',
+    'episode',
+    'price',
+    'cost',
+    'weather',
+    'score',
+    'scores',
+    'standings',
+    'president',
+    'prime minister',
+    'ceo',
+    'what is happening',
+    'what happened',
+
+    // Roman Urdu / Urdu-style queries
+    'aaj',
+    'aj',
+    'abhi',
+    'filhal',
+    'haal hi',
+    'latest kya',
+    'latest update',
+    'release ho',
+    'release hua',
+    'release hui',
+    'kab release',
+    'release date',
+    'season 2 aa',
+    'season 2 a',
+    'season 3 aa',
+    'season 3 a',
+    'episode kab',
+    'episode aa',
+    'new episode',
+    'naya episode',
+    'price kya',
+    'kitne ka',
+    'kitni price',
+    'mausam',
+    'score kya',
+    'match ka score',
+
+    // Explicit temporal years
+    '2024',
+    '2025',
+    '2026',
+    '2027'
+  ];
+
+  return triggers.some(trigger => text.includes(trigger));
 }
 
-/* =========================================================
+/* =========================
    LAST USER MESSAGE
-========================================================= */
+========================= */
 
 function getLastUserText(contents) {
   for (let i = (contents || []).length - 1; i >= 0; i--) {
@@ -63,194 +141,45 @@ function getLastUserText(contents) {
   return '';
 }
 
-/* =========================================================
-   SMART WEB SEARCH DETECTION
-========================================================= */
-
-function needsWebSearch(contents) {
-  const text = getConversationText(contents).toLowerCase();
-
-  if (!text) return false;
-
-  /*
-   * Current / time-sensitive information
-   */
-  const currentTriggers = [
-    'today',
-    "today's",
-    'todays',
-    'right now',
-    'currently',
-    'current',
-    'latest',
-    'recent',
-    'recently',
-    'this week',
-    'this month',
-    'this year',
-    'new update',
-    'latest update',
-    'current update',
-    'what is happening',
-    'whats happening',
-    "what's happening",
-
-    /*
-     * Roman Urdu / Urdu-style queries
-     */
-    'aaj',
-    'aj',
-    'abhi',
-    'filhal',
-    'haal hi',
-    'naya update',
-    'new update',
-    'kya chal raha',
-    'kya ho raha',
-    'kon hai abhi',
-    'kaun hai abhi',
-    'abhi ka',
-    'abhi ki',
-    'abhi ke'
-  ];
-
-  /*
-   * Entertainment / anime / movie / game releases
-   */
-  const entertainmentTriggers = [
-    'release',
-    'released',
-    'release date',
-    'release hua',
-    'release hui',
-    'release ho gaya',
-    'release ho gya',
-    'released hai',
-    'out now',
-    'out ho gaya',
-    'out ho gya',
-    'available now',
-    'available hai',
-    'season 2',
-    'season 3',
-    'season 4',
-    'season 5',
-    'season 6',
-    'season 7',
-    'season 8',
-    'season 9',
-    'season 10',
-    'new season',
-    'next season',
-    'new episode',
-    'next episode',
-    'episode',
-    'episodes',
-    'part 2',
-    'part 3',
-    'movie release',
-    'anime release',
-    'manga update',
-    'chapter',
-    'new chapter'
-  ];
-
-  /*
-   * News / public figures / live information
-   */
-  const newsTriggers = [
-    'news',
-    'breaking',
-    'headline',
-    'president',
-    'prime minister',
-    'pm of',
-    'ceo',
-    'election',
-    'government',
-    'minister',
-    'who is the current',
-    'who is currently'
-  ];
-
-  /*
-   * Live data
-   */
-  const liveDataTriggers = [
-    'price',
-    'cost',
-    'weather',
-    'temperature',
-    'score',
-    'scores',
-    'standings',
-    'live score',
-    'match today',
-    'game today',
-    'stock',
-    'exchange rate',
-    'currency rate',
-    'bitcoin price'
-  ];
-
-  /*
-   * Explicit web/search requests
-   */
-  const explicitSearchTriggers = [
-    'search the web',
-    'search web',
-    'search online',
-    'google it',
-    'look it up',
-    'look this up',
-    'find online',
-    'check online',
-    'check the internet',
-    'web search',
-    'internet par search',
-    'online check karo',
-    'search karo',
-    'web par dekho'
-  ];
-
-  /*
-   * Years can indicate time-sensitive questions.
-   */
-  const yearPattern = /\b20\d{2}\b/;
-
-  if (currentTriggers.some(t => text.includes(t))) return true;
-  if (entertainmentTriggers.some(t => text.includes(t))) return true;
-  if (newsTriggers.some(t => text.includes(t))) return true;
-  if (liveDataTriggers.some(t => text.includes(t))) return true;
-  if (explicitSearchTriggers.some(t => text.includes(t))) return true;
-  if (yearPattern.test(text)) return true;
-
-  return false;
-}
-
-/* =========================================================
-   SSE EVENT
-========================================================= */
+/* =========================
+   SSE
+========================= */
 
 function sseEvent(payload) {
   return `data: ${JSON.stringify(payload)}\n\n`;
 }
 
-/* =========================================================
+/* =========================
    TAVILY SEARCH
-========================================================= */
+========================= */
 
-async function tavilySearch(query) {
+async function tavilySearch(query, currentDate) {
   const key = process.env.TAVILY_API_KEY;
 
   if (!key) {
     return {
       results: [],
+      answer: '',
       error: 'TAVILY_API_KEY not configured'
     };
   }
 
-  const response = await fetchWithTimeout(
+  /*
+    Reformulate the query so Tavily understands that
+    we need CURRENT information, not old knowledge.
+  */
+
+  const searchQuery = `
+${query}
+
+Find the latest and currently valid information as of ${currentDate}.
+Prioritize official sources and reliable recent sources.
+If this is about a release date, availability, current status,
+latest episode, latest season, or recent update, verify the exact
+current status and date.
+`.trim();
+
+  const res = await fetchWithTimeout(
     'https://api.tavily.com/search',
     {
       method: 'POST',
@@ -259,69 +188,88 @@ async function tavilySearch(query) {
       },
       body: JSON.stringify({
         api_key: key,
-        query,
-        search_depth: 'basic',
+        query: searchQuery,
+
+        // Better retrieval for current/factual questions
+        search_depth: 'advanced',
+
         topic: 'general',
-        max_results: 5,
-        include_answer: false,
-        include_raw_content: false
+
+        // Enough sources for cross-checking
+        max_results: 8,
+
+        // Let Tavily provide an additional short answer when available
+        include_answer: true,
+
+        include_raw_content: false,
+
+        chunks_per_source: 3
       })
     },
-    10000
+    12000
   );
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
     throw new Error(
-      `Tavily failed: ${response.status}${errorText ? ` - ${errorText}` : ''}`
+      `Tavily failed: ${res.status} ${errorText}`
     );
   }
 
-  const data = await response.json();
+  const data = await res.json();
 
   return {
     results: Array.isArray(data.results)
       ? data.results
-      : []
+      : [],
+
+    answer:
+      typeof data.answer === 'string'
+        ? data.answer
+        : ''
   };
 }
 
-/* =========================================================
+/* =========================
    BUILD WEB CONTEXT
-========================================================= */
+========================= */
 
-function buildWebContext(results) {
-  if (!results.length) return '';
+function buildWebContext(results, tavilyAnswer = '') {
+  if (!results.length && !tavilyAnswer) {
+    return '';
+  }
 
-  return results
-    .map((r, i) => {
-      return [
-        `[Source ${i + 1}]`,
-        `Title: ${r.title || 'Untitled'}`,
-        `URL: ${r.url || ''}`,
-        `Content: ${r.content || ''}`
-      ].join('\n');
-    })
-    .join('\n\n');
+  let context = '';
+
+  if (tavilyAnswer) {
+    context += `
+[TAVILY DIRECT ANSWER]
+${tavilyAnswer}
+[/TAVILY DIRECT ANSWER]
+
+`;
+  }
+
+  results.forEach((r, i) => {
+    context += `
+[WEB SOURCE ${i + 1}]
+Title: ${r.title || 'Untitled'}
+URL: ${r.url || ''}
+Published: ${r.published_date || 'Unknown'}
+
+Content:
+${r.content || ''}
+[/WEB SOURCE ${i + 1}]
+
+`;
+  });
+
+  return context.trim();
 }
 
-/* =========================================================
-   PAKISTAN CURRENT DATE/TIME
-========================================================= */
-
-function getPakistanDateTime() {
-  const now = new Date();
-
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Karachi',
-    dateStyle: 'full',
-    timeStyle: 'long'
-  }).format(now);
-}
-
-/* =========================================================
-   MAIN HANDLER
-========================================================= */
+/* =========================
+   HANDLER
+========================= */
 
 export default async function handler(req) {
 
@@ -367,7 +315,7 @@ export default async function handler(req) {
     );
   }
 
-  /* PARSE BODY */
+  /* BODY */
   let body;
 
   try {
@@ -395,159 +343,207 @@ export default async function handler(req) {
   } = body;
 
   const modelChain =
-    MODEL_CHAIN[mode] || MODEL_CHAIN.fast;
+    MODEL_CHAIN[mode] || MODEL_CHAIN.core;
+
+  /* =========================
+     CURRENT DATE/TIME
+  ========================= */
+
+  const now = new Date();
+
+  const currentDate = now.toLocaleDateString(
+    'en-CA',
+    {
+      timeZone: 'Asia/Karachi'
+    }
+  );
+
+  const currentTime = now.toLocaleTimeString(
+    'en-US',
+    {
+      timeZone: 'Asia/Karachi',
+      hour12: false
+    }
+  );
+
+  const dateText =
+    `${currentDate} ${currentTime} Pakistan Time`;
+
+  /* =========================
+     USER QUERY
+  ========================= */
 
   const userQuery = getLastUserText(contents);
 
-  /*
-   * Smart search decision
-   */
-  const searchNeeded = needsWebSearch(contents);
-
-  /*
-   * Current Pakistan date/time
-   */
-  const pakistanDateTime = getPakistanDateTime();
+  const searchNeeded =
+    needsWebSearch(contents);
 
   let webContext = '';
   let searchError = null;
   let searchResults = [];
+  let tavilyAnswer = '';
 
-  /* =======================================================
-     REAL TAVILY SEARCH
-  ======================================================= */
+  /* =========================
+     WEB SEARCH
+  ========================= */
 
   if (searchNeeded && userQuery) {
     try {
-      const searchResponse = await tavilySearch(userQuery);
 
-      searchResults = searchResponse.results || [];
+      const searchData =
+        await tavilySearch(
+          userQuery,
+          currentDate
+        );
 
-      webContext = buildWebContext(searchResults);
+      searchResults =
+        searchData.results || [];
 
-      console.log(
-        `🌐 Tavily search completed: ${searchResults.length} results`
-      );
+      tavilyAnswer =
+        searchData.answer || '';
+
+      webContext =
+        buildWebContext(
+          searchResults,
+          tavilyAnswer
+        );
 
     } catch (err) {
+
       searchError =
-        err?.message || 'Unknown Tavily error';
+        err?.message ||
+        'Unknown Tavily error';
 
       console.error(
-        '❌ Tavily search error:',
+        'Tavily error:',
         searchError
       );
     }
   }
 
-  /* =======================================================
-     LIVE INSTRUCTION
-  ======================================================= */
+  /* =========================
+     LIVE SYSTEM INSTRUCTION
+  ========================= */
 
-  let liveInstruction = `
+  const liveInstruction = `
 
-=== CURRENT DATE AND TIME ===
+========================
+CURRENT DATE / TIME
+========================
 
-The current date and time in Pakistan is:
+Current Pakistan date:
+${currentDate}
 
-${pakistanDateTime}
+Current Pakistan time:
+${currentTime}
 
-Use this as authoritative for:
-- today's date
-- current month
-- current year
-- relative dates
-- "aaj"
-- "abhi"
-- "right now"
+The date above is authoritative.
 
-Never answer these questions using an outdated remembered date.
+========================
+WEB SEARCH RULES
+========================
 
-=== WEB SEARCH DECISION ===
+This request was classified as:
 
-Search needed:
-${searchNeeded ? 'YES' : 'NO'}
-`;
+WEB SEARCH NEEDED: ${searchNeeded ? 'YES' : 'NO'}
 
-  if (searchNeeded) {
-    liveInstruction += `
-
-This question was detected as potentially time-sensitive or requiring fresh information.
-`;
-
-    if (webContext) {
-      liveInstruction += `
-
-=== FRESH WEB SOURCES ===
-
-Fresh web search results were retrieved from Tavily.
-
-Use these sources as the primary evidence for current/fresh claims.
+${searchNeeded ? `
+This is a current/fresh-information request.
 
 IMPORTANT:
-- Do not ignore the web sources.
-- Do not answer a current question from old model knowledge when the sources provide relevant information.
-- If sources disagree, explain the disagreement.
-- Do not invent facts that are not supported by the sources.
-- Cite factual claims using [Source 1], [Source 2], etc.
-- Only cite a source when it actually supports the claim.
 
-WEB SOURCES:
+1. The WEB SOURCES below are newer than the model's
+   built-in knowledge and must be treated as authoritative
+   for current facts.
 
-${webContext}
-`;
-    } else {
-      liveInstruction += `
+2. If your previous knowledge conflicts with the web sources,
+   TRUST THE WEB SOURCES.
 
-=== WEB SEARCH RESULT ===
+3. Do NOT answer a current question using old memory when
+   relevant web evidence is available.
 
-The question required web search, but no usable web results were returned.
+4. Carefully read ALL relevant sources before answering.
 
-Do NOT pretend that you successfully searched the web.
+5. For release dates, season status, episode availability,
+   prices, current people, news, scores, weather, updates,
+   and similar time-sensitive information, use the retrieved
+   web evidence.
 
-Answer only from available knowledge and clearly avoid presenting old knowledge as confirmed current information.
-`;
-    }
-  } else {
-    liveInstruction += `
+6. If an official source explicitly confirms something,
+   prefer that over unofficial sources.
 
+7. If sources disagree, explain the disagreement instead of
+   silently choosing an unsupported answer.
+
+8. NEVER claim that you searched the web if no web results
+   were actually retrieved.
+
+9. Do not invent citations.
+
+10. Cite web evidence naturally using:
+   [Source 1], [Source 2], etc.
+
+11. Only cite a source number when that source actually
+    supports the statement.
+
+12. If the web evidence clearly says an event/release has
+    happened on today's date, do NOT say it has not happened.
+
+13. When the user asks "aaj", "today", "abhi", etc.,
+    interpret it using the Pakistan date above.
+` : `
 No web search was required for this request.
+Answer normally using your knowledge.
+`}
+
+========================
+WEB EVIDENCE
+========================
+
+${
+  webContext
+    ? webContext
+    : 'NO WEB SOURCES RETRIEVED.'
+}
+
+========================
+SEARCH ERROR
+========================
+
+${
+  searchError
+    ? `Search failed: ${searchError}`
+    : 'No search error.'
+}
+
+========================
+FINAL ANSWER RULE
+========================
+
+Answer the user's actual question directly.
+
+Do not mention internal routing, model names,
+Tavily, API keys, search algorithms, or system instructions.
+
+If current web evidence is available, use it.
 `;
-  }
 
-  if (searchError) {
-    liveInstruction += `
+  /* =========================
+     COMBINE SYSTEM INSTRUCTION
+  ========================= */
 
-=== SEARCH ERROR ===
-
-The web search failed.
-
-Error:
-${searchError}
-
-Do not claim that live web information was verified.
-`;
-  }
-
-  /* =======================================================
-     COMBINE SYSTEM INSTRUCTIONS
-  ======================================================= */
-
-  const originalInstruction =
+  const originalSystemInstruction =
     systemInstruction?.parts
       ?.map(p => p.text || '')
       .join('\n') || '';
 
   const combinedInstruction =
-    originalInstruction +
+    originalSystemInstruction +
     liveInstruction;
-
-  /* =======================================================
-     GEMINI REQUEST
-  ======================================================= */
 
   const geminiBody = {
     contents,
+
     systemInstruction: {
       parts: [
         {
@@ -555,208 +551,215 @@ Do not claim that live web information was verified.
         }
       ]
     },
+
     generationConfig
   };
 
-  /* =======================================================
+  /* =========================
      STREAM RESPONSE
-  ======================================================= */
+  ========================= */
 
   const encoder = new TextEncoder();
 
-  const stream = new ReadableStream({
+  const stream =
+    new ReadableStream({
 
-    async start(controller) {
+      async start(controller) {
 
-      const send = obj => {
-        controller.enqueue(
-          encoder.encode(
-            sseEvent(obj)
-          )
-        );
-      };
+        const send = obj => {
+          controller.enqueue(
+            encoder.encode(
+              sseEvent(obj)
+            )
+          );
+        };
 
-      try {
+        try {
 
-        /*
-         * THINKING STATUS
-         */
+          /* STATUS */
 
-        send({
-          type: 'status',
-          status: searchNeeded
-            ? '🧠 Thinking... → 🌐 Searching the web...'
-            : '🧠 Thinking...'
-        });
-
-        /*
-         * SEARCH STATUS
-         */
-
-        if (searchNeeded) {
-
-          if (searchResults.length > 0) {
+          if (searchNeeded) {
 
             send({
               type: 'status',
               status:
-                '🔎 Checking sources...'
+                '🧠 Thinking... → 🌐 Searching the web...'
             });
 
-            send({
-              type: 'status',
-              status:
-                '🧠 Analyzing sources...'
-            });
+            if (searchResults.length) {
+
+              send({
+                type: 'status',
+                status:
+                  `🔎 Found ${searchResults.length} sources → 🧠 Analyzing...`
+              });
+
+            } else {
+
+              send({
+                type: 'status',
+                status:
+                  '🔎 Search unavailable → 🧠 Using available knowledge...'
+              });
+
+            }
 
           } else {
 
             send({
               type: 'status',
               status:
-                '🔎 Search unavailable → 🧠 Using available knowledge...'
+                '🧠 Thinking...'
             });
 
           }
-        }
 
-        /*
-         * WRITING
-         */
+          send({
+            type: 'status',
+            status:
+              '✍️ Writing answer...'
+          });
 
-        send({
-          type: 'status',
-          status: '✍️ Writing answer...'
-        });
+          /* =========================
+             GEMINI MODEL FALLBACK
+          ========================= */
 
-        /* =================================================
-           MODEL FALLBACK CHAIN
-        ================================================= */
+          let lastError = null;
 
-        let lastError = null;
+          const startTime =
+            Date.now();
 
-        const startTime = Date.now();
+          for (
+            const modelName
+            of modelChain
+          ) {
 
-        for (const modelName of modelChain) {
+            const url =
+              `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
-          const url =
-            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+            try {
 
-          try {
-
-            console.log(
-              `⚡ Trying model: ${modelName} | elapsed: ${Date.now() - startTime}ms`
-            );
-
-            const geminiRes =
-              await fetchWithTimeout(
-                url,
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type':
-                      'application/json'
-                  },
-                  body:
-                    JSON.stringify(geminiBody)
-                },
-                15000
+              console.log(
+                `⚡ Trying ${modelName} | elapsed ${Date.now() - startTime}ms`
               );
 
-            if (geminiRes.ok) {
+              const geminiRes =
+                await fetchWithTimeout(
+                  url,
+                  {
+                    method: 'POST',
 
-              const reader =
-                geminiRes.body.getReader();
+                    headers: {
+                      'Content-Type':
+                        'application/json'
+                    },
 
-              while (true) {
+                    body:
+                      JSON.stringify(
+                        geminiBody
+                      )
+                  },
+                  15000
+                );
 
-                const {
-                  value,
-                  done
-                } = await reader.read();
+              if (geminiRes.ok) {
 
-                if (done) break;
+                const reader =
+                  geminiRes.body.getReader();
 
-                controller.enqueue(value);
+                while (true) {
+
+                  const {
+                    value,
+                    done
+                  } =
+                    await reader.read();
+
+                  if (done) break;
+
+                  controller.enqueue(
+                    value
+                  );
+                }
+
+                controller.close();
+
+                return;
               }
 
-              controller.close();
+              const errorBody =
+                await geminiRes.text()
+                  .catch(() => '');
 
-              return;
-            }
+              lastError =
+                new Error(
+                  `Model ${modelName} failed: ${geminiRes.status} ${errorBody}`
+                );
 
-            const errorBody =
-              await geminiRes
-                .text()
-                .catch(() => '');
-
-            lastError =
-              new Error(
-                `Model ${modelName} failed: ${geminiRes.status}${errorBody ? ` - ${errorBody}` : ''}`
+              console.error(
+                lastError.message
               );
 
-            console.error(
-              lastError.message
-            );
+            } catch (err) {
 
-          } catch (err) {
+              lastError = err;
 
-            lastError = err;
-
-            console.error(
-              `❌ ${modelName} error:`,
-              err?.message
-            );
+              console.error(
+                `Model ${modelName} error:`,
+                err?.message
+              );
+            }
           }
-        }
 
-        /* =================================================
-           ALL MODELS FAILED
-        ================================================= */
-
-        send({
-          error:
-            'All models failed. Please try again.',
-          details:
-            lastError?.message ||
-            'Unknown error'
-        });
-
-        controller.close();
-
-      } catch (err) {
-
-        try {
+          /* ALL MODELS FAILED */
 
           send({
             error:
-              err?.message ||
-              'Server error'
+              'All models failed. Please try again.',
+            details:
+              lastError?.message ||
+              'Unknown error'
           });
 
-        } catch (_) {}
+          controller.close();
 
-        controller.close();
+        } catch (err) {
+
+          try {
+
+            send({
+              error:
+                err?.message ||
+                'Server error'
+            });
+
+          } catch (_) {}
+
+          controller.close();
+        }
+      }
+    });
+
+  return new Response(
+    stream,
+    {
+      status: 200,
+
+      headers: {
+        ...CORS_HEADERS,
+
+        'Content-Type':
+          'text/event-stream; charset=utf-8',
+
+        'Cache-Control':
+          'no-cache, no-transform',
+
+        'Connection':
+          'keep-alive',
+
+        'X-Accel-Buffering':
+          'no'
       }
     }
-  });
-
-  /* =======================================================
-     RESPONSE
-  ======================================================= */
-
-  return new Response(stream, {
-    status: 200,
-    headers: {
-      ...CORS_HEADERS,
-      'Content-Type':
-        'text/event-stream; charset=utf-8',
-      'Cache-Control':
-        'no-cache, no-transform',
-      'Connection':
-        'keep-alive',
-      'X-Accel-Buffering':
-        'no'
-    }
-  });
+  );
 }
