@@ -1371,10 +1371,7 @@ async function processStream(response,botElement,userPrompt,botRef){
     if(typeof parsed.type==="string"){
       if(parsed.type==="status"&&typeof parsed.status==="string"){showStatus(parsed.status);return;}
       if(parsed.type==="chunk"&&typeof parsed.text==="string"){fullText+=parsed.text;scheduleRender();return;}
-      if(parsed.type==="error"){
-        const errMsg=parsed.error||parsed.details||"Server error";
-        throw new Error(errMsg);
-      }
+      if(parsed.type==="error"){ throw new Error(parsed.error||parsed.details||"Server error"); }
       if(parsed.type==="done"){return;}
     }
 
