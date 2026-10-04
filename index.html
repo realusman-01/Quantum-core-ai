@@ -1266,6 +1266,7 @@ function showErrorInMessage(msgEl,error){
   let errMsg="⚠️ Something went wrong. ";
   if(errStr.indexOf("503")!==-1||errStr.indexOf("overloaded")!==-1)errMsg="⚠️ AI server is currently busy. Please try again in 30 seconds.";
   else if(errStr.indexOf("429")!==-1||errStr.indexOf("quota")!==-1)errMsg="⚠️ Daily quota reached. Please try again tomorrow.";
+  else if(errStr.indexOf("413")!==-1||errStr.indexOf("too large")!==-1||errStr.indexOf("PAYLOAD")!==-1||errStr.indexOf("TOO_LARGE")!==-1)errMsg="⚠️ Chat bohot lambi ho gayi hai. Nayi chat shuru karein ya purane messages delete karein.";
   else if(errStr.indexOf("Failed to fetch")!==-1||errStr.indexOf("NetworkError")!==-1)errMsg="⚠️ Network error. Check your internet connection.";
   else if(errStr.indexOf("400")!==-1)errMsg="⚠️ Invalid request. Try clearing and resending.";
   else errMsg="⚠️ Server error. Please try again.";
@@ -1306,15 +1307,34 @@ async function streamAIResponse(botElement,userPrompt,signal,imageOverride,botRe
   const url=useLocalKey?"direct":"/api/chat";
   const chat=getCurrentChat();
   if(!chat)throw new Error("Chat unavailable");
-  const contents=chat.messages.map(function(m){
-    const parts=[];
-    if(m.image){const split=m.image.split(",");const data=split[1];const mime=m.image.split(";")[0].replace("data:","");if(data)parts.push({inlineData:{mimeType:mime,data:data}});}
-    let msgText=m.content||"Analyze image.";
-    if(msgText.startsWith("[IMAGE_DATA]"))msgText="Generate an image.";
-    if(msgText.indexOf("[IMAGE_GEN]")!==-1)msgText=msgText.split("[IMAGE_GEN]")[0].trim()||"Generate an image.";
-    parts.push({text:msgText});
-    return {role:m.role==="user"?"user":"model",parts:parts};
+
+  // 🎯 Payload fix: sirf aakhri 12 messages, aur sirf aakhri 2 mein image
+  const MAX_HISTORY_MESSAGES = 12;
+  const MAX_IMAGE_MESSAGES = 2;
+  const startIdx = Math.max(0, chat.messages.length - MAX_HISTORY_MESSAGES);
+  const recentMessages = chat.messages.slice(startIdx);
+  const recentCount = recentMessages.length;
+
+  const contents = recentMessages.map(function(m, idx){
+    const parts = [];
+    const isRecent = idx >= recentCount - MAX_IMAGE_MESSAGES;
+    // Only send image for the recent messages
+    if(m.image && isRecent){
+      const split = m.image.split(",");
+      const data = split[1];
+      const mime = m.image.split(";")[0].replace("data:","");
+      if(data) parts.push({inlineData:{mimeType:mime,data:data}});
+    } else if(m.image && !isRecent){
+      // Replace old images with a placeholder text
+      parts.push({text: "[image removed to reduce payload]"});
+    }
+    let msgText = m.content || "Analyze image.";
+    if(msgText.startsWith("[IMAGE_DATA]")) msgText = "Generate an image.";
+    if(msgText.indexOf("[IMAGE_GEN]")!==-1) msgText = msgText.split("[IMAGE_GEN]")[0].trim() || "Generate an image.";
+    parts.push({text: msgText});
+    return {role: m.role==="user" ? "user" : "model", parts: parts};
   });
+
   const finalInstruction=buildSystemInstruction();
   if(useLocalKey){
     const modelName="gemini-3.5-flash-lite";
@@ -1331,7 +1351,6 @@ async function streamAIResponse(botElement,userPrompt,signal,imageOverride,botRe
 }
 async function processStream(response,botElement,userPrompt,botRef){
   if(!response.body)throw new Error("No response body");
-
   const reader=response.body.getReader();
   const decoder=new TextDecoder("utf-8");
   let buffer="",fullText="",rafId=null,lastRenderTime=0,lastStatusText="";
@@ -1371,7 +1390,7 @@ async function processStream(response,botElement,userPrompt,botRef){
     if(typeof parsed.type==="string"){
       if(parsed.type==="status"&&typeof parsed.status==="string"){showStatus(parsed.status);return;}
       if(parsed.type==="chunk"&&typeof parsed.text==="string"){fullText+=parsed.text;scheduleRender();return;}
-      if(parsed.type==="error"){ throw new Error(parsed.error||parsed.details||"Server error"); }
+      if(parsed.type==="error"){throw new Error(parsed.error||parsed.details||"Server error");}
       if(parsed.type==="done"){return;}
     }
 
@@ -1579,9 +1598,20 @@ function stopAllSpeech(){if("speechSynthesis" in window)window.speechSynthesis.c
 function handleImage(e){
   const file=e.target.files[0];
   if(!file)return;
-  if(file.size>5*1024*1024){showToast("Image must be under 5MB");return;}
+  // 🎯 2MB limit (Vercel payload fix)
+  if(file.size>2*1024*1024){showToast("Image must be under 2MB");return;}
   const reader=new FileReader();
-  reader.onload=function(evt){base64Image=evt.target.result;document.getElementById("preview-img").src=base64Image;document.getElementById("preview").classList.add("active");};
+  reader.onload=async function(evt){
+    // 🎯 Compress to keep payload small (800px max, 60% quality)
+    try{
+      const compressed=await compressImage(evt.target.result,800,0.6);
+      base64Image=compressed;
+    }catch(e){
+      base64Image=evt.target.result;
+    }
+    document.getElementById("preview-img").src=base64Image;
+    document.getElementById("preview").classList.add("active");
+  };
   reader.readAsDataURL(file);
 }
 function removeImage(){base64Image=null;document.getElementById("preview-img").src="";document.getElementById("preview").classList.remove("active");document.getElementById("file-input").value="";}
