@@ -4,8 +4,8 @@ export const config = {
 };
 
 const MODEL_CHAIN = {
-  fast: ['gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'],
-  core: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
+  fast: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
+  core: ['gemini-3.6-flash', 'gemini-3.1-flash-lite']
 };
 
 // ⚡ Timeout helper
