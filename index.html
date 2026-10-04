@@ -1333,8 +1333,15 @@ async function processStream(response,botElement,userPrompt,botRef){
   if(!response.body)throw new Error("No body");
   const reader=response.body.getReader();
   const decoder=new TextDecoder("utf-8");
-  let buffer="",fullText="",rafId=null,lastRenderTime=0;
+  let buffer="",fullText="",rafId=null,lastRenderTime=0,activeSSEEvent="message",streamServerError=null;
   const MIN_RENDER_INTERVAL=30;
+  function updateThinkStatus(status,message){
+    if(!botElement)return;
+    if(fullText.trim())return;
+    const safe=String(message||"Thinking...").replace(/[<>]/g,"");
+    botElement.innerHTML='<div class="thinking"><div class="spinner"></div><span>'+safe+'<span class="dots"><span>.</span><span>.</span><span>.</span></span></span></div>';
+    if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
+  }
   function scheduleRender(){
     if(rafId)return;
     const now=performance.now();
@@ -1359,11 +1366,15 @@ async function processStream(response,botElement,userPrompt,botRef){
     buffer=lines.pop()||"";
     for(let i=0;i<lines.length;i++){
       const trimmed=lines[i].trim();
+      if(trimmed.startsWith("event:")){activeSSEEvent=trimmed.substring(6).trim()||"message";continue;}
       if(!trimmed.startsWith("data:"))continue;
       const data=trimmed.substring(5).trim();
       if(!data)continue;
       try{
         const parsed=JSON.parse(data);
+        if(activeSSEEvent==="qc_status"){updateThinkStatus(parsed.status,parsed.message);activeSSEEvent="message";continue;}
+        if(activeSSEEvent==="qc_error"){streamServerError=new Error(parsed.error||"Server error");activeSSEEvent="message";continue;}
+        activeSSEEvent="message";
         const chunk=parsed.candidates&&parsed.candidates[0]&&parsed.candidates[0].content&&parsed.candidates[0].content.parts&&parsed.candidates[0].content.parts[0]&&parsed.candidates[0].content.parts[0].text;
         if(chunk){
           fullText+=chunk;
@@ -1373,6 +1384,7 @@ async function processStream(response,botElement,userPrompt,botRef){
     }
   }
   if(rafId){clearTimeout(rafId);rafId=null;}
+  if(streamServerError)throw streamServerError;
   if(fullText.trim()){
     const imagePrompt=extractImagePrompt(fullText);
     if(imagePrompt){
