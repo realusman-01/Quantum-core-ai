@@ -1102,7 +1102,7 @@ async function regenerateResponse(botMsgIndex){
   const bot=createMessageElement("bot","Thinking...",null,-1);
   chatBox.appendChild(bot.wrapper);scrollToBottom(false);setGenerating(true);
   abortController=new AbortController();
-  try{await streamAIResponse(bot.message,userMsg.content,abortController.signal,userMsg.image);}
+  try{await streamAIResponse(bot.message,userMsg.content,abortController.signal,userMsg.image,bot);}
   catch(error){if(error.name==="AbortError"){bot.message.innerHTML="<span style='color:var(--muted)'>Stopped.</span>";}else{showErrorInMessage(bot.message,error);}}
   finally{setGenerating(false);abortController=null;}
 }
@@ -1117,7 +1117,7 @@ function editUserMessage(userMsgIndex){
   const bot=createMessageElement("bot","Thinking...",null,-1);
   chatBox.appendChild(bot.wrapper);scrollToBottom(false);setGenerating(true);
   abortController=new AbortController();
-  streamAIResponse(bot.message,newText.trim(),abortController.signal,chat.messages[userMsgIndex].image)
+  streamAIResponse(bot.message,newText.trim(),abortController.signal,chat.messages[userMsgIndex].image,bot)
     .catch(function(error){if(error.name==="AbortError"){bot.message.innerHTML="<span style='color:var(--muted)'>Stopped.</span>";}else{showErrorInMessage(bot.message,error);}})
     .finally(function(){setGenerating(false);abortController=null;});
 }
@@ -1330,11 +1330,13 @@ async function streamAIResponse(botElement,userPrompt,signal,imageOverride,botRe
   await processStream(response,botElement,userPrompt,botRef);
 }
 async function processStream(response,botElement,userPrompt,botRef){
-  if(!response.body)throw new Error("No body");
+  if(!response.body)throw new Error("No response body");
+
   const reader=response.body.getReader();
   const decoder=new TextDecoder("utf-8");
-  let buffer="",fullText="",rafId=null,lastRenderTime=0;
+  let buffer="",fullText="",rafId=null,lastRenderTime=0,lastStatusText="";
   const MIN_RENDER_INTERVAL=30;
+
   function scheduleRender(){
     if(rafId)return;
     const now=performance.now();
@@ -1344,13 +1346,42 @@ async function processStream(response,botElement,userPrompt,botRef){
       lastRenderTime=performance.now();
       requestAnimationFrame(function(){
         botElement.innerHTML=renderStreamText(fullText);
-        if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
-        if(autoScrollEnabled){
-          chatBox.scrollTop=chatBox.scrollHeight;
+        if(window.renderMathInElement){
+          try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}
         }
+        if(autoScrollEnabled){chatBox.scrollTop=chatBox.scrollHeight;}
       });
     },delay);
   }
+
+  function showStatus(statusText){
+    if(!statusText)return;
+    lastStatusText=statusText;
+    if(fullText)return;
+    botElement.innerHTML='<div class="thinking"><div class="spinner"></div><span>'+escapeHTML(statusText)+'</span></div>';
+    if(autoScrollEnabled){chatBox.scrollTop=chatBox.scrollHeight;}
+  }
+
+  function handleSsePayload(dataStr){
+    if(!dataStr||dataStr==="[DONE]")return;
+    let parsed;
+    try{parsed=JSON.parse(dataStr);}catch(e){return;}
+    if(!parsed||typeof parsed!=="object")return;
+
+    if(typeof parsed.type==="string"){
+      if(parsed.type==="status"&&typeof parsed.status==="string"){showStatus(parsed.status);return;}
+      if(parsed.type==="chunk"&&typeof parsed.text==="string"){fullText+=parsed.text;scheduleRender();return;}
+      if(parsed.type==="error"){
+        const errMsg=parsed.error||parsed.details||"Server error";
+        throw new Error(errMsg);
+      }
+      if(parsed.type==="done"){return;}
+    }
+
+    const chunk=parsed.candidates&&parsed.candidates[0]&&parsed.candidates[0].content&&parsed.candidates[0].content.parts&&parsed.candidates[0].content.parts[0]&&parsed.candidates[0].content.parts[0].text;
+    if(typeof chunk==="string"&&chunk){fullText+=chunk;scheduleRender();}
+  }
+
   while(true){
     const result=await reader.read();
     if(result.done)break;
@@ -1359,33 +1390,16 @@ async function processStream(response,botElement,userPrompt,botRef){
     buffer=lines.pop()||"";
     for(let i=0;i<lines.length;i++){
       const trimmed=lines[i].trim();
+      if(!trimmed)continue;
+      if(trimmed.startsWith(":"))continue;
       if(!trimmed.startsWith("data:"))continue;
-      const data=trimmed.substring(5).trim();
-      if(!data)continue;
-      try{
-        const parsed=JSON.parse(data);
-
-        // Backend status events (Think / Web Search / Sources / Writing)
-        if(parsed.type==="status" && parsed.status){
-          botElement.innerHTML='<div class="thinking"><div class="spinner"></div><span>'+String(parsed.status).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];})+'</span></div>';
-          if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
-          continue;
-        }
-
-        // Backend error events
-        if(parsed.error){
-          throw new Error(parsed.error+(parsed.details?' — '+parsed.details:''));
-        }
-
-        const chunk=parsed.candidates&&parsed.candidates[0]&&parsed.candidates[0].content&&parsed.candidates[0].content.parts&&parsed.candidates[0].content.parts[0]&&parsed.candidates[0].content.parts[0].text;
-        if(chunk){
-          fullText+=chunk;
-          scheduleRender();
-        }
-      }catch(e){}
+      const dataStr=trimmed.substring(5).trim();
+      handleSsePayload(dataStr);
     }
   }
+
   if(rafId){clearTimeout(rafId);rafId=null;}
+
   if(fullText.trim()){
     const imagePrompt=extractImagePrompt(fullText);
     if(imagePrompt){
@@ -1398,11 +1412,16 @@ async function processStream(response,botElement,userPrompt,botRef){
       if(liveVoiceActive)updateLiveVoiceStatus("🎤 Listening...");
       return;
     }
+
     botElement.innerHTML=renderMarkdown(fullText);
-    if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
+    if(window.renderMathInElement){
+      try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}
+    }
+
     const latestChat=getCurrentChat();
     if(latestChat)latestChat.messages.push({role:"bot",content:fullText,image:null});
     await updateSmartTitle(userPrompt);
+
     if(botRef&&botRef.actions){
       botRef.actions.innerHTML="";
       const copy=document.createElement("button");copy.className="action-btn";copy.title="Copy";copy.innerHTML='<i class="fa-solid fa-copy"></i>';
@@ -1414,19 +1433,26 @@ async function processStream(response,botElement,userPrompt,botRef){
       const regen=document.createElement("button");regen.className="action-btn";regen.title="Regenerate response";regen.innerHTML='<i class="fa-solid fa-rotate"></i>';
       regen.onclick=function(){const idx=latestChat?latestChat.messages.length-1:0;regenerateResponse(idx);};
       botRef.actions.appendChild(regen);
-      botRef.actions.style.opacity="1";
     }
+
     scheduleSave();renderChatList();
     if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
+
     if(liveVoiceActive){
       const speakText=fullText.replace(/\[IMAGE_GEN\][^\n]*/g,"").replace(/\[IMAGE_DATA\][^\s]+/g,"Image.").trim();
       updateLiveVoiceStatus("🔊 Speaking...");
       if(speakText){
         toggleSpeech(speakText,null,function(){if(liveVoiceActive){updateLiveVoiceStatus("🎤 Listening...");setTimeout(startLiveListening,600);}});
-      }else{setTimeout(function(){if(liveVoiceActive){updateLiveVoiceStatus("🎤 Listening...");startLiveListening();}},800);}
+      }else{
+        setTimeout(function(){if(liveVoiceActive){updateLiveVoiceStatus("🎤 Listening...");startLiveListening();}},800);
+      }
     }
   }else{
-    botElement.innerText="No response received.";
+    if(lastStatusText){
+      botElement.innerHTML='<span style="color:var(--muted)">'+escapeHTML(lastStatusText)+'</span>';
+    }else{
+      botElement.innerText="No response received.";
+    }
     if(liveVoiceActive)setTimeout(startLiveListening,800);
   }
 }
