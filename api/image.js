@@ -69,7 +69,7 @@ export default async function handler(req, res) {
       // JSON response: { result: { image: "base64..." } }
       const data = await cfRes.json();
       console.log('CF JSON keys:', Object.keys(data));
-      
+
       // Different possible paths
       if (data.result && data.result.image) {
         base64Image = data.result.image;
@@ -78,7 +78,7 @@ export default async function handler(req, res) {
       } else if (data.result && typeof data.result === 'string') {
         base64Image = data.result;
       }
-      
+
       if (base64Image) {
         // Detect MIME from base64 prefix
         if (base64Image.startsWith('/9j/')) mimeType = 'image/jpeg';
@@ -89,11 +89,11 @@ export default async function handler(req, res) {
       const arrayBuffer = await cfRes.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
       console.log('CF binary size:', bytes.length, 'first bytes:', bytes[0], bytes[1], bytes[2], bytes[3]);
-      
+
       // Detect MIME from magic bytes
       if (bytes[0] === 0x89 && bytes[1] === 0x50) mimeType = 'image/png'; // PNG
       else if (bytes[0] === 0xFF && bytes[1] === 0xD8) mimeType = 'image/jpeg'; // JPEG
-      
+
       base64Image = Buffer.from(arrayBuffer).toString('base64');
     }
 
