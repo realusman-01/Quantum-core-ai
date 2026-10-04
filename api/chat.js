@@ -11,7 +11,6 @@ const MODEL_CHAIN = {
     'gemini-3.5-flash-lite',
     'gemini-3.1-flash-lite'
   ],
-
   core: [
     'gemini-3.6-flash',
     'gemini-3.5-flash-lite',
@@ -23,6 +22,12 @@ const VERIFIER_MODELS = [
   'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite'
 ];
+
+// 🎯 Vercel Edge payload limit ~1MB. Isliye:
+// - Sirf aakhri 12 messages bhejo
+// - Sirf aakhri 2 messages mein image allow karo
+const MAX_HISTORY_MESSAGES = 12;
+const MAX_IMAGE_MESSAGES = 2;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -38,10 +43,7 @@ const CORS_HEADERS = {
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      ...CORS_HEADERS,
-      'Content-Type': 'application/json'
-    }
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
   });
 }
 
@@ -68,9 +70,7 @@ function getPakistanDate() {
   try {
     return new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Asia/Karachi',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
+      year: 'numeric', month: '2-digit', day: '2-digit'
     }).format(new Date());
   } catch {
     return new Date().toISOString().slice(0, 10);
@@ -81,8 +81,7 @@ function getPakistanDateTime() {
   try {
     return new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Karachi',
-      dateStyle: 'full',
-      timeStyle: 'long'
+      dateStyle: 'full', timeStyle: 'long'
     }).format(new Date());
   } catch {
     return new Date().toISOString();
@@ -99,13 +98,34 @@ function getLastUserText(contents = []) {
     const item = contents[i];
     if (item?.role !== 'user') continue;
     const parts = item?.parts || [];
-    const text = parts
-      .map(part => (typeof part?.text === 'string' ? part.text : ''))
-      .join(' ')
-      .trim();
+    const text = parts.map(p => typeof p?.text === 'string' ? p.text : '').join(' ').trim();
     if (text) return text;
   }
   return '';
+}
+
+
+/* =========================================================
+   TRUNCATE CONTENTS (payload fix)
+   ========================================================= */
+
+function truncateContents(contents) {
+  if (!Array.isArray(contents)) return [];
+  const trimmed = contents.slice(-MAX_HISTORY_MESSAGES);
+  const total = trimmed.length;
+  // Strip images from all but the last MAX_IMAGE_MESSAGES
+  return trimmed.map((item, idx) => {
+    const isRecent = idx >= total - MAX_IMAGE_MESSAGES;
+    if (!item?.parts) return item;
+    const newParts = item.parts.map(part => {
+      if (part?.inlineData && !isRecent) {
+        // Replace old images with a text placeholder
+        return { text: '[image removed to reduce payload]' };
+      }
+      return part;
+    });
+    return { ...item, parts: newParts };
+  });
 }
 
 
@@ -115,7 +135,7 @@ function getLastUserText(contents = []) {
 
 function needsWebSearch(contents = []) {
   const text = contents
-    .map(item => (item?.parts || []).map(part => part?.text || '').join(' '))
+    .map(item => (item?.parts || []).map(p => p?.text || '').join(' '))
     .join(' ')
     .toLowerCase();
 
@@ -137,21 +157,14 @@ function needsWebSearch(contents = []) {
     '2026', '2027', '2025', '2024'
   ];
 
-  return triggers.some(trigger => text.includes(trigger));
+  return triggers.some(t => text.includes(t));
 }
-
-
-/* =========================================================
-   SPECIAL QUERY TYPES
-   ========================================================= */
 
 function isReleaseQuestion(text = '') {
   const t = text.toLowerCase();
-  const releaseWords = [
-    'release', 'released', 'release date', 'premiere', 'premieres',
-    'available', 'streaming', 'season 2', 'season 3', 'episode'
-  ];
-  return releaseWords.some(word => t.includes(word));
+  const words = ['release', 'released', 'release date', 'premiere', 'premieres',
+    'available', 'streaming', 'season 2', 'season 3', 'episode'];
+  return words.some(w => t.includes(w));
 }
 
 
@@ -161,13 +174,8 @@ function isReleaseQuestion(text = '') {
 
 async function tavilySearch(query, currentDate) {
   const key = process.env.TAVILY_API_KEY;
-
   if (!key) {
-    return {
-      results: [],
-      answer: '',
-      error: 'TAVILY_API_KEY not configured on server'
-    };
+    return { results: [], answer: '', error: 'TAVILY_API_KEY not configured on server' };
   }
 
   const searchQuery = `
@@ -204,28 +212,21 @@ Do not rely only on old articles.
     if (!response.ok) {
       const errorText = await response.text();
       return {
-        results: [],
-        answer: '',
+        results: [], answer: '',
         error: `Tavily HTTP ${response.status}: ${errorText.substring(0, 200)}`
       };
     }
 
     const data = await response.json();
-
     return {
       results: Array.isArray(data?.results) ? data.results : [],
       answer: typeof data?.answer === 'string' ? data.answer : '',
       error: null
     };
-
   } catch (error) {
     return {
-      results: [],
-      answer: '',
-      error:
-        error?.name === 'AbortError'
-          ? 'Tavily search timed out'
-          : String(error?.message || error)
+      results: [], answer: '',
+      error: error?.name === 'AbortError' ? 'Tavily search timed out' : String(error?.message || error)
     };
   }
 }
@@ -237,61 +238,38 @@ Do not rely only on old articles.
 
 function buildWebContext(results = [], tavilyAnswer = '') {
   let output = '';
-
   if (tavilyAnswer) {
-    output += `
-TAVILY SEARCH SUMMARY:
-${tavilyAnswer}
-
-`;
+    output += `\nTAVILY SEARCH SUMMARY:\n${tavilyAnswer}\n\n`;
   }
+  if (!results.length) return output || 'No web evidence was returned.';
 
-  if (!results.length) {
-    return output || 'No web evidence was returned.';
-  }
-
-  output += `
-WEB SOURCES:
-`;
-
-  results.forEach((result, index) => {
-    const title = result?.title || 'Untitled source';
-    const url = result?.url || '';
-    const content = result?.content || result?.snippet || '';
-
+  output += `\nWEB SOURCES:\n`;
+  results.forEach((r, i) => {
     output += `
 
-SOURCE ${index + 1}
-Title: ${title}
-URL: ${url}
+SOURCE ${i + 1}
+Title: ${r?.title || 'Untitled source'}
+URL: ${r?.url || ''}
 Content:
-${content}
+${r?.content || r?.snippet || ''}
 `;
   });
-
   return output;
 }
 
 
 /* =========================================================
-   GEMINI REQUEST
+   GEMINI
    ========================================================= */
 
 async function geminiGenerate(model, body, timeoutMs = 20000) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY not configured');
 
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/` +
-    `${model}:generateContent?key=${encodeURIComponent(key)}`;
-
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
   const response = await fetchWithTimeout(
     url,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    },
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
     timeoutMs
   );
 
@@ -299,59 +277,26 @@ async function geminiGenerate(model, body, timeoutMs = 20000) {
     const errorText = await response.text();
     throw new Error(`Gemini ${model} HTTP ${response.status}: ${errorText}`);
   }
-
   return await response.json();
 }
 
-
-/* =========================================================
-   EXTRACT GEMINI TEXT
-   ========================================================= */
-
 function extractGeminiText(data) {
   try {
-    return (
-      data?.candidates?.[0]?.content?.parts
-        ?.map(part => part?.text || '')
-        .join('')
-        .trim() || ''
-    );
-  } catch {
-    return '';
-  }
+    return (data?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join('').trim() || '');
+  } catch { return ''; }
 }
-
-
-/* =========================================================
-   JSON EXTRACTION
-   ========================================================= */
 
 function extractJson(text) {
   if (!text) return null;
   let cleaned = text.trim();
-
   if (cleaned.startsWith('```')) {
-    cleaned = cleaned
-      .replace(/^```(?:json)?/i, '')
-      .replace(/```$/i, '')
-      .trim();
+    cleaned = cleaned.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
   }
-
-  try {
-    return JSON.parse(cleaned);
-  } catch {}
-
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-
-  if (start !== -1 && end !== -1 && end > start) {
-    try {
-      return JSON.parse(cleaned.slice(start, end + 1));
-    } catch {
-      return null;
-    }
+  try { return JSON.parse(cleaned); } catch {}
+  const s = cleaned.indexOf('{'), e = cleaned.lastIndexOf('}');
+  if (s !== -1 && e !== -1 && e > s) {
+    try { return JSON.parse(cleaned.slice(s, e + 1)); } catch { return null; }
   }
-
   return null;
 }
 
@@ -360,208 +305,122 @@ function extractJson(text) {
    EVIDENCE VERIFIER
    ========================================================= */
 
-async function verifyWebEvidence({
-  userQuery,
-  currentDate,
-  webContext,
-  releaseQuestion
-}) {
+async function verifyWebEvidence({ userQuery, currentDate, webContext, releaseQuestion }) {
   if (!webContext || webContext === 'No web evidence was returned.') {
     return {
-      verified: false,
-      confidence: 0,
-      status: 'unknown',
-      release_date: null,
-      facts: [],
-      important_warning: 'Web search returned no usable evidence.',
-      raw: ''
+      verified: false, confidence: 0, status: 'unknown',
+      release_date: null, facts: [],
+      important_warning: 'Web search returned no usable evidence.', raw: ''
     };
   }
 
-  const verifierInstruction = `
+  const instruction = `
 You are Quantum Core's WEB EVIDENCE VERIFIER.
+Inspect the supplied web evidence and determine which factual claims are supported.
 
-Your job is NOT to answer the user directly.
-Your job is to inspect the supplied web search evidence and determine
-which factual claims are actually supported by the sources.
-
-CURRENT DATE:
-${currentDate}
-
-USER QUERY:
-${userQuery}
-
-RELEASE/AVAILABILITY QUESTION:
-${releaseQuestion ? 'YES' : 'NO'}
+CURRENT DATE: ${currentDate}
+USER QUERY: ${userQuery}
+RELEASE/AVAILABILITY QUESTION: ${releaseQuestion ? 'YES' : 'NO'}
 
 WEB EVIDENCE:
 ${webContext}
 
 RULES:
 1. Use ONLY information supported by the supplied web evidence.
-2. Do NOT use your old memory to override current web evidence.
-3. Prefer official sources and authoritative sources.
-4. If a source says a release/premiere happens on the current date,
-   classify it as "released_today" / "premieres_today", NOT "unreleased".
-5. If the current date is AFTER a clearly stated release date,
-   classify the item as released unless another newer source explicitly
-   says otherwise.
-6. If a source says a release date is announced for a future date,
-   classify it as "scheduled".
-7. If an OLD article says "release date not announced", but a newer
-   source gives an official release date, the NEWER evidence wins.
-8. Never say "no release date" merely because one source does not
-   contain a release date.
-9. Do not invent dates.
-10. For every important verified claim, include the SOURCE NUMBER.
-11. Include a short exact supporting quote from the source.
-12. If evidence conflicts, explain the conflict and prefer the newest
-    reliable/official source.
+2. Do NOT use old memory to override current web evidence.
+3. Prefer official/authoritative sources.
+4. If a source says a release happens on the current date, classify as "released_today".
+5. If current date is AFTER a stated release date, classify as released.
+6. If future date, classify as "scheduled".
+7. Newer evidence wins over older.
+8. Do not invent dates.
+9. Include SOURCE NUMBER for each claim.
+10. Include exact quote from source.
 
-Return ONLY valid JSON.
-
-JSON FORMAT:
+Return ONLY valid JSON:
 {
   "verified": true,
   "confidence": 0.0,
   "status": "released_today | released | scheduled | unreleased | unknown | current",
   "release_date": "YYYY-MM-DD or null",
-  "facts": [
-    { "claim": "short factual claim", "source": 1, "quote": "short exact quote" }
-  ],
+  "facts": [{ "claim": "...", "source": 1, "quote": "..." }],
   "important_warning": "null or short warning"
 }
 `;
 
   for (const model of VERIFIER_MODELS) {
     try {
-      const data = await geminiGenerate(
-        model,
-        {
-          contents: [
-            { role: 'user', parts: [{ text: verifierInstruction }] }
-          ],
-          generationConfig: { temperature: 0, maxOutputTokens: 1200 }
-        },
-        12000
-      );
+      const data = await geminiGenerate(model, {
+        contents: [{ role: 'user', parts: [{ text: instruction }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 1200 }
+      }, 12000);
 
-      const text = extractGeminiText(data);
-      const parsed = extractJson(text);
-
+      const parsed = extractJson(extractGeminiText(data));
       if (parsed && typeof parsed === 'object') {
         const facts = Array.isArray(parsed.facts)
-          ? parsed.facts
-              .filter(f =>
-                f &&
-                typeof f.claim === 'string' &&
-                typeof f.source === 'number'
-              )
-              .slice(0, 10)
+          ? parsed.facts.filter(f => f && typeof f.claim === 'string' && typeof f.source === 'number').slice(0, 10)
           : [];
-
         return {
           verified: Boolean(parsed.verified),
-          confidence:
-            typeof parsed.confidence === 'number'
-              ? Math.max(0, Math.min(1, parsed.confidence))
-              : 0,
+          confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0,
           status: typeof parsed.status === 'string' ? parsed.status : 'unknown',
-          release_date:
-            typeof parsed.release_date === 'string'
-              ? parsed.release_date
-              : null,
+          release_date: typeof parsed.release_date === 'string' ? parsed.release_date : null,
           facts,
-          important_warning:
-            typeof parsed.important_warning === 'string'
-              ? parsed.important_warning
-              : null,
-          raw: text
+          important_warning: typeof parsed.important_warning === 'string' ? parsed.important_warning : null,
+          raw: extractGeminiText(data)
         };
       }
     } catch {}
   }
 
   return {
-    verified: false,
-    confidence: 0,
-    status: 'unknown',
-    release_date: null,
-    facts: [],
-    important_warning: 'Verifier could not confirm any facts.',
-    raw: ''
+    verified: false, confidence: 0, status: 'unknown',
+    release_date: null, facts: [],
+    important_warning: 'Verifier could not confirm any facts.', raw: ''
   };
 }
 
 
 /* =========================================================
-   VERIFIED FACTS → FINAL AI INSTRUCTION
+   VERIFIED FACTS → INSTRUCTION
    ========================================================= */
 
 function buildVerifiedInstruction(verification) {
   if (!verification?.verified) {
     return `
 WEB EVIDENCE VERIFICATION:
-
 The evidence verifier could NOT produce a reliable structured verdict.
 
-⚠️ CRITICAL RULES FOR THIS SITUATION:
+⚠️ CRITICAL RULES:
 1. Do NOT use old training-data memory to make confident time-sensitive claims.
-2. Do NOT say things like "definitely did not happen", "has not released",
-   "no release date exists", or "nothing was announced" — because you could
-   not verify the current state via web search.
-3. If the user asked a time-sensitive question (release, news, price,
-   current status), you MUST clearly state in your answer that live web
-   search did not return reliable evidence, and that the answer may be
-   outdated or incomplete.
-4. Prefer to say "I couldn't verify this right now" over giving a wrong
-   confident answer.
+2. Do NOT say "definitely did not happen", "has not released", "no release date exists".
+3. If time-sensitive question, clearly state live web search did not return reliable evidence.
+4. Prefer "I couldn't verify this right now" over a wrong confident answer.
 `;
   }
 
   let factsText = '';
-
-  for (const fact of verification.facts || []) {
-    factsText += `
-- CLAIM: ${fact.claim}
-- SOURCE: ${fact.source}
-- SUPPORTING QUOTE: "${fact.quote}"
-`;
+  for (const f of verification.facts || []) {
+    factsText += `\n- CLAIM: ${f.claim}\n- SOURCE: ${f.source}\n- SUPPORTING QUOTE: "${f.quote}"\n`;
   }
 
   return `
 VERIFIED WEB FACTS — HARD CONSTRAINT:
 
-The following facts were independently checked against the retrieved
-web evidence.
+You MUST NOT contradict these verified facts.
 
-You MUST NOT contradict these verified facts in your final answer.
-
-VERIFIED STATUS:
-${verification.status}
-
-VERIFIED RELEASE DATE:
-${verification.release_date || 'Not established'}
-
-VERIFIER CONFIDENCE:
-${verification.confidence}
+VERIFIED STATUS: ${verification.status}
+VERIFIED RELEASE DATE: ${verification.release_date || 'Not established'}
+VERIFIER CONFIDENCE: ${verification.confidence}
 
 VERIFIED FACTS:
 ${factsText || 'No individual facts were extracted.'}
 
-IMPORTANT WARNING:
-${verification.important_warning || 'None'}
+IMPORTANT WARNING: ${verification.important_warning || 'None'}
 
-If these verified facts contradict your old/internal knowledge,
-the verified current web evidence wins.
-
-If the evidence says something was released today, DO NOT describe it
-as unreleased.
-
-If the evidence says a release is scheduled for a future date, DO NOT
-say it has already released.
-
-If the evidence is insufficient, say so rather than guessing.
+If verified facts contradict old knowledge, verified current evidence wins.
+If evidence says released today, DO NOT describe as unreleased.
+If evidence is insufficient, say so rather than guessing.
 `;
 }
 
@@ -574,18 +433,11 @@ async function streamGemini(model, body, onChunk, onDone) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY not configured');
 
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/` +
-    `${model}:streamGenerateContent?alt=sse&key=` +
-    encodeURIComponent(key);
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`;
 
   const response = await fetchWithTimeout(
     url,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    },
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
     30000
   );
 
@@ -593,7 +445,6 @@ async function streamGemini(model, body, onChunk, onDone) {
     const errorText = await response.text();
     throw new Error(`Gemini ${model} HTTP ${response.status}: ${errorText}`);
   }
-
   if (!response.body) throw new Error('Gemini returned no response body');
 
   const reader = response.body.getReader();
@@ -603,19 +454,14 @@ async function streamGemini(model, body, onChunk, onDone) {
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
-
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop() || '';
-
     for (const line of lines) {
       const trimmed = line.trim();
-      if (!trimmed) continue;
-      if (!trimmed.startsWith('data:')) continue;
-
+      if (!trimmed || !trimmed.startsWith('data:')) continue;
       const jsonText = trimmed.slice(5).trim();
       if (!jsonText || jsonText === '[DONE]') continue;
-
       try {
         const data = JSON.parse(jsonText);
         const text = extractGeminiText(data);
@@ -623,7 +469,6 @@ async function streamGemini(model, body, onChunk, onDone) {
       } catch {}
     }
   }
-
   onDone?.();
 }
 
@@ -633,32 +478,45 @@ async function streamGemini(model, body, onChunk, onDone) {
    ========================================================= */
 
 export default async function handler(req) {
-
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
-
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
+  }
+
+  // 🎯 Payload size check (Vercel Edge limit ~1MB)
+  const contentLength = req.headers.get('content-length');
+  if (contentLength && parseInt(contentLength) > 1000000) {
+    return jsonResponse({
+      error: 'PAYLOAD_TOO_LARGE',
+      message: 'Chat too long. Please start a new chat.'
+    }, 413);
   }
 
   let body;
   try {
     body = await req.json();
-  } catch {
-    return jsonResponse({ error: 'Invalid JSON body' }, 400);
+  } catch (e) {
+    return jsonResponse({
+      error: 'Invalid JSON or payload too large',
+      message: 'Request could not be parsed. Start a new chat if the conversation is very long.'
+    }, 413);
   }
 
   const {
-    contents = [],
+    contents: rawContents = [],
     systemInstruction = null,
     generationConfig = {},
     mode = 'fast'
   } = body;
 
-  if (!Array.isArray(contents)) {
+  if (!Array.isArray(rawContents)) {
     return jsonResponse({ error: 'contents must be an array' }, 400);
   }
+
+  // 🎯 TRUNCATE — sirf aakhri messages bhejo
+  const contents = truncateContents(rawContents);
 
   const currentDate = getPakistanDate();
   const currentDateTime = getPakistanDateTime();
@@ -671,27 +529,15 @@ export default async function handler(req) {
 
   const stream = new ReadableStream({
     async start(controller) {
-
-      const send = payload => {
-        controller.enqueue(encoder.encode(sseEvent(payload)));
-      };
-
-      const sendStatus = status => {
-        send({ type: 'status', status });
-      };
+      const send = payload => controller.enqueue(encoder.encode(sseEvent(payload)));
+      const sendStatus = status => send({ type: 'status', status });
 
       try {
-
-        /* ================================================
-           STEP 1 — THINKING
-           ================================================ */
+        /* STEP 1 */
         sendStatus('🧠 Thinking...');
         await new Promise(r => setTimeout(r, 150));
 
-
-        /* ================================================
-           STEP 2 — WEB SEARCH
-           ================================================ */
+        /* STEP 2 — WEB SEARCH */
         let searchResults = [];
         let tavilyAnswer = '';
         let searchError = null;
@@ -699,7 +545,6 @@ export default async function handler(req) {
 
         if (searchNeeded && userQuery) {
           sendStatus('🌐 Searching the web...');
-
           const searchResponse = await tavilySearch(userQuery, currentDate);
           searchResults = searchResponse.results || [];
           tavilyAnswer = searchResponse.answer || '';
@@ -714,35 +559,21 @@ export default async function handler(req) {
           }
 
           webContext = buildWebContext(searchResults, tavilyAnswer);
-
         } else {
           sendStatus('🔎 No live web search needed → Analyzing...');
         }
 
-
-        /* ================================================
-           STEP 3 — EVIDENCE VERIFICATION
-           ================================================ */
+        /* STEP 3 — VERIFY */
         let verification = {
-          verified: false,
-          confidence: 0,
-          status: 'unknown',
-          release_date: null,
-          facts: [],
-          important_warning: null,
-          raw: ''
+          verified: false, confidence: 0, status: 'unknown',
+          release_date: null, facts: [], important_warning: null, raw: ''
         };
 
         if (searchNeeded && searchResults.length > 0) {
           sendStatus('🛡️ Verifying web evidence...');
-
           verification = await verifyWebEvidence({
-            userQuery,
-            currentDate,
-            webContext,
-            releaseQuestion
+            userQuery, currentDate, webContext, releaseQuestion
           });
-
           if (verification.verified) {
             sendStatus('✅ Evidence verified → 🧠 Analyzing...');
           } else {
@@ -752,46 +583,24 @@ export default async function handler(req) {
           sendStatus('🧠 Analyzing...');
         }
 
-
-        /* ================================================
-           STEP 4 — BUILD FINAL INSTRUCTION
-           ================================================ */
+        /* STEP 4 — INSTRUCTIONS */
         const verifiedInstruction = buildVerifiedInstruction(verification);
 
         let searchFailureBlock = '';
-
         if (searchNeeded && (searchError || searchResults.length === 0)) {
           searchFailureBlock = `
 ⚠️⚠️⚠️ CRITICAL WARNING — WEB SEARCH FAILED ⚠️⚠️⚠️
-
-The user asked a TIME-SENSITIVE question, but the live web search failed.
-
+User asked a TIME-SENSITIVE question, but live web search failed.
 Reason: ${searchError || 'No sources returned'}
 
-YOU MUST FOLLOW THESE RULES STRICTLY:
-
-1. DO NOT give a confident yes/no answer about current events,
-   releases, news, prices, or any time-sensitive fact.
-
-2. DO NOT say things like:
-   - "Nahi, ye release nahi hua hai"
-   - "No, it has not been released"
-   - "There is no release date"
-   - "Nothing was announced"
-   - "Definitely not"
-
-3. DO NOT use your old training memory as if it were current facts.
-
+RULES:
+1. DO NOT give confident yes/no about current events.
+2. DO NOT say "Nahi, ye release nahi hua" or "no release date".
+3. DO NOT use old training memory as current facts.
 4. START your answer with this EXACT Roman Urdu sentence:
-
    "⚠️ Mujhe abhi live web search nahi mil rahi, isliye main latest information confirm nahi kar sakta. Ye jawab meri purani information par based hai aur ismein ghalthi ho sakti hai."
-
-5. Then you MAY mention what you know from training data, but you MUST
-   clearly label it as "possibly outdated" or "purani information ke mutabiq".
-
-6. Recommend the user to check official sources or ask again later.
-
-This is the MOST IMPORTANT rule in this entire prompt. Follow it exactly.
+5. Then MAY mention training data but label as "possibly outdated".
+6. Recommend user to check official sources.
 `;
         }
 
@@ -799,153 +608,83 @@ This is the MOST IMPORTANT rule in this entire prompt. Follow it exactly.
           ? `
 LIVE WEB SEARCH DATA
 ====================
-
-Current Pakistan date:
-${currentDate}
-
-Current Pakistan date/time:
-${currentDateTime}
-
-User's current query:
-${userQuery}
+Current Pakistan date: ${currentDate}
+Current Pakistan date/time: ${currentDateTime}
+User's current query: ${userQuery}
 
 ${webContext}
 
-Search error:
-${searchError || 'None'}
+Search error: ${searchError || 'None'}
 
 ${searchFailureBlock}
-
 ${verifiedInstruction}
 
 WEB ANSWER RULES:
-
 1. Current web evidence has priority over old model memory.
 2. Prefer official sources.
-3. Prefer newer reliable evidence over older evidence.
-4. Never claim something is unreleased if reliable current
-   evidence shows that it has already released.
-5. Never claim something is released if reliable evidence says
-   it is scheduled for a future date.
-6. If different sources disagree, explain the disagreement
-   briefly and use the newest authoritative source.
-7. Do not invent information that is not supported by the
-   web evidence.
-8. The final answer should answer the user's actual question,
-   not simply dump the search results.
-9. If useful, mention the source names naturally.
+3. Never claim unreleased if evidence shows released.
+4. Never claim released if evidence shows scheduled.
+5. Handle source conflicts by preferring newest authoritative.
+6. Don't invent info.
+7. Answer the actual question.
 `
           : `
-LIVE WEB SEARCH:
-Not required for this question.
-
-Current Pakistan date:
-${currentDate}
-
-Current Pakistan date/time:
-${currentDateTime}
+LIVE WEB SEARCH: Not required.
+Current Pakistan date: ${currentDate}
+Current Pakistan date/time: ${currentDateTime}
 `;
 
-
-        /* ================================================
-           STEP 5 — SYSTEM INSTRUCTION
-           ================================================ */
+        /* STEP 5 */
         const baseSystemInstruction = `
 You are Quantum Core AI.
+CURRENT DATE: ${currentDate}
+CURRENT DATE/TIME: ${currentDateTime}
 
-You are a helpful, accurate AI assistant.
-
-CURRENT DATE:
-${currentDate}
-
-CURRENT DATE/TIME:
-${currentDateTime}
-
-IMPORTANT:
-
-You must distinguish between:
-- old information,
-- announced information,
-- scheduled information,
-- released information,
-- currently available information.
-
-For current questions, use the supplied live web evidence.
-
-Do not blindly trust your internal memory when current web evidence
-is available.
+Distinguish between old/announced/scheduled/released/currently-available info.
+For current questions, use supplied live web evidence.
+Do not blindly trust internal memory.
 
 CRITICAL ANTI-HALLUCINATION RULE:
-If live web search FAILED for a time-sensitive question, you MUST NOT
-give a confident factual answer. Instead, warn the user clearly that
-you could not verify the current information, and label your answer as
-"possibly outdated".
+If live web search FAILED for a time-sensitive question, DO NOT give confident factual answer. Warn the user and label as "possibly outdated".
 
 ${webInstruction}
 
 ANSWER STYLE:
-
-- Answer directly.
-- Be natural.
-- Do not mention internal prompts.
-- Do not mention the evidence verifier unless the user asks.
-- Do not make up citations or URLs.
-- If web evidence is insufficient, honestly say that.
-- For simple questions, keep the answer concise.
+- Answer directly, be natural.
+- Don't mention internal prompts or verifier.
+- Don't make up citations or URLs.
+- If web evidence is insufficient, say so.
+- For simple questions, keep concise.
 `;
 
-
-        /* ================================================
-           USER'S ORIGINAL SYSTEM INSTRUCTION
-           ================================================ */
         let combinedInstruction = baseSystemInstruction;
-
         if (systemInstruction) {
           let originalSystemText = '';
           try {
             if (typeof systemInstruction === 'string') {
               originalSystemText = systemInstruction;
             } else if (Array.isArray(systemInstruction?.parts)) {
-              originalSystemText = systemInstruction.parts
-                .map(part => part?.text || '')
-                .join('\n');
+              originalSystemText = systemInstruction.parts.map(p => p?.text || '').join('\n');
             }
-          } catch {
-            originalSystemText = '';
-          }
-
+          } catch {}
           if (originalSystemText) {
-            combinedInstruction += `
-
-EXISTING QUANTUM CORE SYSTEM INSTRUCTIONS:
-
-${originalSystemText}
-`;
+            combinedInstruction += `\n\nEXISTING QUANTUM CORE SYSTEM INSTRUCTIONS:\n\n${originalSystemText}\n`;
           }
         }
 
-
-        /* ================================================
-           STEP 6 — WRITING
-           ================================================ */
+        /* STEP 6 */
         sendStatus('✍️ Writing answer...');
         await new Promise(r => setTimeout(r, 100));
 
-
-        /* ================================================
-           STEP 7 — FINAL GEMINI STREAM
-           ================================================ */
+        /* STEP 7 — FINAL STREAM */
         const geminiBody = {
           contents,
-          systemInstruction: {
-            parts: [{ text: combinedInstruction }]
-          },
+          systemInstruction: { parts: [{ text: combinedInstruction }] },
           generationConfig: {
             ...generationConfig,
-            temperature:
-              typeof generationConfig.temperature === 'number'
-                ? Math.min(generationConfig.temperature, 0.5)
-                : 0.35
+            temperature: typeof generationConfig.temperature === 'number'
+              ? Math.min(generationConfig.temperature, 0.5)
+              : 0.35
           }
         };
 
@@ -955,14 +694,9 @@ ${originalSystemText}
         for (const model of modelChain) {
           if (completed) break;
           try {
-            await streamGemini(
-              model,
-              geminiBody,
-              chunk => {
-                send({ type: 'chunk', text: chunk });
-              },
-              () => {}
-            );
+            await streamGemini(model, geminiBody, chunk => {
+              send({ type: 'chunk', text: chunk });
+            }, () => {});
             completed = true;
             send({ type: 'done' });
           } catch (error) {
@@ -971,19 +705,12 @@ ${originalSystemText}
         }
 
         if (!completed) {
-          send({
-            type: 'error',
-            error: finalError || 'All Gemini models failed.'
-          });
+          send({ type: 'error', error: finalError || 'All Gemini models failed.' });
         }
 
         controller.close();
-
       } catch (error) {
-        send({
-          type: 'error',
-          error: error?.message || String(error)
-        });
+        send({ type: 'error', error: error?.message || String(error) });
         controller.close();
       }
     }
