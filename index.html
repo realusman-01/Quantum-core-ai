@@ -1373,6 +1373,13 @@ async function processStream(response,botElement,userPrompt,botRef){
           throw new Error(parsed.error + (parsed.details ? ": " + parsed.details : ""));
         }
         const chunk=parsed.candidates&&parsed.candidates[0]&&parsed.candidates[0].content&&parsed.candidates[0].content.parts&&parsed.candidates[0].content.parts[0]&&parsed.candidates[0].content.parts[0].text;
+        if(parsed.type==="status" && parsed.status){
+  botElement.innerHTML='<div class="thinking"><div class="spinner"></div><span>'+parsed.status+'</span></div>';
+  if(autoScrollEnabled){
+    chatBox.scrollTop=chatBox.scrollHeight;
+  }
+  continue;
+}
         if(chunk){
           fullText+=chunk;
           scheduleRender();
