@@ -45,7 +45,7 @@ export default async function handler(req, res) {
   for (const modelName of MODEL_CHAIN) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`;
-      
+
       const geminiRes = await fetchWithTimeout(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
