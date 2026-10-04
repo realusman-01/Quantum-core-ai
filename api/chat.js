@@ -7,7 +7,12 @@ const MODEL_CHAIN = {
   core: ['gemini-3.6-flash', 'gemini-3.1-flash-lite']
 };
 
-// ⚡ Timeout helper (Edge-compatible)
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type'
+};
+
 async function fetchWithTimeout(url, options, timeoutMs = 15000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -21,14 +26,7 @@ async function fetchWithTimeout(url, options, timeoutMs = 15000) {
   }
 }
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type'
-};
-
 export default async function handler(req) {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: CORS_HEADERS });
   }
@@ -63,7 +61,6 @@ export default async function handler(req) {
   let lastError = null;
   const startTime = Date.now();
 
-  // Try each model in the chain until one connects
   for (const modelName of modelChain) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
@@ -78,7 +75,6 @@ export default async function handler(req) {
 
       if (geminiRes.ok) {
         console.log(`✅ Streaming: ${modelName} (elapsed: ${Date.now() - startTime}ms)`);
-        // 🔥 DIRECT PASSTHROUGH — Gemini ka stream body seedha frontend ko
         return new Response(geminiRes.body, {
           status: 200,
           headers: {
@@ -100,7 +96,6 @@ export default async function handler(req) {
     }
   }
 
-  // All models failed
   return new Response(JSON.stringify({
     error: 'All models failed. Please try again.',
     details: lastError ? lastError.message : 'Unknown'
