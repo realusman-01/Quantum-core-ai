@@ -2,32 +2,10 @@ export const config = {
   runtime: 'edge'
 };
 
-/* =========================================================
-   QUANTUM CORE — REAL THINK + WEB SEARCH + EVIDENCE VERIFY
-   ========================================================= */
-
 const MODEL_CHAIN = {
-  fast: [
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite'
-  ],
-  core: [
-    'gemini-3.6-flash',
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite'
-  ]
+  fast: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
+  core: ['gemini-3.6-flash', 'gemini-3.1-flash-lite']
 };
-
-const VERIFIER_MODELS = [
-  'gemini-3.5-flash-lite',
-  'gemini-3.1-flash-lite'
-];
-
-// 🎯 Vercel Edge payload limit ~1MB. Isliye:
-// - Sirf aakhri 12 messages bhejo
-// - Sirf aakhri 2 messages mein image allow karo
-const MAX_HISTORY_MESSAGES = 12;
-const MAX_IMAGE_MESSAGES = 2;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -35,695 +13,1125 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type'
 };
 
+const SEARCH_MODEL = 'gemini-3.5-flash-lite';
+const TAVILY_URL = 'https://api.tavily.com/search';
 
-/* =========================================================
-   BASIC HELPERS
-   ========================================================= */
+// ==========================================
+// QUANTUM DREAMING / SUPABASE
+// ==========================================
 
-function jsonResponse(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
+
+async function supabaseRequest(path, options = {}) {
+  if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+    throw new Error('Supabase environment variables are missing.');
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_SECRET_KEY,
+      Authorization: `Bearer ${SUPABASE_SECRET_KEY}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
   });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `Supabase ${response.status}: ${text.slice(0, 300)}`
+    );
+  }
+
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return text;
+  }
 }
 
-function sseEvent(payload) {
-  return `data: ${JSON.stringify(payload)}\n\n`;
+
+// ==========================================
+// QUEUE QUANTUM DREAMING
+// ==========================================
+
+async function queueDreaming(userId, conversationId, userText) {
+  if (
+    !userId ||
+    !userText ||
+    !SUPABASE_URL ||
+    !SUPABASE_SECRET_KEY
+  ) {
+    return;
+  }
+
+  const content = String(userText)
+    .trim()
+    .slice(0, 5000);
+
+  if (!content) return;
+
+  try {
+
+    // Save latest user message
+    await supabaseRequest('conversation_events', {
+      method: 'POST',
+
+      headers: {
+        Prefer: 'return=minimal'
+      },
+
+      body: JSON.stringify({
+        user_id: String(userId).slice(0, 200),
+
+        conversation_id:
+          conversationId
+            ? String(conversationId).slice(0, 200)
+            : null,
+
+        role: 'user',
+
+        content
+      })
+    });
+
+
+    // Check if a Dream job already exists
+    const pending = await supabaseRequest(
+      `dream_jobs?user_id=eq.${encodeURIComponent(
+        String(userId).slice(0, 200)
+      )}&status=eq.pending&limit=1&select=id`
+    );
+
+
+    // Prevent duplicate Dream jobs
+    if (!Array.isArray(pending) || pending.length === 0) {
+
+      await supabaseRequest('dream_jobs', {
+        method: 'POST',
+
+        headers: {
+          Prefer: 'return=minimal'
+        },
+
+        body: JSON.stringify({
+          user_id: String(userId).slice(0, 200),
+          status: 'pending'
+        })
+      });
+
+    }
+
+    console.log('🌙 Quantum Dreaming job queued.');
+
+  } catch (error) {
+
+    // Memory failure must NEVER break normal AI chat.
+    console.error(
+      '🌙 Dreaming queue failed:',
+      error.message
+    );
+
+  }
 }
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+
+// ==========================================
+// FETCH WITH TIMEOUT
+// ==========================================
+
+async function fetchWithTimeout(
+  url,
+  options,
+  timeoutMs = 15000
+) {
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    timeoutMs
+  );
+
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
+
+    const response = await fetch(
+      url,
+      {
+        ...options,
+        signal: controller.signal
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    return response;
+
+  } catch (err) {
+
+    clearTimeout(timeoutId);
+
+    throw err;
   }
 }
 
 
-/* =========================================================
-   DATE / TIME
-   ========================================================= */
+// ==========================================
+// GET LATEST USER TEXT
+// ==========================================
 
-function getPakistanDate() {
-  try {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Karachi',
-      year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(new Date());
-  } catch {
-    return new Date().toISOString().slice(0, 10);
+function getLatestUserText(contents) {
+
+  if (!Array.isArray(contents)) {
+    return '';
   }
-}
 
-function getPakistanDateTime() {
-  try {
-    return new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Karachi',
-      dateStyle: 'full', timeStyle: 'long'
-    }).format(new Date());
-  } catch {
-    return new Date().toISOString();
-  }
-}
+  for (
+    let i = contents.length - 1;
+    i >= 0;
+    i--
+  ) {
 
-
-/* =========================================================
-   EXTRACT USER MESSAGE
-   ========================================================= */
-
-function getLastUserText(contents = []) {
-  for (let i = contents.length - 1; i >= 0; i--) {
     const item = contents[i];
-    if (item?.role !== 'user') continue;
-    const parts = item?.parts || [];
-    const text = parts.map(p => typeof p?.text === 'string' ? p.text : '').join(' ').trim();
-    if (text) return text;
+
+    if (
+      item?.role !== 'user' ||
+      !Array.isArray(item.parts)
+    ) {
+      continue;
+    }
+
+    const text = item.parts
+      .filter(
+        p =>
+          typeof p?.text === 'string'
+      )
+      .map(p => p.text)
+      .join('\n')
+      .trim();
+
+    if (text) {
+      return text;
+    }
   }
+
   return '';
 }
 
 
-/* =========================================================
-   TRUNCATE CONTENTS (payload fix)
-   ========================================================= */
+// ==========================================
+// FRESH INFORMATION DETECTION
+// ==========================================
 
-function truncateContents(contents) {
-  if (!Array.isArray(contents)) return [];
-  const trimmed = contents.slice(-MAX_HISTORY_MESSAGES);
-  const total = trimmed.length;
-  // Strip images from all but the last MAX_IMAGE_MESSAGES
-  return trimmed.map((item, idx) => {
-    const isRecent = idx >= total - MAX_IMAGE_MESSAGES;
-    if (!item?.parts) return item;
-    const newParts = item.parts.map(part => {
-      if (part?.inlineData && !isRecent) {
-        // Replace old images with a text placeholder
-        return { text: '[image removed to reduce payload]' };
-      }
-      return part;
-    });
-    return { ...item, parts: newParts };
-  });
-}
+function looksLikeFreshInfoQuestion(text) {
 
+  const q = String(text || '').toLowerCase();
 
-/* =========================================================
-   WEB SEARCH DETECTION
-   ========================================================= */
+  if (!q) {
+    return false;
+  }
 
-function needsWebSearch(contents = []) {
-  const text = contents
-    .map(item => (item?.parts || []).map(p => p?.text || '').join(' '))
-    .join(' ')
-    .toLowerCase();
+  const patterns = [
 
-  const triggers = [
-    'today', "today's", 'todays', 'current', 'currently', 'right now',
-    'latest', 'recent', 'recently', 'news', 'breaking', 'this week',
-    'this month', 'this year', 'release date', 'released', 'release',
-    'new episode', 'new season', 'season 2', 'season 3', 'update',
-    'latest update', 'new update', 'price', 'weather', 'score', 'scores',
-    'standings', 'schedule', 'president', 'prime minister', 'ceo',
-    'who is the current', 'what is happening', 'when is', 'when will',
-    'is it out', 'is it released', 'has it released', 'available now',
-    'streaming now',
-    'aaj', 'abhi', 'filhal', 'haal hi', 'nayi khabar', 'new khabar',
-    'release kab', 'release ho gaya', 'release hogaya', 'release hui',
-    'release hu', 'aa gaya', 'aa gya', 'available hai', 'mil raha',
-    'mil rahi', 'episode', 'update kya', 'kya scene hai', 'kya status hai',
-    'current status', 'abhi ka status', 'is waqt',
-    '2026', '2027', '2025', '2024'
+    /\b(today|tonight|tomorrow|yesterday|right now|currently|current|latest|recent|newest|this week|this month|this year|as of now)\b/i,
+
+    /\b(aaj|abhi|kal|filhal|maujooda|haal hi|latest|recent)\b/i,
+
+    /\b(release|released|premiere|airing|aired|season\s*\d+|episode\s*\d+|chapter\s*\d+)\b/i,
+
+    /\b(update|updates|news|price|stock|score|schedule|weather|result|results|election)\b/i,
+
+    /\bwho is the (current|new|latest)\b/i,
+
+    /\bwhen (is|will|did)\b.*\b(release|released|premiere|air|start)\b/i,
+
+    /\b(ho gaya|ho gya|aa gaya|a gaya|release hua|release ho|kab release|kab aya|kab aaya)\b/i
+
   ];
 
-  return triggers.some(t => text.includes(t));
-}
-
-function isReleaseQuestion(text = '') {
-  const t = text.toLowerCase();
-  const words = ['release', 'released', 'release date', 'premiere', 'premieres',
-    'available', 'streaming', 'season 2', 'season 3', 'episode'];
-  return words.some(w => t.includes(w));
+  return patterns.some(
+    re => re.test(q)
+  );
 }
 
 
-/* =========================================================
-   TAVILY SEARCH
-   ========================================================= */
+// ==========================================
+// EXTRACT GEMINI TEXT
+// ==========================================
 
-async function tavilySearch(query, currentDate) {
-  const key = process.env.TAVILY_API_KEY;
-  if (!key) {
-    return { results: [], answer: '', error: 'TAVILY_API_KEY not configured on server' };
-  }
+function extractModelText(data) {
 
-  const searchQuery = `
-${query}
-
-Find the latest and CURRENT information as of ${currentDate}.
-Prefer official sources and authoritative sources.
-If this is about a release, premiere, season, episode, update,
-availability, current office-holder, price, news or current status,
-verify the actual current status and exact date.
-Do not rely only on old articles.
-`;
-
-  try {
-    const response = await fetchWithTimeout(
-      'https://api.tavily.com/search',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          api_key: key,
-          query: searchQuery,
-          search_depth: 'advanced',
-          topic: 'general',
-          max_results: 8,
-          include_answer: true,
-          include_raw_content: false,
-          chunks_per_source: 3
-        })
-      },
-      15000
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return {
-        results: [], answer: '',
-        error: `Tavily HTTP ${response.status}: ${errorText.substring(0, 200)}`
-      };
-    }
-
-    const data = await response.json();
-    return {
-      results: Array.isArray(data?.results) ? data.results : [],
-      answer: typeof data?.answer === 'string' ? data.answer : '',
-      error: null
-    };
-  } catch (error) {
-    return {
-      results: [], answer: '',
-      error: error?.name === 'AbortError' ? 'Tavily search timed out' : String(error?.message || error)
-    };
-  }
-}
-
-
-/* =========================================================
-   BUILD WEB EVIDENCE
-   ========================================================= */
-
-function buildWebContext(results = [], tavilyAnswer = '') {
-  let output = '';
-  if (tavilyAnswer) {
-    output += `\nTAVILY SEARCH SUMMARY:\n${tavilyAnswer}\n\n`;
-  }
-  if (!results.length) return output || 'No web evidence was returned.';
-
-  output += `\nWEB SOURCES:\n`;
-  results.forEach((r, i) => {
-    output += `
-
-SOURCE ${i + 1}
-Title: ${r?.title || 'Untitled source'}
-URL: ${r?.url || ''}
-Content:
-${r?.content || r?.snippet || ''}
-`;
-  });
-  return output;
-}
-
-
-/* =========================================================
-   GEMINI
-   ========================================================= */
-
-async function geminiGenerate(model, body, timeoutMs = 20000) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY not configured');
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-  const response = await fetchWithTimeout(
-    url,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
-    timeoutMs
+  return (
+    data?.candidates?.[0]?.content?.parts
+      ?.map(p => p?.text || '')
+      .join('') || ''
   );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini ${model} HTTP ${response.status}: ${errorText}`);
-  }
-  return await response.json();
-}
-
-function extractGeminiText(data) {
-  try {
-    return (data?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join('').trim() || '');
-  } catch { return ''; }
-}
-
-function extractJson(text) {
-  if (!text) return null;
-  let cleaned = text.trim();
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-  }
-  try { return JSON.parse(cleaned); } catch {}
-  const s = cleaned.indexOf('{'), e = cleaned.lastIndexOf('}');
-  if (s !== -1 && e !== -1 && e > s) {
-    try { return JSON.parse(cleaned.slice(s, e + 1)); } catch { return null; }
-  }
-  return null;
 }
 
 
-/* =========================================================
-   EVIDENCE VERIFIER
-   ========================================================= */
+// ==========================================
+// SEARCH DECISION
+// ==========================================
 
-async function verifyWebEvidence({ userQuery, currentDate, webContext, releaseQuestion }) {
-  if (!webContext || webContext === 'No web evidence was returned.') {
+async function askSearchDecision(
+  apiKey,
+  userText
+) {
+
+  // Fresh questions automatically search
+  if (
+    looksLikeFreshInfoQuestion(userText)
+  ) {
+
     return {
-      verified: false, confidence: 0, status: 'unknown',
-      release_date: null, facts: [],
-      important_warning: 'Web search returned no usable evidence.', raw: ''
+      search: true,
+      reason: 'fresh/current information'
     };
+
   }
 
-  const instruction = `
-You are Quantum Core's WEB EVIDENCE VERIFIER.
-Inspect the supplied web evidence and determine which factual claims are supported.
 
-CURRENT DATE: ${currentDate}
-USER QUERY: ${userQuery}
-RELEASE/AVAILABILITY QUESTION: ${releaseQuestion ? 'YES' : 'NO'}
+  const prompt = `
+Decide whether the following user question needs
+an internet search to answer accurately.
 
-WEB EVIDENCE:
-${webContext}
+Search is needed for:
 
-RULES:
-1. Use ONLY information supported by the supplied web evidence.
-2. Do NOT use old memory to override current web evidence.
-3. Prefer official/authoritative sources.
-4. If a source says a release happens on the current date, classify as "released_today".
-5. If current date is AFTER a stated release date, classify as released.
-6. If future date, classify as "scheduled".
-7. Newer evidence wins over older.
-8. Do not invent dates.
-9. Include SOURCE NUMBER for each claim.
-10. Include exact quote from source.
+- current information
+- changing information
+- recent events
+- time-sensitive facts
+- release/status/news
+- prices
+- schedules
+- live facts
+- facts that may have changed
+
+Search is NOT needed for:
+
+- stable general knowledge
+- math
+- physics
+- writing
+- coding
+- translation
+- casual conversation
 
 Return ONLY valid JSON:
-{
-  "verified": true,
-  "confidence": 0.0,
-  "status": "released_today | released | scheduled | unreleased | unknown | current",
-  "release_date": "YYYY-MM-DD or null",
-  "facts": [{ "claim": "...", "source": 1, "quote": "..." }],
-  "important_warning": "null or short warning"
-}
+
+{"search":true}
+
+or
+
+{"search":false}
+
+User question:
+
+${userText}
 `;
 
-  for (const model of VERIFIER_MODELS) {
-    try {
-      const data = await geminiGenerate(model, {
-        contents: [{ role: 'user', parts: [{ text: instruction }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 1200 }
-      }, 12000);
 
-      const parsed = extractJson(extractGeminiText(data));
-      if (parsed && typeof parsed === 'object') {
-        const facts = Array.isArray(parsed.facts)
-          ? parsed.facts.filter(f => f && typeof f.claim === 'string' && typeof f.source === 'number').slice(0, 10)
-          : [];
-        return {
-          verified: Boolean(parsed.verified),
-          confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0,
-          status: typeof parsed.status === 'string' ? parsed.status : 'unknown',
-          release_date: typeof parsed.release_date === 'string' ? parsed.release_date : null,
-          facts,
-          important_warning: typeof parsed.important_warning === 'string' ? parsed.important_warning : null,
-          raw: extractGeminiText(data)
-        };
-      }
-    } catch {}
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${SEARCH_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+
+  try {
+
+    const res = await fetchWithTimeout(
+      url,
+      {
+        method: 'POST',
+
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        body: JSON.stringify({
+
+          contents: [
+            {
+              role: 'user',
+
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ],
+
+          generationConfig: {
+            temperature: 0,
+            responseMimeType:
+              'application/json'
+          }
+
+        })
+      },
+      8000
+    );
+
+
+    if (!res.ok) {
+
+      return {
+        search: false,
+        reason:
+          'decision model unavailable'
+      };
+
+    }
+
+
+    const data = await res.json();
+
+    const raw =
+      extractModelText(data).trim();
+
+
+    try {
+
+      const parsed =
+        JSON.parse(raw);
+
+      return {
+        search:
+          parsed.search === true,
+
+        reason:
+          'model decision'
+      };
+
+    } catch {
+
+      return {
+        search:
+          /"search"\s*:\s*true/i.test(raw),
+
+        reason:
+          'parsed fallback'
+      };
+
+    }
+
+  } catch {
+
+    return {
+      search: false,
+      reason:
+        'decision timeout'
+    };
+
   }
+
+}
+
+
+// ==========================================
+// TAVILY SEARCH
+// ==========================================
+
+async function tavilySearch(query) {
+
+  const tavilyKey =
+    process.env.TAVILY_API_KEY;
+
+  if (!tavilyKey) {
+
+    return {
+      enabled: false,
+      results: []
+    };
+
+  }
+
+
+  const res =
+    await fetchWithTimeout(
+
+      TAVILY_URL,
+
+      {
+        method: 'POST',
+
+        headers: {
+          'Content-Type':
+            'application/json',
+
+          'Authorization':
+            `Bearer ${tavilyKey}`
+        },
+
+        body: JSON.stringify({
+
+          api_key: tavilyKey,
+
+          query,
+
+          search_depth: 'basic',
+
+          topic: 'general',
+
+          max_results: 6,
+
+          include_answer: false,
+
+          include_raw_content: false
+
+        })
+      },
+
+      12000
+    );
+
+
+  if (!res.ok) {
+
+    const detail =
+      await res.text()
+        .catch(() => '');
+
+    throw new Error(
+      `Tavily search failed: ${res.status} ${detail.slice(0, 200)}`
+    );
+
+  }
+
+
+  const data =
+    await res.json();
+
+
+  const results =
+    Array.isArray(data.results)
+      ? data.results
+      : [];
+
 
   return {
-    verified: false, confidence: 0, status: 'unknown',
-    release_date: null, facts: [],
-    important_warning: 'Verifier could not confirm any facts.', raw: ''
+
+    enabled: true,
+
+    results:
+
+      results
+        .slice(0, 6)
+        .map((r, i) => ({
+
+          id: i + 1,
+
+          title:
+            r.title ||
+            `Source ${i + 1}`,
+
+          url:
+            r.url || '',
+
+          content:
+            r.content || ''
+
+        }))
+        .filter(r => r.url)
+
   };
+
 }
 
 
-/* =========================================================
-   VERIFIED FACTS → INSTRUCTION
-   ========================================================= */
+// ==========================================
+// BUILD SEARCH CONTEXT
+// ==========================================
 
-function buildVerifiedInstruction(verification) {
-  if (!verification?.verified) {
-    return `
-WEB EVIDENCE VERIFICATION:
-The evidence verifier could NOT produce a reliable structured verdict.
+function buildSearchContext(
+  searchData
+) {
 
-⚠️ CRITICAL RULES:
-1. Do NOT use old training-data memory to make confident time-sensitive claims.
-2. Do NOT say "definitely did not happen", "has not released", "no release date exists".
-3. If time-sensitive question, clearly state live web search did not return reliable evidence.
-4. Prefer "I couldn't verify this right now" over a wrong confident answer.
-`;
+  if (
+    !searchData?.results?.length
+  ) {
+    return '';
   }
 
-  let factsText = '';
-  for (const f of verification.facts || []) {
-    factsText += `\n- CLAIM: ${f.claim}\n- SOURCE: ${f.source}\n- SUPPORTING QUOTE: "${f.quote}"\n`;
-  }
+
+  const sources =
+    searchData.results
+
+      .map(r =>
+
+        `[SOURCE ${r.id}]
+Title: ${r.title}
+URL: ${r.url}
+Content: ${r.content}`
+
+      )
+
+      .join('\n\n');
+
 
   return `
-VERIFIED WEB FACTS — HARD CONSTRAINT:
 
-You MUST NOT contradict these verified facts.
+=== LIVE WEB SEARCH RESULTS ===
 
-VERIFIED STATUS: ${verification.status}
-VERIFIED RELEASE DATE: ${verification.release_date || 'Not established'}
-VERIFIER CONFIDENCE: ${verification.confidence}
+The following information was retrieved from
+the web for the user's current question.
 
-VERIFIED FACTS:
-${factsText || 'No individual facts were extracted.'}
+Treat these sources as the primary evidence
+for current facts.
 
-IMPORTANT WARNING: ${verification.important_warning || 'None'}
+Do not invent facts that are not supported
+by them.
 
-If verified facts contradict old knowledge, verified current evidence wins.
-If evidence says released today, DO NOT describe as unreleased.
-If evidence is insufficient, say so rather than guessing.
+
+${sources}
+
+
+=== WEB ANSWER RULES ===
+
+- Answer the user's question directly using
+  the web evidence.
+
+- If sources disagree, say so and explain
+  the difference.
+
+- For current/recent claims, cite the relevant
+  source inline as [Source 1], [Source 2], etc.
+
+- At the end, add a short "### Sources" section
+  listing only the sources you actually used,
+  as Markdown links.
+
+- Do not claim you browsed the web if no results
+  were returned.
+
 `;
+
 }
 
 
-/* =========================================================
-   STREAM GEMINI
-   ========================================================= */
+// ==========================================
+// APPEND SEARCH INSTRUCTION
+// ==========================================
 
-async function streamGemini(model, body, onChunk, onDone) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY not configured');
+function appendSourcesToInstruction(
+  instruction,
+  searchContext
+) {
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`;
+  return `${
+    instruction || ''
+  }${
+    searchContext || ''
+  }`;
 
-  const response = await fetchWithTimeout(
+}
+
+
+// ==========================================
+// GEMINI STREAM
+// ==========================================
+
+async function createGeminiStream(
+  apiKey,
+  modelName,
+  geminiBody
+) {
+
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+
+
+  return fetchWithTimeout(
+
     url,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
-    30000
+
+    {
+      method: 'POST',
+
+      headers: {
+        'Content-Type':
+          'application/json'
+      },
+
+      body:
+        JSON.stringify(geminiBody)
+
+    },
+
+    15000
   );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini ${model} HTTP ${response.status}: ${errorText}`);
-  }
-  if (!response.body) throw new Error('Gemini returned no response body');
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith('data:')) continue;
-      const jsonText = trimmed.slice(5).trim();
-      if (!jsonText || jsonText === '[DONE]') continue;
-      try {
-        const data = JSON.parse(jsonText);
-        const text = extractGeminiText(data);
-        if (text) onChunk(text);
-      } catch {}
-    }
-  }
-  onDone?.();
 }
 
 
-/* =========================================================
-   MAIN HANDLER
-   ========================================================= */
+// ==========================================
+// MAIN HANDLER
+// ==========================================
 
-export default async function handler(req) {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-  if (req.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+export default async function handler(
+  req
+) {
+
+  // OPTIONS
+  if (
+    req.method === 'OPTIONS'
+  ) {
+
+    return new Response(
+      null,
+      {
+        status: 200,
+        headers: CORS_HEADERS
+      }
+    );
+
   }
 
-  // 🎯 Payload size check (Vercel Edge limit ~1MB)
-  const contentLength = req.headers.get('content-length');
-  if (contentLength && parseInt(contentLength) > 1000000) {
-    return jsonResponse({
-      error: 'PAYLOAD_TOO_LARGE',
-      message: 'Chat too long. Please start a new chat.'
-    }, 413);
+
+  // ONLY POST
+  if (
+    req.method !== 'POST'
+  ) {
+
+    return new Response(
+
+      JSON.stringify({
+        error:
+          'Method not allowed'
+      }),
+
+      {
+        status: 405,
+
+        headers: {
+          ...CORS_HEADERS,
+
+          'Content-Type':
+            'application/json'
+        }
+
+      }
+
+    );
+
   }
 
+
+  // GEMINI KEY
+  const apiKey =
+    process.env.GEMINI_API_KEY;
+
+
+  if (!apiKey) {
+
+    return new Response(
+
+      JSON.stringify({
+        error:
+          'GEMINI_API_KEY not configured'
+      }),
+
+      {
+        status: 500,
+
+        headers: {
+          ...CORS_HEADERS,
+
+          'Content-Type':
+            'application/json'
+        }
+
+      }
+
+    );
+
+  }
+
+
+  // READ REQUEST
   let body;
+
   try {
-    body = await req.json();
-  } catch (e) {
-    return jsonResponse({
-      error: 'Invalid JSON or payload too large',
-      message: 'Request could not be parsed. Start a new chat if the conversation is very long.'
-    }, 413);
+
+    body =
+      await req.json();
+
+  } catch {
+
+    return new Response(
+
+      JSON.stringify({
+        error:
+          'Invalid JSON'
+      }),
+
+      {
+        status: 400,
+
+        headers: {
+          ...CORS_HEADERS,
+
+          'Content-Type':
+            'application/json'
+        }
+
+      }
+
+    );
+
   }
+
 
   const {
-    contents: rawContents = [],
-    systemInstruction = null,
-    generationConfig = {},
-    mode = 'fast'
+    contents,
+    systemInstruction,
+    generationConfig,
+    mode,
+
+    // 🌙 Dreaming
+    userId,
+    conversationId
+
   } = body;
 
-  if (!Array.isArray(rawContents)) {
-    return jsonResponse({ error: 'contents must be an array' }, 400);
+
+  const modelChain =
+    MODEL_CHAIN[mode] ||
+    MODEL_CHAIN.fast;
+
+
+  const latestUserText =
+    getLatestUserText(contents);
+
+
+  // ========================================
+  // 🌙 QUEUE DREAMING
+  // ========================================
+
+  if (
+    userId &&
+    latestUserText
+  ) {
+
+    await queueDreaming(
+      userId,
+      conversationId,
+      latestUserText
+    );
+
   }
 
-  // 🎯 TRUNCATE — sirf aakhri messages bhejo
-  const contents = truncateContents(rawContents);
 
-  const currentDate = getPakistanDate();
-  const currentDateTime = getPakistanDateTime();
-  const userQuery = getLastUserText(contents);
-  const searchNeeded = needsWebSearch(contents);
-  const releaseQuestion = isReleaseQuestion(userQuery);
-  const modelChain = MODEL_CHAIN[mode] || MODEL_CHAIN.fast;
+  // ========================================
+  // THINK → SEARCH DECISION
+  // ========================================
 
-  const encoder = new TextEncoder();
+  let searchDecision = {
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = payload => controller.enqueue(encoder.encode(sseEvent(payload)));
-      const sendStatus = status => send({ type: 'status', status });
+    search: false,
 
-      try {
-        /* STEP 1 */
-        sendStatus('🧠 Thinking...');
-        await new Promise(r => setTimeout(r, 150));
+    reason:
+      'no user text'
 
-        /* STEP 2 — WEB SEARCH */
-        let searchResults = [];
-        let tavilyAnswer = '';
-        let searchError = null;
-        let webContext = '';
+  };
 
-        if (searchNeeded && userQuery) {
-          sendStatus('🌐 Searching the web...');
-          const searchResponse = await tavilySearch(userQuery, currentDate);
-          searchResults = searchResponse.results || [];
-          tavilyAnswer = searchResponse.answer || '';
-          searchError = searchResponse.error || null;
 
-          if (searchResults.length > 0) {
-            sendStatus(`🔎 Found ${searchResults.length} sources → Checking sources...`);
-          } else if (searchError) {
-            sendStatus(`⚠️ Web search failed: ${searchError.substring(0, 80)}`);
-          } else {
-            sendStatus('🔎 Search returned no usable sources → Checking available knowledge...');
-          }
+  if (latestUserText) {
 
-          webContext = buildWebContext(searchResults, tavilyAnswer);
-        } else {
-          sendStatus('🔎 No live web search needed → Analyzing...');
-        }
+    searchDecision =
+      await askSearchDecision(
+        apiKey,
+        latestUserText
+      );
 
-        /* STEP 3 — VERIFY */
-        let verification = {
-          verified: false, confidence: 0, status: 'unknown',
-          release_date: null, facts: [], important_warning: null, raw: ''
-        };
+  }
 
-        if (searchNeeded && searchResults.length > 0) {
-          sendStatus('🛡️ Verifying web evidence...');
-          verification = await verifyWebEvidence({
-            userQuery, currentDate, webContext, releaseQuestion
-          });
-          if (verification.verified) {
-            sendStatus('✅ Evidence verified → 🧠 Analyzing...');
-          } else {
-            sendStatus('⚠️ Evidence could not be fully verified → 🧠 Analyzing...');
-          }
-        } else {
-          sendStatus('🧠 Analyzing...');
-        }
 
-        /* STEP 4 — INSTRUCTIONS */
-        const verifiedInstruction = buildVerifiedInstruction(verification);
+  // ========================================
+  // 🌐 WEB SEARCH
+  // ========================================
 
-        let searchFailureBlock = '';
-        if (searchNeeded && (searchError || searchResults.length === 0)) {
-          searchFailureBlock = `
-⚠️⚠️⚠️ CRITICAL WARNING — WEB SEARCH FAILED ⚠️⚠️⚠️
-User asked a TIME-SENSITIVE question, but live web search failed.
-Reason: ${searchError || 'No sources returned'}
+  let searchData = {
 
-RULES:
-1. DO NOT give confident yes/no about current events.
-2. DO NOT say "Nahi, ye release nahi hua" or "no release date".
-3. DO NOT use old training memory as current facts.
-4. START your answer with this EXACT Roman Urdu sentence:
-   "⚠️ Mujhe abhi live web search nahi mil rahi, isliye main latest information confirm nahi kar sakta. Ye jawab meri purani information par based hai aur ismein ghalthi ho sakti hai."
-5. Then MAY mention training data but label as "possibly outdated".
-6. Recommend user to check official sources.
-`;
-        }
+    enabled: false,
 
-        const webInstruction = searchNeeded
-          ? `
-LIVE WEB SEARCH DATA
-====================
-Current Pakistan date: ${currentDate}
-Current Pakistan date/time: ${currentDateTime}
-User's current query: ${userQuery}
+    results: []
 
-${webContext}
+  };
 
-Search error: ${searchError || 'None'}
 
-${searchFailureBlock}
-${verifiedInstruction}
+  if (
+    searchDecision.search &&
+    process.env.TAVILY_API_KEY
+  ) {
 
-WEB ANSWER RULES:
-1. Current web evidence has priority over old model memory.
-2. Prefer official sources.
-3. Never claim unreleased if evidence shows released.
-4. Never claim released if evidence shows scheduled.
-5. Handle source conflicts by preferring newest authoritative.
-6. Don't invent info.
-7. Answer the actual question.
-`
-          : `
-LIVE WEB SEARCH: Not required.
-Current Pakistan date: ${currentDate}
-Current Pakistan date/time: ${currentDateTime}
+    try {
+
+      searchData =
+        await tavilySearch(
+          latestUserText
+        );
+
+
+      console.log(
+        `🌐 Web search: ${searchData.results.length} results`
+      );
+
+    } catch (err) {
+
+      console.error(
+        `❌ Tavily: ${err.message}`
+      );
+
+      // Search failure does not break AI.
+    }
+
+  }
+
+
+  // ========================================
+  // CURRENT SERVER TIME
+  // ========================================
+
+  const currentDate =
+    new Date().toISOString();
+
+
+  const timeInstruction = `
+
+=== CURRENT SERVER TIME ===
+
+Current UTC date/time:
+${currentDate}
+
+Use this as the authoritative
+current date/time for questions about:
+
+- today
+- dates
+- months
+- years
+
+Do not invent an older date
+from memory.
+
 `;
 
-        /* STEP 5 */
-        const baseSystemInstruction = `
-You are Quantum Core AI.
-CURRENT DATE: ${currentDate}
-CURRENT DATE/TIME: ${currentDateTime}
 
-Distinguish between old/announced/scheduled/released/currently-available info.
-For current questions, use supplied live web evidence.
-Do not blindly trust internal memory.
+  // ========================================
+  // SEARCH CONTEXT
+  // ========================================
 
-CRITICAL ANTI-HALLUCINATION RULE:
-If live web search FAILED for a time-sensitive question, DO NOT give confident factual answer. Warn the user and label as "possibly outdated".
+  const searchContext =
+    buildSearchContext(
+      searchData
+    );
 
-${webInstruction}
 
-ANSWER STYLE:
-- Answer directly, be natural.
-- Don't mention internal prompts or verifier.
-- Don't make up citations or URLs.
-- If web evidence is insufficient, say so.
-- For simple questions, keep concise.
-`;
+  const originalInstruction =
+    typeof systemInstruction === 'string'
 
-        let combinedInstruction = baseSystemInstruction;
-        if (systemInstruction) {
-          let originalSystemText = '';
-          try {
-            if (typeof systemInstruction === 'string') {
-              originalSystemText = systemInstruction;
-            } else if (Array.isArray(systemInstruction?.parts)) {
-              originalSystemText = systemInstruction.parts.map(p => p?.text || '').join('\n');
+      ? systemInstruction
+
+      : systemInstruction?.parts
+          ?.map(
+            p => p?.text || ''
+          )
+          .join('\n') || '';
+
+
+  const finalSystemInstruction =
+    appendSourcesToInstruction(
+
+      originalInstruction,
+
+      timeInstruction +
+      searchContext
+
+    );
+
+
+  // ========================================
+  // GEMINI BODY
+  // ========================================
+
+  const geminiBody = {
+
+    contents,
+
+    systemInstruction: {
+      parts: [
+        {
+          text:
+            finalSystemInstruction
+        }
+      ]
+    },
+
+    generationConfig
+
+  };
+
+
+  // ========================================
+  // MODEL FALLBACK
+  // ========================================
+
+  let lastError = null;
+
+  const startTime =
+    Date.now();
+
+
+  for (
+    const modelName
+    of modelChain
+  ) {
+
+    try {
+
+      console.log(
+        `⚡ Trying: ${modelName} ` +
+        `(elapsed: ${
+          Date.now() - startTime
+        }ms, search: ${
+          searchDecision.search
+        })`
+      );
+
+
+      const geminiRes =
+        await createGeminiStream(
+
+          apiKey,
+
+          modelName,
+
+          geminiBody
+
+        );
+
+
+      // ====================================
+      // SUCCESS
+      // ====================================
+
+      if (geminiRes.ok) {
+
+        console.log(
+          `✅ Streaming: ${modelName} ` +
+          `(elapsed: ${
+            Date.now() - startTime
+          }ms)`
+        );
+
+
+        return new Response(
+
+          geminiRes.body,
+
+          {
+
+            status: 200,
+
+            headers: {
+
+              ...CORS_HEADERS,
+
+              'Content-Type':
+                'text/event-stream; charset=utf-8',
+
+              'Cache-Control':
+                'no-cache, no-transform',
+
+              'Connection':
+                'keep-alive',
+
+              'X-Accel-Buffering':
+                'no',
+
+              'X-Model-Used':
+                modelName,
+
+              'X-Web-Search':
+                searchData.results.length
+                  ? 'true'
+                  : 'false'
+
             }
-          } catch {}
-          if (originalSystemText) {
-            combinedInstruction += `\n\nEXISTING QUANTUM CORE SYSTEM INSTRUCTIONS:\n\n${originalSystemText}\n`;
+
           }
-        }
 
-        /* STEP 6 */
-        sendStatus('✍️ Writing answer...');
-        await new Promise(r => setTimeout(r, 100));
+        );
 
-        /* STEP 7 — FINAL STREAM */
-        const geminiBody = {
-          contents,
-          systemInstruction: { parts: [{ text: combinedInstruction }] },
-          generationConfig: {
-            ...generationConfig,
-            temperature: typeof generationConfig.temperature === 'number'
-              ? Math.min(generationConfig.temperature, 0.5)
-              : 0.35
-          }
-        };
-
-        let finalError = null;
-        let completed = false;
-
-        for (const model of modelChain) {
-          if (completed) break;
-          try {
-            await streamGemini(model, geminiBody, chunk => {
-              send({ type: 'chunk', text: chunk });
-            }, () => {});
-            completed = true;
-            send({ type: 'done' });
-          } catch (error) {
-            finalError = error?.message || String(error);
-          }
-        }
-
-        if (!completed) {
-          send({ type: 'error', error: finalError || 'All Gemini models failed.' });
-        }
-
-        controller.close();
-      } catch (error) {
-        send({ type: 'error', error: error?.message || String(error) });
-        controller.close();
       }
-    }
-  });
 
-  return new Response(stream, {
-    status: 200,
-    headers: {
-      ...CORS_HEADERS,
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no'
+
+      console.warn(
+        `⚠️ ${modelName} failed: ` +
+        `${geminiRes.status} ` +
+        `→ trying next...`
+      );
+
+
+      lastError =
+        new Error(
+          `Model ${modelName} failed: ${geminiRes.status}`
+        );
+
+
+    } catch (err) {
+
+      console.error(
+        `❌ ${modelName} error: ` +
+        `${err.message} → trying next...`
+      );
+
+
+      lastError =
+        err;
+
     }
-  });
+
+  }
+
+
+  // ========================================
+  // ALL MODELS FAILED
+  // ========================================
+
+  return new Response(
+
+    JSON.stringify({
+
+      error:
+        'All models failed. Please try again.',
+
+      details:
+        lastError
+          ? lastError.message
+          : 'Unknown'
+
+    }),
+
+    {
+
+      status: 502,
+
+      headers: {
+
+        ...CORS_HEADERS,
+
+        'Content-Type':
+          'application/json'
+
+      }
+
+    }
+
+  );
+
 }
