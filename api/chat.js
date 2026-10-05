@@ -805,7 +805,12 @@ export default async function handler(
 
   const latestUserText =
     getLatestUserText(contents);
-
+console.log("🌙 DREAM DEBUG:", {
+  hasUserId: !!userId,
+  hasConversationId: !!conversationId,
+  hasLatestUserText: !!latestUserText,
+  latestUserTextLength: latestUserText ? latestUserText.length : 0
+});
 
   // ========================================
   // 🌙 QUEUE DREAMING
