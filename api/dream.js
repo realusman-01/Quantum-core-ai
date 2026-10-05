@@ -163,18 +163,8 @@ function verifyEnvironment() {
   return missing;
 }
 
-export default async function handler(req) {
+async function dreamHandler(req) {
   try {
-    if (req.method !== "GET" && req.method !== "POST") {
-      return json(
-        {
-          ok: false,
-          error: "Method not allowed.",
-        },
-        405
-      );
-    }
-
     const missing = verifyEnvironment();
 
     if (missing.length) {
@@ -630,4 +620,16 @@ Maximum 8 operations.
       500
     );
   }
+}
+
+// -----------------------------------------
+// Vercel Web API handlers
+// -----------------------------------------
+
+export async function GET(req) {
+  return dreamHandler(req);
+}
+
+export async function POST(req) {
+  return dreamHandler(req);
 }
