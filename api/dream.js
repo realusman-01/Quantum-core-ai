@@ -4,6 +4,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const DREAM_SECRET = process.env.DREAM_SECRET;
+const CRON_SECRET = process.env.CRON_SECRET;
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -154,7 +155,10 @@ function verifyEnvironment() {
   if (!SUPABASE_URL) missing.push("SUPABASE_URL");
   if (!SUPABASE_SECRET_KEY) missing.push("SUPABASE_SECRET_KEY");
   if (!GEMINI_API_KEY) missing.push("GEMINI_API_KEY");
-  if (!DREAM_SECRET) missing.push("DREAM_SECRET");
+
+  if (!DREAM_SECRET && !CRON_SECRET) {
+    missing.push("DREAM_SECRET or CRON_SECRET");
+  }
 
   return missing;
 }
@@ -184,10 +188,25 @@ export default async function handler(req) {
       );
     }
 
-    // Protect the Dreaming endpoint.
+    // -----------------------------------------
+    // Protect the Dreaming endpoint
+    //
+    // Vercel Cron:
+    // Authorization: Bearer <CRON_SECRET>
+    //
+    // DREAM_SECRET is also accepted for
+    // backward compatibility with manual calls.
+    // -----------------------------------------
+
     const authorization = req.headers.get("authorization") || "";
 
-    if (authorization !== `Bearer ${DREAM_SECRET}`) {
+    const validDreamSecret =
+      DREAM_SECRET && authorization === `Bearer ${DREAM_SECRET}`;
+
+    const validCronSecret =
+      CRON_SECRET && authorization === `Bearer ${CRON_SECRET}`;
+
+    if (!validDreamSecret && !validCronSecret) {
       return json(
         {
           ok: false,
