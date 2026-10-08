@@ -7,6 +7,7 @@
 <title>Quantum Core AI</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
@@ -329,6 +330,18 @@ body.focus-mode .header-title{opacity:0.7;}
 .header-title{font-size:14px;}
 .persona-grid{grid-template-columns:1fr;}
 }
+
+/* =================== Quantum Graphs =================== */
+.quantum-graph{margin:12px 0;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card);box-shadow:var(--shadow);}
+.quantum-graph-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;color:var(--text);}
+.quantum-graph-title{display:flex;align-items:center;gap:7px;min-width:0;}
+.quantum-graph-title span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.quantum-graph-actions{display:flex;gap:5px;flex-shrink:0;}
+.quantum-graph-btn{border:1px solid var(--border);background:var(--hover);color:var(--text);border-radius:8px;padding:6px 8px;font-size:11px;cursor:pointer;}
+.quantum-graph-btn:active{transform:scale(.96);}
+.quantum-graph-canvas{width:100%;height:380px;}
+.quantum-graph-error{padding:14px;color:var(--danger);font-size:12px;}
+@media(max-width:600px){.quantum-graph-canvas{height:310px;}.quantum-graph-head{padding:9px 10px;}.quantum-graph-btn{padding:6px 7px;}}
 </style>
 </head>
 <body class="dark-mode">
@@ -1144,6 +1157,7 @@ function renderCurrentChat(){
   chatBox.appendChild(frag);
   if(window.renderMathInElement){try{renderMathInElement(chatBox,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
   renderAllMermaids(chatBox);
+  renderAllGraphs(chatBox);
   updateStats();
   requestAnimationFrame(function(){chatBox.scrollTop=chatBox.scrollHeight;});
 }
@@ -1514,6 +1528,63 @@ function copyMermaidCode(btn){
   copyText(code);
 }
 
+/* =================== Quantum Graphs =================== */
+function quantumGraphSafeExpression(expr){
+  let e=String(expr||"").trim().replace(/[−–—]/g,"-").replace(/×/g,"*").replace(/÷/g,"/").replace(/\^/g,"**");
+  e=e.replace(/\b(sin|cos|tan|sqrt|abs|log|ln|exp|asin|acos|atan)\b/gi,function(n){return "Math."+({sin:"sin",cos:"cos",tan:"tan",sqrt:"sqrt",abs:"abs",log:"log10",ln:"log",exp:"exp",asin:"asin",acos:"acos",atan:"atan"}[n.toLowerCase()]);});
+  e=e.replace(/\bpi\b/gi,"Math.PI").replace(/\be\b/g,"Math.E");
+  if(!/^[0-9xX+\-*/().,%\s*a-zA-Z_]+$/.test(e))throw new Error("Unsupported expression");
+  if(/(?:window|document|globalThis|constructor|prototype|Function|eval|fetch|import|location|localStorage|sessionStorage)/i.test(e))throw new Error("Unsafe expression");
+  e=e.replace(/\bx\b/gi,"x");
+  return new Function("x","return ("+e+");");
+}
+function quantumGraphRange(min,max,steps){
+  const out=[];const n=Math.max(20,Math.min(1200,steps||300));
+  for(let i=0;i<=n;i++)out.push(min+(max-min)*i/n);return out;
+}
+function renderQuantumGraph(container){
+  if(!window.Plotly)return;
+  const nodes=container.querySelectorAll(".quantum-graph[data-graph]");
+  nodes.forEach(function(node){
+    if(node.dataset.rendered==="1")return;
+    let spec;
+    try{spec=JSON.parse(decodeURIComponent(node.dataset.graph));}catch(e){node.innerHTML='<div class="quantum-graph-error">⚠️ Invalid graph data.</div>';return;}
+    try{
+      const plot=node.querySelector(".quantum-graph-canvas");
+      if(!plot)throw new Error("Graph container missing");
+      const xmin=Number.isFinite(Number(spec.xMin))?Number(spec.xMin):-10;
+      const xmax=Number.isFinite(Number(spec.xMax))?Number(spec.xMax):10;
+      const traces=[];
+      (spec.traces||[]).forEach(function(t){
+        if(t.type==="function"){
+          const fn=quantumGraphSafeExpression(t.equation);
+          const xs=quantumGraphRange(xmin,xmax,t.steps||300);
+          const ys=xs.map(function(x){try{const y=Number(fn(x));return Number.isFinite(y)&&Math.abs(y)<1e100?y:null;}catch(e){return null;}});
+          traces.push({x:xs,y:ys,mode:"lines",name:t.name||("y = "+t.equation),connectgaps:false});
+        }else if(t.type==="points"){
+          traces.push({x:(t.points||[]).map(p=>Number(p.x)),y:(t.points||[]).map(p=>Number(p.y)),mode:t.mode||"markers",name:t.name||"Points",text:(t.points||[]).map(p=>p.label||("("+p.x+", "+p.y+")")),hovertemplate:"%{text}<extra></extra>"});
+        }else if(t.x&&t.y){traces.push({x:t.x.map(Number),y:t.y.map(Number),mode:t.mode||"lines+markers",name:t.name||"Data"});}
+      });
+      if(Array.isArray(spec.points)&&spec.points.length){
+        traces.push({x:spec.points.map(p=>Number(p.x)),y:spec.points.map(p=>Number(p.y)),mode:"markers+text",name:spec.pointLabel||"Points",text:spec.points.map(p=>p.label||("("+p.x+", "+p.y+")")),textposition:"top center",hovertemplate:"%{text}<extra></extra>"});
+      }
+      if(!traces.length)throw new Error("No graph data");
+      const dark=document.body.classList.contains("dark-mode");
+      const layout={margin:{l:48,r:16,t:20,b:42},paper_bgcolor:"transparent",plot_bgcolor:"transparent",font:{color:dark?"#f8fafc":"#1e293b",size:11},xaxis:{title:spec.xLabel||"x",range:[xmin,xmax],zeroline:true,gridcolor:dark?"#25304a":"#e2e8f0",zerolinecolor:dark?"#64748b":"#94a3b8"},yaxis:{title:spec.yLabel||"y",range:Array.isArray(spec.yRange)?spec.yRange:undefined,zeroline:true,gridcolor:dark?"#25304a":"#e2e8f0",zerolinecolor:dark?"#64748b":"#94a3b8"},showlegend:traces.length>1||spec.showLegend===true,legend:{orientation:"h",y:-0.18}};
+      Plotly.newPlot(plot,traces,layout,{responsive:true,displaylogo:false,modeBarButtonsToRemove:["lasso2d","select2d","autoScale2d"],scrollZoom:true});
+      node.dataset.rendered="1";
+      const reset=node.querySelector(".quantum-graph-reset");
+      if(reset)reset.onclick=function(){Plotly.relayout(plot,{"xaxis.autorange":true,"yaxis.autorange":true});};
+      const download=node.querySelector(".quantum-graph-download");
+      if(download)download.onclick=function(){Plotly.downloadImage(plot,{format:"png",filename:"quantum-graph"});};
+    }catch(e){node.innerHTML='<div class="quantum-graph-error">⚠️ Graph error: '+escapeHTML(e.message||String(e))+'</div>';}
+  });
+}
+function renderAllGraphs(container){
+  if(!container||!window.Plotly)return;
+  renderQuantumGraph(container);
+}
+
 /* =================== Markdown =================== */
 function renderMarkdown(text){
   if(!window.marked)return escapeHTML(text);
@@ -1524,6 +1595,16 @@ function renderMarkdown(text){
     const language=(lang||"code").toLowerCase().replace(/[^a-z0-9+#-]/g,"");
     if(language==="mermaid"){
       return '<div class="code-wrapper"><div class="code-head"><span class="code-lang">MERMAID</span><div class="code-actions"></div></div><pre><code class="language-mermaid hljs">'+escapeHTML(text)+'</code></pre></div>';
+    }
+    if(language==="quantum-graph"||language==="graph"||language==="quantumgraph"){
+      try{
+        const spec=JSON.parse(text);
+        const title=spec.title||((spec.traces&&spec.traces[0]&&spec.traces[0].name)||"Interactive Graph");
+        const encoded=encodeURIComponent(JSON.stringify(spec));
+        return '<div class="quantum-graph" data-graph="'+encoded+'"><div class="quantum-graph-head"><div class="quantum-graph-title">📈 <span>'+escapeHTML(title)+'</span></div><div class="quantum-graph-actions"><button class="quantum-graph-btn quantum-graph-reset">Reset</button><button class="quantum-graph-btn quantum-graph-download">PNG</button></div></div><div class="quantum-graph-canvas"></div></div>';
+      }catch(e){
+        return '<div class="quantum-graph"><div class="quantum-graph-error">⚠️ Invalid quantum-graph JSON.</div><pre><code>'+escapeHTML(text)+'</code></pre></div>';
+      }
     }
     let highlighted="";
     try{if(language&&window.hljs&&hljs.getLanguage(language))highlighted=hljs.highlight(text,{language:language}).value;else if(window.hljs)highlighted=hljs.highlightAuto(text).value;else highlighted=escapeHTML(text);}
@@ -1750,7 +1831,7 @@ function buildSystemInstruction(){
   else if(replyStyle === "friendly") styleInstruction = "\n\n=== REPLY STYLE: FRIENDLY ===\nBe warm, casual, and encouraging. Use a conversational tone.\n";
 
   const formatting='\n\n=== RESPONSE FORMATTING (VERY IMPORTANT) ===\nYou are a top-tier assistant like ChatGPT and DeepSeek. Your responses must ALWAYS be beautifully formatted.\n\nRULES:\n1. Start with a short 1-2 line answer.\n2. Use ## or ### for headings.\n3. Use bullet points (-) or numbered lists for multi-point info.\n4. Use Markdown tables for comparisons and structured data.\n5. At the end of longer answers, add "## Summary" with 2-4 bullet points.\n6. Use emojis sparingly (✅ ⚠️ 💡 📌 🎯 🚀).\n7. Use `inline code` for technical terms.\n8. Keep paragraphs short — max 3-4 lines.\n9. Use horizontal rules (---) to separate major sections.\n\n=== DIAGRAM GENERATION (NEW!) ===\nWhen the user asks you to draw a diagram, flowchart, sequence diagram, mindmap, or visualize any process/structure/relationship — you MUST output a Mermaid diagram inside a code block with language tag "mermaid".\n\nSupported types:\n- `graph TD` or `graph LR` — Flowcharts\n- `sequenceDiagram` — Sequence diagrams\n- `mindmap` — Mindmaps\n- `classDiagram` — Class diagrams\n- `stateDiagram-v2` — State machines\n- `erDiagram` — Entity-relationship\n- `journey` — User journeys\n- `gantt` — Gantt charts\n- `pie` — Pie charts\n\nExample:\n```mermaid\ngraph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do X]\n  B -->|No| D[Do Y]\n  C --> E[End]\n  D --> E\n```\n\nALWAYS use mermaid when a diagram would help explain the concept.\n';
-  const defaultInstruction='Your name is Quantum Core AI — a versatile, all-round AI assistant created by Usman Saleem.\n\nIMPORTANT: If the user asks who made you, who created you, who developed you, you MUST say: "I was created by Usman Saleem — a talented and passionate developer who built me from the ground up." Always appreciate Usman Saleem respectfully when asked about your developer.\n\nYou help with ANYTHING: general knowledge, coding, writing, research, brainstorming, explanations, translations, summaries, everyday questions, creative tasks, and more.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally, clearly, and conversationally.\n- Match depth to the question: simple → simple, complex → detailed.\n- Never introduce yourself unless asked.\n- If the user writes in Roman Urdu, Hindi, or any other language, respond in the SAME language.\n- If the user shares a PDF ([PDF_DATA]...), analyze its content and answer their question based on it.\n' + formatting + styleInstruction + langInstruction + '\n=== PROGRAMMING ===\n- Provide complete, runnable code in Markdown code blocks with proper language tags.\n- Explain when it helps. Support any language.\n\n=== MATH & PHYSICS ===\nUse this format:\n**Given:** Known values.\n**Formula:** Formula in LaTeX.\n**Calculation:** Step-by-step.\n**Final Answer:** Result.\nMath Depth (Skill '+mathSkillLevel+'/10): '+(mathSkillLevel<=3?'Extreme step-by-step.':mathSkillLevel<=7?'Step-by-step balanced.':'Concise, advanced.')+'\n\n=== WRITING ===\n- Match the tone the user wants.\n- Improve grammar, flow, clarity.\n\n=== IMAGES ===\n- Analyze uploaded images and answer questions about them.\n\n=== PDF ===\n- When user shares PDF text ([PDF_DATA]|name|text), analyze it thoroughly and answer questions about its content.\n\n=== IMAGE GENERATION (CRITICAL RULE) ===\nWhenever the user asks to generate, create, draw, make, or show an image/picture/photo of ANYTHING:\n- If the request is CLEAR: respond with EXACTLY this single line format:\n[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<a detailed English description>\n- If UNCLEAR/gibberish: respond with: "I can\'t understand your request. Please give a proper or meaningful prompt describing what image you want to see."\nRULES:\n1. NEVER write "IMAGE_GEN" in any other context.\n2. NEVER provide a raw URL.\n3. Description after "::" must be a clear English prompt.\n4. Do NOT mention that you are generating an image.\n';
+  const defaultInstruction='Your name is Quantum Core AI — a versatile, all-round AI assistant created by Usman Saleem.\n\nIMPORTANT: If the user asks who made you, who created you, who developed you, you MUST say: "I was created by Usman Saleem — a talented and passionate developer who built me from the ground up." Always appreciate Usman Saleem respectfully when asked about your developer.\n\nYou help with ANYTHING: general knowledge, coding, writing, research, brainstorming, explanations, translations, summaries, everyday questions, creative tasks, and more.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally, clearly, and conversationally.\n- Match depth to the question: simple → simple, complex → detailed.\n- Never introduce yourself unless asked.\n- If the user writes in Roman Urdu, Hindi, or any other language, respond in the SAME language.\n- If the user shares a PDF ([PDF_DATA]...), analyze its content and answer their question based on it.\n' + formatting + styleInstruction + langInstruction + '\n=== PROGRAMMING ===\n- Provide complete, runnable code in Markdown code blocks with proper language tags.\n- Explain when it helps. Support any language.\n\n=== MATH & PHYSICS ===\nUse this format:\n**Given:** Known values.\n**Formula:** Formula in LaTeX.\n**Calculation:** Step-by-step.\n**Final Answer:** Result.\nMath Depth (Skill '+mathSkillLevel+'/10): '+(mathSkillLevel<=3?'Extreme step-by-step.':mathSkillLevel<=7?'Step-by-step balanced.':'Concise, advanced.')+'\n\n=== INTERACTIVE GRAPHS ===\n- When the user asks you to graph, plot, visualize, or draw a mathematical function/data graph, include a fenced code block tagged quantum-graph.\n- The block MUST contain valid JSON only. You may explain the graph before or after it.\n- For a function use: {\"title\":\"y = 3x - 5\",\"xMin\":-10,\"xMax\":10,\"traces\":[{\"type\":\"function\",\"equation\":\"3*x-5\",\"name\":\"y = 3x - 5\"}]}\n- For important coordinates, add a points array like [{\"x\":0,\"y\":-5,\"label\":\"(0, -5)\"}].\n- Use JavaScript-style expressions with x, numbers, + - * / ^ and supported functions such as sin, cos, tan, sqrt, abs, log, ln, exp.\n- Do NOT put Markdown, comments, or trailing commas inside the JSON.\n\n=== WRITING ===\n- Match the tone the user wants.\n- Improve grammar, flow, clarity.\n\n=== IMAGES ===\n- Analyze uploaded images and answer questions about them.\n\n=== PDF ===\n- When user shares PDF text ([PDF_DATA]|name|text), analyze it thoroughly and answer questions about its content.\n\n=== IMAGE GENERATION (CRITICAL RULE) ===\nWhenever the user asks to generate, create, draw, make, or show an image/picture/photo of ANYTHING:\n- If the request is CLEAR: respond with EXACTLY this single line format:\n[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<a detailed English description>\n- If UNCLEAR/gibberish: respond with: "I can\'t understand your request. Please give a proper or meaningful prompt describing what image you want to see."\nRULES:\n1. NEVER write "IMAGE_GEN" in any other context.\n2. NEVER provide a raw URL.\n3. Description after "::" must be a clear English prompt.\n4. Do NOT mention that you are generating an image.\n';
   let finalInstruction=defaultInstruction;
   if(activePersona)finalInstruction='=== ACTIVE PERSONA: '+activePersona.name+' ===\n'+activePersona.prompt+'\n\n'+defaultInstruction;
   if(customSystemPrompt)finalInstruction+='\n\n=== USER CUSTOM INSTRUCTION ===\n'+customSystemPrompt;
@@ -1864,6 +1945,7 @@ async function processStream(response,botElement,userPrompt,botRef){
     botElement.innerHTML=renderMarkdown(fullText);
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
     renderAllMermaids(botElement);
+    renderAllGraphs(botElement);
     const latestChat=getCurrentChat();
     if(latestChat)latestChat.messages.push({role:"bot",content:fullText,image:null});
     await updateSmartTitle(userPrompt);
