@@ -2,11 +2,6 @@ export const config = {
   runtime: 'edge'
 };
 
-// ============================================================
-// QUANTUM CORE AI - CHAT API
-// Optimized + Memory + Web Search + Streaming + Mermaid Safety
-// ============================================================
-
 const MODEL_CHAIN = {
   fast: [
     'gemini-3.5-flash-lite',
@@ -26,73 +21,48 @@ const GEMINI_API =
 const TAVILY_API =
   'https://api.tavily.com/search';
 
-const SUPABASE_TABLE_EVENTS = 'conversation_events';
-const SUPABASE_TABLE_JOBS = 'dream_jobs';
-const SUPABASE_TABLE_MEMORIES = 'memories';
-
-
-// ============================================================
-// CORS
-// ============================================================
-
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'Content-Type, Authorization'
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 };
 
 
 // ============================================================
-// RESPONSE HELPERS
+// BASIC RESPONSE
 // ============================================================
 
 function json(data, status = 200) {
-  return new Response(
-    JSON.stringify(data),
-    {
-      status,
-      headers: {
-        ...CORS_HEADERS,
-        'Content-Type': 'application/json'
-      }
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': 'application/json'
     }
-  );
+  });
 }
 
 
 // ============================================================
-// SUPABASE
+// TIMEOUT FETCH
 // ============================================================
 
-async function supabaseRequest(
-  path,
+async function fetchWithTimeout(
+  url,
   options = {},
-  timeout = 8000
+  timeout = 10000
 ) {
-  const url = `${process.env.SUPABASE_URL}/rest/v1/${path}`;
-
   const controller = new AbortController();
 
-  const timer = setTimeout(
-    () => controller.abort(),
-    timeout
-  );
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeout);
 
   try {
-    const response = await fetch(url, {
+    return await fetch(url, {
       ...options,
-      signal: controller.signal,
-      headers: {
-        apikey: process.env.SUPABASE_SECRET_KEY,
-        Authorization:
-          `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-        ...(options.headers || {})
-      }
+      signal: controller.signal
     });
-
-    return response;
   } finally {
     clearTimeout(timer);
   }
@@ -100,70 +70,40 @@ async function supabaseRequest(
 
 
 // ============================================================
-// DREAMING
+// EXTRACT TEXT FROM FRONTEND CONTENTS
 // ============================================================
 
-async function queueDreaming(userId, userText) {
-  if (!userId || !userText) return;
-
-  try {
-    // Save conversation event
-    await supabaseRequest(
-      SUPABASE_TABLE_EVENTS,
-      {
-        method: 'POST',
-        headers: {
-          Prefer: 'return=minimal'
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          role: 'user',
-          content: userText
-        })
-      },
-      5000
-    );
-
-    // Check whether a pending dream job already exists
-    const pendingResponse = await supabaseRequest(
-      `${SUPABASE_TABLE_JOBS}?user_id=eq.${encodeURIComponent(userId)}&status=eq.pending&select=id&limit=1`,
-      {
-        method: 'GET'
-      },
-      5000
-    );
-
-    if (!pendingResponse.ok) return;
-
-    const pendingJobs = await pendingResponse.json();
-
-    if (Array.isArray(pendingJobs) && pendingJobs.length > 0) {
-      return;
-    }
-
-    // Create a new pending dream job
-    await supabaseRequest(
-      SUPABASE_TABLE_JOBS,
-      {
-        method: 'POST',
-        headers: {
-          Prefer: 'return=minimal'
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          status: 'pending'
-        })
-      },
-      5000
-    );
-
-  } catch (error) {
-    // Dreaming must NEVER break chat
-    console.error(
-      'Dreaming queue error:',
-      error?.message || error
-    );
+function getLatestUserText(contents) {
+  if (!Array.isArray(contents)) {
+    return '';
   }
+
+  for (let i = contents.length - 1; i >= 0; i--) {
+    const message = contents[i];
+
+    if (
+      message &&
+      message.role === 'user' &&
+      Array.isArray(message.parts)
+    ) {
+      const text = message.parts
+        .map(part => {
+          if (typeof part?.text === 'string') {
+            return part.text;
+          }
+
+          return '';
+        })
+        .join(' ')
+        .trim();
+
+      if (text) {
+        return text;
+      }
+    }
+  }
+
+  return '';
 }
 
 
@@ -172,13 +112,26 @@ async function queueDreaming(userId, userText) {
 // ============================================================
 
 async function fetchMemories(userId, userText) {
-  if (!userId) return [];
+  if (!userId || !process.env.SUPABASE_URL) {
+    return [];
+  }
 
   try {
-    const response = await supabaseRequest(
-      `${SUPABASE_TABLE_MEMORIES}?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=50`,
+    const url =
+      `${process.env.SUPABASE_URL}/rest/v1/memories` +
+      `?user_id=eq.${encodeURIComponent(userId)}` +
+      `&select=*` +
+      `&limit=50`;
+
+    const response = await fetchWithTimeout(
+      url,
       {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+          apikey: process.env.SUPABASE_SECRET_KEY,
+          Authorization:
+            `Bearer ${process.env.SUPABASE_SECRET_KEY}`
+        }
       },
       6000
     );
@@ -193,25 +146,26 @@ async function fetchMemories(userId, userText) {
       return [];
     }
 
-    const text = String(userText || '').toLowerCase();
+    const text =
+      String(userText || '').toLowerCase();
 
-    // Lightweight local relevance scoring
+    const words = text
+      .split(/\s+/)
+      .filter(word => word.length >= 4);
+
     const scored = memories.map(memory => {
       const searchable = [
         memory.key,
         memory.value,
         memory.category,
-        memory.content
+        memory.content,
+        memory.type
       ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
 
       let score = 0;
-
-      const words = text
-        .split(/\s+/)
-        .filter(word => word.length >= 4);
 
       for (const word of words) {
         if (searchable.includes(word)) {
@@ -233,7 +187,7 @@ async function fetchMemories(userId, userText) {
 
   } catch (error) {
     console.error(
-      'Memory fetch error:',
+      'Memory error:',
       error?.message || error
     );
 
@@ -243,7 +197,7 @@ async function fetchMemories(userId, userText) {
 
 
 function buildMemoryContext(memories) {
-  if (!memories || !memories.length) {
+  if (!memories.length) {
     return '';
   }
 
@@ -273,73 +227,8 @@ ${lines.join('\n')}
 
 Use these memories naturally when relevant.
 Do not mention the memory system itself.
-Do not claim to remember something that is not present here.
+Do not invent memories.
 `;
-}
-
-
-// ============================================================
-// FETCH WITH TIMEOUT
-// ============================================================
-
-async function fetchWithTimeout(
-  url,
-  options = {},
-  timeout = 10000
-) {
-  const controller = new AbortController();
-
-  const timer = setTimeout(
-    () => controller.abort(),
-    timeout
-  );
-
-  try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-
-// ============================================================
-// LATEST USER MESSAGE
-// ============================================================
-
-function getLatestUserText(messages) {
-  if (!Array.isArray(messages)) return '';
-
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-
-    if (
-      message &&
-      message.role === 'user'
-    ) {
-      if (typeof message.content === 'string') {
-        return message.content;
-      }
-
-      if (Array.isArray(message.content)) {
-        return message.content
-          .map(part => {
-            if (typeof part === 'string') return part;
-
-            return (
-              part?.text ||
-              part?.content ||
-              ''
-            );
-          })
-          .join(' ');
-      }
-    }
-  }
-
-  return '';
 }
 
 
@@ -348,12 +237,13 @@ function getLatestUserText(messages) {
 // ============================================================
 
 function looksLikeFreshInfoQuestion(text) {
-  const t = String(text || '').toLowerCase();
+  const t =
+    String(text || '').toLowerCase();
 
   const patterns = [
     'latest',
     'today',
-    'todays',
+    "today's",
     'right now',
     'currently',
     'current',
@@ -369,13 +259,15 @@ function looksLikeFreshInfoQuestion(text) {
     'price today',
     'weather',
     'score',
+    'scores',
     'result',
     'results',
-    'who is the current',
-    'who won',
     'release date',
     'released',
-    'available now'
+    'available now',
+    'who won',
+    'current president',
+    'current prime minister'
   ];
 
   return patterns.some(
@@ -385,7 +277,8 @@ function looksLikeFreshInfoQuestion(text) {
 
 
 function definitelyDoesNotNeedSearch(text) {
-  const t = String(text || '').trim().toLowerCase();
+  const t =
+    String(text || '').trim().toLowerCase();
 
   if (!t) return true;
 
@@ -399,21 +292,18 @@ function definitelyDoesNotNeedSearch(text) {
     'homework',
     'physics numerical',
     'chemistry equation',
-    'write a paragraph',
-    'write an essay',
     'translate',
     'rewrite',
     'rephrase',
     'proofread',
-    'explain this code',
     'debug this code',
-    'what is',
-    'what are',
-    'define'
+    'explain this code'
   ];
 
   return patterns.some(
-    pattern => t.startsWith(pattern) || t.includes(pattern)
+    pattern =>
+      t.startsWith(pattern) ||
+      t.includes(pattern)
   );
 }
 
@@ -440,7 +330,7 @@ function extractModelText(data) {
     return data.text;
   }
 
-  if (data.candidates) {
+  if (Array.isArray(data.candidates)) {
     return data.candidates
       .map(candidate => {
         const parts =
@@ -462,19 +352,20 @@ function extractModelText(data) {
 // ============================================================
 
 async function askSearchDecision(userText) {
-  if (!userText) return false;
+  if (!userText) {
+    return false;
+  }
 
-  // Fresh information should search directly
   if (looksLikeFreshInfoQuestion(userText)) {
     return true;
   }
 
-  // Obvious stable tasks do not need search
   if (definitelyDoesNotNeedSearch(userText)) {
     return false;
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey =
+    process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     return false;
@@ -484,21 +375,23 @@ async function askSearchDecision(userText) {
     const url =
       `${GEMINI_API}${SEARCH_DECISION_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-    const response = await fetchWithTimeout(
-      url,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  text: `
-Decide whether the following user question needs
+    const response =
+      await fetchWithTimeout(
+        url,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json'
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    text: `
+Decide whether this user question requires
 a live web search.
 
 Return ONLY:
@@ -506,30 +399,32 @@ YES
 or
 NO
 
-Search when the answer may depend on current,
-recent, changing, real-world or time-sensitive information.
+Use YES when the answer depends on
+current, recent, changing, real-world,
+or time-sensitive information.
 
-User question:
+Question:
 ${userText}
 `
-                }
-              ]
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0,
+              maxOutputTokens: 3
             }
-          ],
-          generationConfig: {
-            temperature: 0,
-            maxOutputTokens: 3
-          }
-        })
-      },
-      6000
-    );
+          })
+        },
+        6000
+      );
 
     if (!response.ok) {
       return false;
     }
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
     const answer =
       extractModelText(data)
@@ -550,46 +445,50 @@ ${userText}
 
 
 // ============================================================
-// TAVILY SEARCH
+// TAVILY
 // ============================================================
 
 async function tavilySearch(query) {
-  const apiKey = process.env.TAVILY_API_KEY;
+  const apiKey =
+    process.env.TAVILY_API_KEY;
 
   if (!apiKey || !query) {
     return [];
   }
 
   try {
-    const response = await fetchWithTimeout(
-      TAVILY_API,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
+    const response =
+      await fetchWithTimeout(
+        TAVILY_API,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json'
+          },
+          body: JSON.stringify({
+            api_key: apiKey,
+            query,
+            search_depth: 'basic',
+            max_results: 6,
+            include_answer: false,
+            include_raw_content: false
+          })
         },
-        body: JSON.stringify({
-          api_key: apiKey,
-          query,
-          search_depth: 'basic',
-          max_results: 6,
-          include_answer: false,
-          include_raw_content: false
-        })
-      },
-      10000
-    );
+        10000
+      );
 
     if (!response.ok) {
       console.error(
-        'Tavily HTTP error:',
+        'Tavily HTTP:',
         response.status
       );
 
       return [];
     }
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
     return Array.isArray(data?.results)
       ? data.results
@@ -611,7 +510,7 @@ async function tavilySearch(query) {
 // ============================================================
 
 function buildSearchContext(results) {
-  if (!results || !results.length) {
+  if (!results.length) {
     return '';
   }
 
@@ -628,21 +527,10 @@ ${result?.content || ''}
 `)
   .join('\n')}
 
-Use these results when answering current-information questions.
-Do not invent information that is not supported by the results.
+Use the web results when relevant.
+Do not invent facts that are contradicted
+by the search results.
 `;
-}
-
-
-// ============================================================
-// IMPORTANT FIX
-// ============================================================
-
-function appendSourcesToInstruction(
-  instruction,
-  searchContext
-) {
-  return `${instruction || ''}${searchContext || ''}`;
 }
 
 
@@ -652,46 +540,212 @@ function appendSourcesToInstruction(
 
 const diagramInstruction = `
 
-DIAGRAM / MERMAID SAFETY:
+DIAGRAM SAFETY:
 
-When generating Mermaid diagrams:
+When creating Mermaid diagrams:
 
-1. Use valid Mermaid syntax only.
-2. Never put raw coordinate pairs such as:
-   P1(-1, -1)
-   inside Mermaid node definitions.
-3. If coordinates are needed, describe them as normal text.
-4. Never put stray characters after Mermaid nodes.
-5. Keep node IDs simple:
-   A, B, C, P1, P2, etc.
-6. Use safe syntax such as:
+- Use valid Mermaid syntax.
+- Keep node IDs simple.
+- Never use raw coordinate pairs as node IDs.
+- Never place stray characters after nodes.
+- Never mix normal text into Mermaid code fences.
+- Close every Mermaid code fence.
+
+For mathematical diagrams, prefer safe syntax such as:
 
 flowchart LR
     A["Point A"]
     B["Point B"]
     A --> B
 
-7. For mathematical diagrams, prefer simple
-   flowcharts unless another Mermaid diagram type
-   is clearly required.
-8. Do not mix normal prose into Mermaid code fences.
-9. Always close Mermaid code fences properly.
-
-If a diagram is unnecessary, answer normally without Mermaid.
+Do not generate a Mermaid diagram unless useful.
 `;
 
 
 // ============================================================
-// GEMINI STREAM
+// CUSTOM SSE HELPERS
 // ============================================================
 
-async function createGeminiStream({
+function sseEvent(data) {
+  return `data: ${JSON.stringify(data)}\n\n`;
+}
+
+
+// ============================================================
+// GEMINI STREAM -> QUANTUM CORE STREAM
+// ============================================================
+
+async function streamGeminiToClient(
+  geminiResponse
+) {
+  const source =
+    geminiResponse.body;
+
+  if (!source) {
+    throw new Error(
+      'Gemini returned no stream body'
+    );
+  }
+
+  const reader =
+    source.getReader();
+
+  const decoder =
+    new TextDecoder();
+
+  const encoder =
+    new TextEncoder();
+
+  let buffer = '';
+
+  const stream =
+    new ReadableStream({
+      async start(controller) {
+
+        try {
+
+          // Initial status
+          controller.enqueue(
+            encoder.encode(
+              sseEvent({
+                type: 'status',
+                status: 'Thinking...'
+              })
+            )
+          );
+
+          while (true) {
+
+            const result =
+              await reader.read();
+
+            if (result.done) {
+              break;
+            }
+
+            buffer += decoder.decode(
+              result.value,
+              {
+                stream: true
+              }
+            );
+
+            const lines =
+              buffer.split('\n');
+
+            buffer =
+              lines.pop() || '';
+
+            for (
+              const line of lines
+            ) {
+
+              const trimmed =
+                line.trim();
+
+              if (
+                !trimmed.startsWith(
+                  'data:'
+                )
+              ) {
+                continue;
+              }
+
+              const raw =
+                trimmed
+                  .substring(5)
+                  .trim();
+
+              if (
+                !raw ||
+                raw === '[DONE]'
+              ) {
+                continue;
+              }
+
+              let parsed;
+
+              try {
+                parsed =
+                  JSON.parse(raw);
+              } catch {
+                continue;
+              }
+
+              const text =
+                extractModelText(
+                  parsed
+                );
+
+              if (!text) {
+                continue;
+              }
+
+              controller.enqueue(
+                encoder.encode(
+                  sseEvent({
+                    type: 'chunk',
+                    text
+                  })
+                )
+              );
+            }
+          }
+
+          controller.enqueue(
+            encoder.encode(
+              sseEvent({
+                type: 'done'
+              })
+            )
+          );
+
+          controller.close();
+
+        } catch (error) {
+
+          console.error(
+            'Stream conversion error:',
+            error?.message || error
+          );
+
+          controller.enqueue(
+            encoder.encode(
+              sseEvent({
+                type: 'error',
+                error:
+                  error?.message ||
+                  'Streaming error'
+              })
+            )
+          );
+
+          controller.close();
+
+        } finally {
+          try {
+            reader.releaseLock();
+          } catch {}
+        }
+      }
+    });
+
+  return stream;
+}
+
+
+// ============================================================
+// GEMINI REQUEST
+// ============================================================
+
+async function createGeminiResponse({
   model,
-  messages,
+  contents,
   systemInstruction,
-  temperature = 0.7
+  generationConfig
 }) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey =
+    process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error(
@@ -702,78 +756,60 @@ async function createGeminiStream({
   const url =
     `${GEMINI_API}${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
-  const contents = Array.isArray(messages)
-    ? messages.map(message => ({
-        role:
-          message.role === 'assistant'
-            ? 'model'
-            : 'user',
-        parts: [
-          {
-            text:
-              typeof message.content === 'string'
-                ? message.content
-                : JSON.stringify(message.content)
-          }
-        ]
-      }))
-    : [];
+  const controller =
+    new AbortController();
 
-  const body = {
-    systemInstruction: {
-      parts: [
-        {
-          text:
-            systemInstruction || ''
-        }
-      ]
-    },
-
-    contents,
-
-    generationConfig: {
-      temperature,
-      maxOutputTokens: 4096
-    }
-  };
-
-  // IMPORTANT:
-  // Only timeout connection establishment.
-  // Do NOT abort the actual streaming response.
-  const controller = new AbortController();
-
-  const connectionTimer = setTimeout(
-    () => controller.abort(),
-    15000
-  );
+  // Only connection timeout.
+  // Once Gemini starts responding,
+  // the stream is NOT aborted.
+  const timer =
+    setTimeout(
+      () => controller.abort(),
+      15000
+    );
 
   let response;
 
   try {
-    response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    });
+
+    response =
+      await fetch(
+        url,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json'
+          },
+          body: JSON.stringify({
+            contents,
+            systemInstruction: {
+              parts: [
+                {
+                  text:
+                    systemInstruction
+                }
+              ]
+            },
+            generationConfig
+          }),
+          signal: controller.signal
+        }
+      );
+
   } finally {
-    clearTimeout(connectionTimer);
+    clearTimeout(timer);
   }
 
   if (!response.ok) {
+
     const errorText =
-      await response.text().catch(() => '');
+      await response
+        .text()
+        .catch(() => '');
 
     throw new Error(
-      `Gemini ${model} HTTP ${response.status}: ${errorText}`
-    );
-  }
-
-  if (!response.body) {
-    throw new Error(
-      'Gemini returned no response body'
+      `Gemini ${model} HTTP ${response.status}: ${errorText.substring(0, 300)}`
     );
   }
 
@@ -787,32 +823,30 @@ async function createGeminiStream({
 
 export default async function handler(req) {
 
-  // ----------------------------------------------------------
   // OPTIONS
-  // ----------------------------------------------------------
-
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: CORS_HEADERS
-    });
+    return new Response(
+      null,
+      {
+        status: 204,
+        headers: CORS_HEADERS
+      }
+    );
   }
 
-  // ----------------------------------------------------------
-  // METHOD
-  // ----------------------------------------------------------
-
+  // POST ONLY
   if (req.method !== 'POST') {
     return json(
       {
-        error: 'Method not allowed'
+        error:
+          'Method not allowed'
       },
       405
     );
   }
 
   // ----------------------------------------------------------
-  // PARSE BODY
+  // READ FRONTEND BODY
   // ----------------------------------------------------------
 
   let body;
@@ -820,85 +854,72 @@ export default async function handler(req) {
   try {
     body = await req.json();
   } catch (error) {
+
     return json(
       {
-        error: 'Invalid JSON body'
+        error:
+          'Invalid request body'
       },
       400
     );
   }
 
-  const messages =
-    Array.isArray(body?.messages)
-      ? body.messages
+  // THIS MATCHES YOUR FRONTEND EXACTLY
+  const contents =
+    Array.isArray(body?.contents)
+      ? body.contents
       : [];
 
   const userId =
-    body?.userId ||
-    body?.user_id ||
-    '';
+    body?.userId || '';
 
-  const mode =
-    body?.mode ||
-    'core';
+  const conversationId =
+    body?.conversationId || '';
 
-  const originalInstruction =
-    body?.systemInstruction ||
-    body?.system ||
-    `
-You are Quantum Core AI.
+  const activeMode =
+    body?.mode || 'core';
 
-Be helpful, accurate, natural and concise.
-Think through problems carefully before answering.
-Use the user's conversation context when available.
+  const generationConfig =
+    body?.generationConfig &&
+    typeof body.generationConfig === 'object'
+      ? body.generationConfig
+      : {
+          temperature: 0.7
+        };
 
-For mathematics and physics:
-show clear step-by-step working when useful.
-
-For coding:
-provide practical, working code and explain important fixes.
-
-Do not fabricate facts.
-If live information is required, use the provided web search results.
-`;
 
   // ----------------------------------------------------------
-  // USER TEXT
+  // VALIDATION
   // ----------------------------------------------------------
 
-  const userText =
-    getLatestUserText(messages);
+  if (!contents.length) {
 
-  if (!userText) {
     return json(
       {
-        error: 'No user message found'
+        error:
+          'Invalid request: contents missing'
       },
       400
     );
   }
 
-  // ----------------------------------------------------------
-  // START NON-BLOCKING DREAMING
-  // ----------------------------------------------------------
+  const userText =
+    getLatestUserText(contents);
 
-  // We intentionally do NOT use context.waitUntil().
-  // This keeps the handler compatible and avoids runtime issues.
+  if (!userText) {
 
-  if (userId) {
-    queueDreaming(
-      userId,
-      userText
-    ).catch(error => {
-      console.error(
-        'Background dreaming error:',
-        error?.message || error
-      );
-    });
+    return json(
+      {
+        error:
+          'Invalid request: user message missing'
+      },
+      400
+    );
   }
 
+
   // ----------------------------------------------------------
-  // MEMORY + SEARCH DECISION IN PARALLEL
+  // MEMORY + SEARCH DECISION
   // ----------------------------------------------------------
 
   const memoryPromise =
@@ -907,28 +928,33 @@ If live information is required, use the provided web search results.
       userText
     );
 
-  const searchDecisionPromise =
+  const searchPromise =
     askSearchDecision(
       userText
     );
+
 
   let memories = [];
   let shouldSearch = false;
 
   try {
+
     [
       memories,
       shouldSearch
     ] = await Promise.all([
       memoryPromise,
-      searchDecisionPromise
+      searchPromise
     ]);
+
   } catch (error) {
+
     console.error(
-      'Parallel preparation error:',
+      'Preparation error:',
       error?.message || error
     );
   }
+
 
   // ----------------------------------------------------------
   // WEB SEARCH
@@ -937,15 +963,21 @@ If live information is required, use the provided web search results.
   let searchResults = [];
 
   if (shouldSearch) {
+
     searchResults =
       await tavilySearch(
         userText
       );
   }
 
+
   // ----------------------------------------------------------
-  // CONTEXT
+  // SYSTEM INSTRUCTION
   // ----------------------------------------------------------
+
+  const clientInstruction =
+    body?.systemInstruction?.parts?.[0]?.text ||
+    '';
 
   const memoryContext =
     buildMemoryContext(
@@ -957,57 +989,70 @@ If live information is required, use the provided web search results.
       searchResults
     );
 
-  const timeInstruction = `
+  const finalSystemInstruction = `
 
-CURRENT DATE CONTEXT:
-The current date is October 8, 2026.
-If a question involves relative dates,
-interpret them using this date unless
-the conversation provides a different context.
+${clientInstruction}
+
+CURRENT DATE:
+October 8, 2026.
+
+${memoryContext}
+
+${searchContext}
+
+${diagramInstruction}
+
+GENERAL RULES:
+- Be accurate and helpful.
+- Follow the user's requested language.
+- Do not invent facts.
+- For math and physics, show useful working.
+- For coding, provide working code.
+- Use web results for current information when provided.
 `;
 
-  const finalSystemInstruction =
-    appendSourcesToInstruction(
-      originalInstruction,
-      memoryContext +
-      timeInstruction +
-      diagramInstruction +
-      searchContext
-    );
 
   // ----------------------------------------------------------
   // MODEL CHAIN
   // ----------------------------------------------------------
 
   const chain =
-    mode === 'fast'
+    activeMode === 'fast'
       ? MODEL_CHAIN.fast
       : MODEL_CHAIN.core;
 
+
   let lastError = null;
 
+
   // ----------------------------------------------------------
-  // STREAMING RESPONSE
+  // TRY MODELS
   // ----------------------------------------------------------
 
   for (const model of chain) {
 
     try {
 
-      const response =
-        await createGeminiStream({
+      const geminiResponse =
+        await createGeminiResponse({
           model,
-          messages,
+          contents,
           systemInstruction:
             finalSystemInstruction,
-          temperature:
-            mode === 'fast'
-              ? 0.5
-              : 0.7
+          generationConfig
         });
 
+
+      // Convert Gemini SSE into
+      // the format your frontend expects.
+      const stream =
+        await streamGeminiToClient(
+          geminiResponse
+        );
+
+
       return new Response(
-        response.body,
+        stream,
         {
           status: 200,
           headers: {
@@ -1025,16 +1070,17 @@ the conversation provides a different context.
       lastError = error;
 
       console.error(
-        `Gemini model ${model} failed:`,
+        `Model ${model} failed:`,
         error?.message || error
       );
 
-      // Try next fallback model
+      // Try fallback model
     }
   }
 
+
   // ----------------------------------------------------------
-  // ALL MODELS FAILED
+  // EVERYTHING FAILED
   // ----------------------------------------------------------
 
   return json(
@@ -1043,7 +1089,7 @@ the conversation provides a different context.
         'All Gemini models failed',
       details:
         lastError?.message ||
-        'Unknown Gemini error'
+        'Unknown server error'
     },
     500
   );
