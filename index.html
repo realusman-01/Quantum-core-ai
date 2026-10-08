@@ -1890,6 +1890,11 @@ async function processStream(response,botElement,userPrompt,botRef){
       lastRenderTime=performance.now();
       requestAnimationFrame(function(){
         botElement.innerHTML=renderStreamText(fullText);
+        if(window.mermaid){
+  try{
+    mermaid.run({nodes:botElement.querySelectorAll('.mermaid')});
+  }catch(e){}
+}
         if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
         if(autoScrollEnabled){chatBox.scrollTop=chatBox.scrollHeight;}
       });
