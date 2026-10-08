@@ -24,7 +24,6 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
 
 async function supabaseRequest(path, options = {}, timeoutMs = 8000) {
-
   if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
     throw new Error('Supabase environment variables are missing.');
   }
@@ -37,23 +36,15 @@ async function supabaseRequest(path, options = {}, timeoutMs = 8000) {
   );
 
   try {
-
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/${path}`,
       {
         ...options,
-
         signal: controller.signal,
-
         headers: {
           apikey: SUPABASE_SECRET_KEY,
-
-          Authorization:
-            `Bearer ${SUPABASE_SECRET_KEY}`,
-
-          'Content-Type':
-            'application/json',
-
+          Authorization: `Bearer ${SUPABASE_SECRET_KEY}`,
+          'Content-Type': 'application/json',
           ...(options.headers || {})
         }
       }
@@ -64,11 +55,9 @@ async function supabaseRequest(path, options = {}, timeoutMs = 8000) {
     const text = await response.text();
 
     if (!response.ok) {
-
       throw new Error(
         `Supabase ${response.status}: ${text.slice(0, 300)}`
       );
-
     }
 
     try {
@@ -78,13 +67,10 @@ async function supabaseRequest(path, options = {}, timeoutMs = 8000) {
     }
 
   } catch (error) {
-
     clearTimeout(timeoutId);
-
     throw error;
   }
 }
-
 
 // ==========================================
 // QUEUE QUANTUM DREAMING
@@ -95,7 +81,6 @@ async function queueDreaming(
   conversationId,
   userText
 ) {
-
   if (
     !userId ||
     !userText ||
@@ -112,7 +97,6 @@ async function queueDreaming(
   if (!content) return;
 
   try {
-
     const safeUserId =
       String(userId).slice(0, 200);
 
@@ -121,37 +105,23 @@ async function queueDreaming(
         ? String(conversationId).slice(0, 200)
         : null;
 
-
-    // Save latest user message
     await supabaseRequest(
       'conversation_events',
       {
         method: 'POST',
-
         headers: {
           Prefer: 'return=minimal'
         },
-
         body: JSON.stringify({
-
-          user_id:
-            safeUserId,
-
-          conversation_id:
-            safeConversationId,
-
-          role:
-            'user',
-
+          user_id: safeUserId,
+          conversation_id: safeConversationId,
+          role: 'user',
           content
-
         })
       },
       7000
     );
 
-
-    // Check pending Dream job
     const pending =
       await supabaseRequest(
         `dream_jobs?user_id=eq.${encodeURIComponent(
@@ -161,35 +131,24 @@ async function queueDreaming(
         5000
       );
 
-
-    // Prevent duplicate jobs
     if (
       !Array.isArray(pending) ||
       pending.length === 0
     ) {
-
       await supabaseRequest(
         'dream_jobs',
         {
           method: 'POST',
-
           headers: {
             Prefer: 'return=minimal'
           },
-
           body: JSON.stringify({
-
-            user_id:
-              safeUserId,
-
-            status:
-              'pending'
-
+            user_id: safeUserId,
+            status: 'pending'
           })
         },
         7000
       );
-
     }
 
     console.log(
@@ -197,25 +156,21 @@ async function queueDreaming(
     );
 
   } catch (error) {
-
     console.error(
       '🌙 Dreaming queue failed:',
       error?.message || error
     );
-
   }
 }
 
-
 // ==========================================
-// 🧠 QUANTUM MEMORY RECALL
+// QUANTUM MEMORY RECALL
 // ==========================================
 
 async function fetchMemories(
   userId,
   userText
 ) {
-
   if (
     !userId ||
     !SUPABASE_URL ||
@@ -225,7 +180,6 @@ async function fetchMemories(
   }
 
   try {
-
     const memories =
       await supabaseRequest(
         `memories?user_id=eq.${encodeURIComponent(
@@ -235,11 +189,9 @@ async function fetchMemories(
         7000
       );
 
-
     if (!Array.isArray(memories)) {
       return [];
     }
-
 
     const queryWords =
       String(userText || '')
@@ -251,72 +203,47 @@ async function fetchMemories(
           word => word.length >= 3
         );
 
-
     const scored =
       memories.map(memory => {
-
         const content =
-          String(
-            memory?.content || ''
-          );
+          String(memory?.content || '');
 
         const key =
-          String(
-            memory?.memory_key || ''
-          );
+          String(memory?.memory_key || '');
 
         const type =
-          String(
-            memory?.memory_type || ''
-          );
-
+          String(memory?.memory_type || '');
 
         const searchable =
           `${key} ${content} ${type}`
             .toLowerCase();
 
-
         let score = 0;
-
 
         if (type === 'profile') {
           score += 5;
         }
 
-
         for (const word of queryWords) {
-
-          if (
-            searchable.includes(word)
-          ) {
+          if (searchable.includes(word)) {
             score += 3;
           }
-
         }
 
-
         const importance =
-          Number(
-            memory?.importance || 0
-          );
+          Number(memory?.importance || 0);
 
         const confidence =
-          Number(
-            memory?.confidence || 0
-          );
-
+          Number(memory?.confidence || 0);
 
         score += importance * 2;
         score += confidence;
-
 
         return {
           ...memory,
           _score: score
         };
-
       });
-
 
     return scored
       .sort(
@@ -325,9 +252,7 @@ async function fetchMemories(
       )
       .slice(0, 10);
 
-
   } catch (error) {
-
     console.error(
       '🧠 Memory recall failed:',
       error?.message || error
@@ -335,18 +260,13 @@ async function fetchMemories(
 
     return [];
   }
-
 }
 
-
 // ==========================================
-// 🧠 BUILD MEMORY CONTEXT
+// BUILD MEMORY CONTEXT
 // ==========================================
 
-function buildMemoryContext(
-  memories
-) {
-
+function buildMemoryContext(memories) {
   if (
     !Array.isArray(memories) ||
     memories.length === 0
@@ -354,25 +274,21 @@ function buildMemoryContext(
     return '';
   }
 
-
   const memoryLines =
     memories
       .map(
         (memory, index) => {
-
           const type =
             String(
               memory?.memory_type ||
               'general'
             );
 
-
           const key =
             String(
               memory?.memory_key ||
               ''
             );
-
 
           const content =
             String(
@@ -381,16 +297,13 @@ function buildMemoryContext(
               .trim()
               .slice(0, 700);
 
-
           return `[MEMORY ${index + 1}]
 Type: ${type}
 Key: ${key}
 Content: ${content}`;
-
         }
       )
       .join('\n\n');
-
 
   return `
 
@@ -418,25 +331,19 @@ ${memoryLines}
 === END QUANTUM CORE MEMORY ===
 
 `;
-
 }
 
-
 // ==========================================
-// FETCH WITH TIMEOUT
+// NORMAL REQUEST TIMEOUT
 // ==========================================
-// For normal requests.
-// Timeout is cleared as soon as headers arrive.
 
 async function fetchWithTimeout(
   url,
   options,
   timeoutMs = 10000
 ) {
-
   const controller =
     new AbortController();
-
 
   const timeoutId =
     setTimeout(
@@ -444,50 +351,39 @@ async function fetchWithTimeout(
       timeoutMs
     );
 
-
   try {
-
     const response =
       await fetch(
         url,
         {
           ...options,
-          signal:
-            controller.signal
+          signal: controller.signal
         }
       );
-
 
     clearTimeout(timeoutId);
 
     return response;
 
   } catch (err) {
-
     clearTimeout(timeoutId);
-
     throw err;
   }
-
 }
 
-
 // ==========================================
-// STREAMING FETCH
+// STREAM CONNECTION TIMEOUT
 // ==========================================
-// IMPORTANT:
-// This timeout ONLY protects connection/header
-// establishment. It does NOT abort a long stream.
+// Only protects initial connection.
+// Once headers arrive, the stream can continue.
 
 async function fetchStreaming(
   url,
   options,
   connectionTimeoutMs = 12000
 ) {
-
   const controller =
     new AbortController();
-
 
   const timeoutId =
     setTimeout(
@@ -495,59 +391,42 @@ async function fetchStreaming(
       connectionTimeoutMs
     );
 
-
   try {
-
     const response =
       await fetch(
         url,
         {
           ...options,
-          signal:
-            controller.signal
+          signal: controller.signal
         }
       );
 
-
-    // Headers arrived successfully.
-    // From this point the stream may continue
-    // for as long as Gemini needs.
     clearTimeout(timeoutId);
 
     return response;
 
   } catch (err) {
-
     clearTimeout(timeoutId);
-
     throw err;
   }
-
 }
-
 
 // ==========================================
 // GET LATEST USER TEXT
 // ==========================================
 
-function getLatestUserText(
-  contents
-) {
-
+function getLatestUserText(contents) {
   if (!Array.isArray(contents)) {
     return '';
   }
-
 
   for (
     let i = contents.length - 1;
     i >= 0;
     i--
   ) {
-
     const item =
       contents[i];
-
 
     if (
       item?.role !== 'user' ||
@@ -555,7 +434,6 @@ function getLatestUserText(
     ) {
       continue;
     }
-
 
     const text =
       item.parts
@@ -569,37 +447,28 @@ function getLatestUserText(
         .join('\n')
         .trim();
 
-
     if (text) {
       return text;
     }
-
   }
 
   return '';
 }
 
-
 // ==========================================
 // FRESH INFORMATION DETECTION
 // ==========================================
 
-function looksLikeFreshInfoQuestion(
-  text
-) {
-
+function looksLikeFreshInfoQuestion(text) {
   const q =
     String(text || '')
       .toLowerCase();
-
 
   if (!q) {
     return false;
   }
 
-
   const patterns = [
-
     /\b(today|tonight|tomorrow|yesterday|right now|currently|current|latest|recent|newest|this week|this month|this year|as of now)\b/i,
 
     /\b(aaj|abhi|kal|filhal|maujooda|haal hi|latest|recent)\b/i,
@@ -613,37 +482,27 @@ function looksLikeFreshInfoQuestion(
     /\bwhen (is|will|did)\b.*\b(release|released|premiere|air|start)\b/i,
 
     /\b(ho gaya|ho gya|aa gaya|a gaya|release hua|release ho|kab release|kab aya|kab aaya)\b/i
-
   ];
-
 
   return patterns.some(
     re => re.test(q)
   );
-
 }
 
-
 // ==========================================
-// SEARCH DECISION FAST FILTER
+// STABLE QUESTION DETECTION
 // ==========================================
 
-function definitelyDoesNotNeedSearch(
-  text
-) {
-
+function definitelyDoesNotNeedSearch(text) {
   const q =
     String(text || '')
       .trim()
       .toLowerCase();
 
-
   if (!q) {
     return true;
   }
 
-
-  // Code-like content
   if (
     q.includes('```') ||
     /(^|\n)\s*(const|let|var|function|class|import|export)\b/i.test(q)
@@ -651,8 +510,6 @@ function definitelyDoesNotNeedSearch(
     return true;
   }
 
-
-  // Math / physics / chemistry expressions
   if (
     /[=+\-*/^√∫Σπ]/.test(q) &&
     /\d/.test(q)
@@ -660,9 +517,7 @@ function definitelyDoesNotNeedSearch(
     return true;
   }
 
-
   const stablePatterns = [
-
     /\bwhat is\b.*\b(gravity|photosynthesis|algorithm|variable|function|atom|molecule)\b/i,
 
     /\bhow do i\b.*\b(code|program|calculate|solve|write)\b/i,
@@ -694,16 +549,26 @@ function definitelyDoesNotNeedSearch(
     /\bc\+\+\b/i,
 
     /\bpython\b/i
-
   ];
-
 
   return stablePatterns.some(
     re => re.test(q)
   );
-
 }
 
+// ==========================================
+// EXTRACT GEMINI TEXT
+// ==========================================
+
+function extractModelText(data) {
+  return (
+    data?.candidates?.[0]?.content?.parts
+      ?.map(
+        p => p?.text || ''
+      )
+      .join('') || ''
+  );
+}
 
 // ==========================================
 // SEARCH DECISION
@@ -713,40 +578,29 @@ async function askSearchDecision(
   apiKey,
   userText
 ) {
-
-  // Fresh/current questions skip the
-  // decision Gemini call completely.
   if (
     looksLikeFreshInfoQuestion(
       userText
     )
   ) {
-
     return {
       search: true,
       reason:
         'fresh/current information'
     };
-
   }
 
-
-  // Obvious stable questions also skip
-  // the extra Gemini call.
   if (
     definitelyDoesNotNeedSearch(
       userText
     )
   ) {
-
     return {
       search: false,
       reason:
         'obviously stable question'
     };
-
   }
-
 
   const prompt = `
 Decide whether the following user question needs
@@ -787,13 +641,10 @@ User question:
 ${String(userText).slice(0, 5000)}
 `;
 
-
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${SEARCH_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-
   try {
-
     const res =
       await fetchWithTimeout(
         url,
@@ -806,7 +657,6 @@ ${String(userText).slice(0, 5000)}
           },
 
           body: JSON.stringify({
-
             contents: [
               {
                 role: 'user',
@@ -820,119 +670,83 @@ ${String(userText).slice(0, 5000)}
             ],
 
             generationConfig: {
-
               temperature: 0,
-
               maxOutputTokens: 20,
 
               responseMimeType:
                 'application/json'
-
             }
-
           })
         },
         5000
       );
 
-
     if (!res.ok) {
-
       return {
         search: false,
         reason:
           'decision model unavailable'
       };
-
     }
-
 
     const data =
       await res.json();
-
 
     const raw =
       extractModelText(
         data
       ).trim();
 
-
     try {
-
       const parsed =
         JSON.parse(raw);
 
-
       return {
-
         search:
           parsed.search === true,
 
         reason:
           'model decision'
-
       };
 
-
     } catch {
-
       return {
-
         search:
           /"search"\s*:\s*true/i
             .test(raw),
 
         reason:
           'parsed fallback'
-
       };
-
     }
 
-
   } catch {
-
     return {
-
       search: false,
-
       reason:
         'decision timeout'
-
     };
-
   }
-
 }
-
 
 // ==========================================
 // TAVILY SEARCH
 // ==========================================
 
-async function tavilySearch(
-  query
-) {
-
+async function tavilySearch(query) {
   const tavilyKey =
     process.env.TAVILY_API_KEY;
 
-
   if (!tavilyKey) {
-
     return {
       enabled: false,
       results: []
     };
-
   }
-
 
   const res =
     await fetchWithTimeout(
-
       TAVILY_URL,
-
       {
         method: 'POST',
 
@@ -945,7 +759,6 @@ async function tavilySearch(
         },
 
         body: JSON.stringify({
-
           api_key:
             tavilyKey,
 
@@ -966,33 +779,25 @@ async function tavilySearch(
 
           include_raw_content:
             false
-
         })
       },
-
       10000
     );
 
-
   if (!res.ok) {
-
     const detail =
       await res.text()
         .catch(
           () => ''
         );
 
-
     throw new Error(
       `Tavily search failed: ${res.status} ${detail.slice(0, 200)}`
     );
-
   }
-
 
   const data =
     await res.json();
-
 
   const results =
     Array.isArray(
@@ -1001,18 +806,14 @@ async function tavilySearch(
       ? data.results
       : [];
 
-
   return {
-
     enabled: true,
 
     results:
-
       results
         .slice(0, 6)
         .map(
           (r, i) => ({
-
             id:
               i + 1,
 
@@ -1025,47 +826,35 @@ async function tavilySearch(
 
             content:
               r.content || ''
-
           })
         )
         .filter(
           r => r.url
         )
-
   };
-
 }
-
 
 // ==========================================
 // BUILD SEARCH CONTEXT
 // ==========================================
 
-function buildSearchContext(
-  searchData
-) {
-
+function buildSearchContext(searchData) {
   if (
     !searchData?.results?.length
   ) {
     return '';
   }
 
-
   const sources =
     searchData.results
-
       .map(
         r =>
-
           `[SOURCE ${r.id}]
 Title: ${r.title}
 URL: ${r.url}
 Content: ${r.content}`
-
       )
       .join('\n\n');
-
 
   return `
 
@@ -1080,9 +869,7 @@ for current facts.
 Do not invent facts that are not supported
 by them.
 
-
 ${sources}
-
 
 === WEB ANSWER RULES ===
 
@@ -1103,27 +890,79 @@ ${sources}
   were returned.
 
 `;
-
 }
 
-
 // ==========================================
-// APPEND SEARCH INSTRUCTION
+// MERMAID SAFETY INSTRUCTIONS
 // ==========================================
 
-function appendSourcesToInstruction(
-  instruction,
-  searchContext
-) {
+const diagramInstruction = `
 
-  return `${
-    instruction || ''
-  }${
-    searchContext || ''
-  }`;
+=== MERMAID DIAGRAM RULES ===
 
-}
+When a Mermaid diagram is useful, generate valid
+Mermaid 11.x syntax.
 
+Use only standard Mermaid syntax.
+
+Always begin a flowchart with:
+
+flowchart TD
+
+or:
+
+flowchart LR
+
+Keep every Mermaid statement on its own line.
+
+Never place multiple node definitions or random
+characters on the same line.
+
+For labels containing coordinates, commas,
+mathematical expressions, brackets, punctuation,
+or special characters, use quoted square-bracket
+labels.
+
+Correct:
+
+flowchart LR
+P1["(-1, -1)"]
+P2["(0, 1)"]
+P3["(2, 3)"]
+P1 --> P2
+P2 --> P3
+
+Incorrect:
+
+P1(-1, -1) --> P2(0, 1) P
+
+Every connection must use a valid Mermaid arrow.
+
+Never append stray letters or text after a node
+or connection.
+
+Do not put normal explanation text inside the
+Mermaid code block.
+
+When returning a Mermaid diagram, use exactly:
+
+\`\`\`mermaid
+flowchart TD
+A["Start"]
+B["End"]
+A --> B
+\`\`\`
+
+Before outputting the diagram, verify that:
+
+- every node is valid
+- every arrow is valid
+- every statement is separated by a newline
+- there is no stray text
+- special labels are quoted
+- the diagram is compatible with Mermaid 11.x
+
+`;
 
 // ==========================================
 // GEMINI STREAM
@@ -1134,20 +973,11 @@ async function createGeminiStream(
   modelName,
   geminiBody
 ) {
-
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
-
-  // IMPORTANT:
-  // This only protects the initial connection.
-  // Once Gemini sends headers, the timeout is cleared
-  // and the response stream can continue normally.
-
   return fetchStreaming(
-
     url,
-
     {
       method: 'POST',
 
@@ -1160,14 +990,10 @@ async function createGeminiStream(
         JSON.stringify(
           geminiBody
         )
-
     },
-
     12000
   );
-
 }
-
 
 // ==========================================
 // MAIN HANDLER
@@ -1178,42 +1004,27 @@ export default async function handler(
   context
 ) {
 
-  // ========================================
-  // OPTIONS
-  // ========================================
-
   if (
     req.method === 'OPTIONS'
   ) {
-
     return new Response(
       null,
       {
         status: 200,
-
         headers:
           CORS_HEADERS
       }
     );
-
   }
-
-
-  // ========================================
-  // ONLY POST
-  // ========================================
 
   if (
     req.method !== 'POST'
   ) {
-
     return new Response(
-
       JSON.stringify({
         error:
           'Method not allowed'
       }),
-
       {
         status: 405,
 
@@ -1223,31 +1034,19 @@ export default async function handler(
           'Content-Type':
             'application/json'
         }
-
       }
-
     );
-
   }
-
-
-  // ========================================
-  // GEMINI KEY
-  // ========================================
 
   const apiKey =
     process.env.GEMINI_API_KEY;
 
-
   if (!apiKey) {
-
     return new Response(
-
       JSON.stringify({
         error:
           'GEMINI_API_KEY not configured'
       }),
-
       {
         status: 500,
 
@@ -1257,34 +1056,22 @@ export default async function handler(
           'Content-Type':
             'application/json'
         }
-
       }
-
     );
-
   }
-
-
-  // ========================================
-  // READ REQUEST
-  // ========================================
 
   let body;
 
   try {
-
     body =
       await req.json();
 
   } catch {
-
     return new Response(
-
       JSON.stringify({
         error:
           'Invalid JSON'
       }),
-
       {
         status: 400,
 
@@ -1294,13 +1081,9 @@ export default async function handler(
           'Content-Type':
             'application/json'
         }
-
       }
-
     );
-
   }
-
 
   const {
     contents,
@@ -1313,17 +1096,14 @@ export default async function handler(
 
   } = body;
 
-
   const modelChain =
     MODEL_CHAIN[mode] ||
     MODEL_CHAIN.fast;
-
 
   const latestUserText =
     getLatestUserText(
       contents
     );
-
 
   console.log(
     '⚡ Quantum Core request:',
@@ -1339,10 +1119,9 @@ export default async function handler(
     }
   );
 
-
   // ========================================
-  // 🧠 MEMORY + SEARCH DECISION
-  // RUN IN PARALLEL
+  // MEMORY + SEARCH DECISION
+  // PARALLEL
   // ========================================
 
   const memoryPromise =
@@ -1356,7 +1135,6 @@ export default async function handler(
         )
       : Promise.resolve([]);
 
-
   const searchDecisionPromise =
     latestUserText
       ? askSearchDecision(
@@ -1364,18 +1142,14 @@ export default async function handler(
           latestUserText
         )
       : Promise.resolve({
-
           search: false,
-
           reason:
             'no user text'
-
         });
 
-
   // ========================================
-  // 🌙 DREAMING
-  // DOES NOT BLOCK AI RESPONSE
+  // DREAMING
+  // BACKGROUND
   // ========================================
 
   if (
@@ -1390,22 +1164,14 @@ export default async function handler(
         latestUserText
       );
 
-
-    // Vercel/serverless environments that expose
-    // waitUntil can keep this background task alive.
-    // Otherwise it is intentionally fire-and-forget.
-
     if (
       context &&
       typeof context.waitUntil === 'function'
     ) {
-
       context.waitUntil(
         dreamPromise
       );
-
     } else {
-
       dreamPromise.catch(
         error =>
           console.error(
@@ -1413,14 +1179,11 @@ export default async function handler(
             error?.message || error
           )
       );
-
     }
-
   }
 
-
   // ========================================
-  // WAIT FOR MEMORY + DECISION
+  // WAIT FOR MEMORY + SEARCH DECISION
   // ========================================
 
   const [
@@ -1432,13 +1195,11 @@ export default async function handler(
       searchDecisionPromise
     ]);
 
-
   console.log(
     `🧠 Memory recall: ${
       recalledMemories.length
     } memories`
   );
-
 
   console.log(
     `🔎 Search decision: ${
@@ -1446,19 +1207,14 @@ export default async function handler(
     } (${searchDecision.reason})`
   );
 
-
   // ========================================
-  // 🌐 WEB SEARCH
+  // WEB SEARCH
   // ========================================
 
   let searchData = {
-
     enabled: false,
-
     results: []
-
   };
-
 
   if (
     searchDecision.search &&
@@ -1472,13 +1228,11 @@ export default async function handler(
           latestUserText
         );
 
-
       console.log(
         `🌐 Web search: ${
           searchData.results.length
         } results`
       );
-
 
     } catch (err) {
 
@@ -1488,19 +1242,12 @@ export default async function handler(
         }`
       );
 
-      // Search failure never breaks AI.
       searchData = {
-
         enabled: false,
-
         results: []
-
       };
-
     }
-
   }
-
 
   // ========================================
   // CURRENT SERVER TIME
@@ -1508,7 +1255,6 @@ export default async function handler(
 
   const currentDate =
     new Date().toISOString();
-
 
   const timeInstruction = `
 
@@ -1530,9 +1276,8 @@ from memory.
 
 `;
 
-
   // ========================================
-  // SEARCH CONTEXT
+  // CONTEXTS
   // ========================================
 
   const searchContext =
@@ -1540,16 +1285,10 @@ from memory.
       searchData
     );
 
-
-  // ========================================
-  // MEMORY CONTEXT
-  // ========================================
-
   const memoryContext =
     buildMemoryContext(
       recalledMemories
     );
-
 
   // ========================================
   // ORIGINAL SYSTEM INSTRUCTION
@@ -1557,15 +1296,12 @@ from memory.
 
   const originalInstruction =
     typeof systemInstruction === 'string'
-
       ? systemInstruction
-
       : systemInstruction?.parts
           ?.map(
             p => p?.text || ''
           )
           .join('\n') || '';
-
 
   // ========================================
   // FINAL SYSTEM INSTRUCTION
@@ -1573,39 +1309,32 @@ from memory.
 
   const finalSystemInstruction =
     appendSourcesToInstruction(
-
       originalInstruction,
 
       memoryContext +
       timeInstruction +
+      diagramInstruction +
       searchContext
-
     );
-
 
   // ========================================
   // GEMINI BODY
   // ========================================
 
   const geminiBody = {
-
     contents,
 
     systemInstruction: {
-
       parts: [
         {
           text:
             finalSystemInstruction
         }
       ]
-
     },
 
     generationConfig
-
   };
-
 
   // ========================================
   // MODEL FALLBACK
@@ -1614,10 +1343,8 @@ from memory.
   let lastError =
     null;
 
-
   const startTime =
     Date.now();
-
 
   for (
     const modelName
@@ -1635,22 +1362,12 @@ from memory.
         })`
       );
 
-
       const geminiRes =
         await createGeminiStream(
-
           apiKey,
-
           modelName,
-
           geminiBody
-
         );
-
-
-      // ====================================
-      // SUCCESS
-      // ====================================
 
       if (geminiRes.ok) {
 
@@ -1661,17 +1378,12 @@ from memory.
           }ms)`
         );
 
-
         return new Response(
-
           geminiRes.body,
-
           {
-
             status: 200,
 
             headers: {
-
               ...CORS_HEADERS,
 
               'Content-Type':
@@ -1698,26 +1410,17 @@ from memory.
                 searchDecision.search
                   ? 'true'
                   : 'false'
-
             }
-
           }
-
         );
-
       }
 
-
-      // Read small error body for useful logs.
       let errorDetail = '';
 
       try {
-
         errorDetail =
           await geminiRes.text();
-
       } catch {}
-
 
       console.warn(
         `⚠️ ${modelName} failed: ` +
@@ -1726,12 +1429,10 @@ from memory.
         `→ trying next...`
       );
 
-
       lastError =
         new Error(
           `Model ${modelName} failed: ${geminiRes.status}`
         );
-
 
     } catch (err) {
 
@@ -1741,23 +1442,17 @@ from memory.
         `→ trying next...`
       );
 
-
       lastError =
         err;
-
     }
-
   }
-
 
   // ========================================
   // ALL MODELS FAILED
   // ========================================
 
   return new Response(
-
     JSON.stringify({
-
       error:
         'All models failed. Please try again.',
 
@@ -1765,24 +1460,16 @@ from memory.
         lastError
           ? lastError.message
           : 'Unknown'
-
     }),
-
     {
-
       status: 502,
 
       headers: {
-
         ...CORS_HEADERS,
 
         'Content-Type':
           'application/json'
-
       }
-
     }
-
   );
-
 }
