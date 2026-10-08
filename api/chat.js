@@ -23,36 +23,65 @@ const TAVILY_URL = 'https://api.tavily.com/search';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
 
-async function supabaseRequest(path, options = {}) {
+async function supabaseRequest(path, options = {}, timeoutMs = 8000) {
+
   if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
     throw new Error('Supabase environment variables are missing.');
   }
 
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/${path}`,
-    {
-      ...options,
-      headers: {
-        apikey: SUPABASE_SECRET_KEY,
-        Authorization: `Bearer ${SUPABASE_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-        ...(options.headers || {})
-      }
-    }
+  const controller = new AbortController();
+
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    timeoutMs
   );
 
-  const text = await response.text();
-
-  if (!response.ok) {
-    throw new Error(
-      `Supabase ${response.status}: ${text.slice(0, 300)}`
-    );
-  }
-
   try {
-    return text ? JSON.parse(text) : null;
-  } catch {
-    return text;
+
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/${path}`,
+      {
+        ...options,
+
+        signal: controller.signal,
+
+        headers: {
+          apikey: SUPABASE_SECRET_KEY,
+
+          Authorization:
+            `Bearer ${SUPABASE_SECRET_KEY}`,
+
+          'Content-Type':
+            'application/json',
+
+          ...(options.headers || {})
+        }
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    const text = await response.text();
+
+    if (!response.ok) {
+
+      throw new Error(
+        `Supabase ${response.status}: ${text.slice(0, 300)}`
+      );
+
+    }
+
+    try {
+      return text ? JSON.parse(text) : null;
+    } catch {
+      return text;
+    }
+
+  } catch (error) {
+
+    clearTimeout(timeoutId);
+
+    throw error;
   }
 }
 
@@ -84,6 +113,15 @@ async function queueDreaming(
 
   try {
 
+    const safeUserId =
+      String(userId).slice(0, 200);
+
+    const safeConversationId =
+      conversationId
+        ? String(conversationId).slice(0, 200)
+        : null;
+
+
     // Save latest user message
     await supabaseRequest(
       'conversation_events',
@@ -95,32 +133,36 @@ async function queueDreaming(
         },
 
         body: JSON.stringify({
+
           user_id:
-            String(userId).slice(0, 200),
+            safeUserId,
 
           conversation_id:
-            conversationId
-              ? String(conversationId).slice(0, 200)
-              : null,
+            safeConversationId,
 
-          role: 'user',
+          role:
+            'user',
 
           content
+
         })
-      }
+      },
+      7000
     );
 
 
-    // Check if a Dream job already exists
+    // Check pending Dream job
     const pending =
       await supabaseRequest(
         `dream_jobs?user_id=eq.${encodeURIComponent(
-          String(userId).slice(0, 200)
-        )}&status=eq.pending&limit=1&select=id`
+          safeUserId
+        )}&status=eq.pending&limit=1&select=id`,
+        {},
+        5000
       );
 
 
-    // Prevent duplicate Dream jobs
+    // Prevent duplicate jobs
     if (
       !Array.isArray(pending) ||
       pending.length === 0
@@ -136,12 +178,16 @@ async function queueDreaming(
           },
 
           body: JSON.stringify({
-            user_id:
-              String(userId).slice(0, 200),
 
-            status: 'pending'
+            user_id:
+              safeUserId,
+
+            status:
+              'pending'
+
           })
-        }
+        },
+        7000
       );
 
     }
@@ -152,10 +198,9 @@ async function queueDreaming(
 
   } catch (error) {
 
-    // Memory failure must NEVER break normal AI chat.
     console.error(
       '🌙 Dreaming queue failed:',
-      error.message
+      error?.message || error
     );
 
   }
@@ -185,7 +230,9 @@ async function fetchMemories(
       await supabaseRequest(
         `memories?user_id=eq.${encodeURIComponent(
           String(userId).slice(0, 200)
-        )}&select=memory_type,memory_key,content,importance,confidence,updated_at&order=updated_at.desc&limit=50`
+        )}&select=memory_type,memory_key,content,importance,confidence,updated_at&order=updated_at.desc&limit=30`,
+        {},
+        7000
       );
 
 
@@ -232,14 +279,11 @@ async function fetchMemories(
         let score = 0;
 
 
-        // Profile memories are useful
-        // for identity/personal questions.
         if (type === 'profile') {
           score += 5;
         }
 
 
-        // Keyword relevance.
         for (const word of queryWords) {
 
           if (
@@ -251,7 +295,6 @@ async function fetchMemories(
         }
 
 
-        // Importance / confidence bonus.
         const importance =
           Number(
             memory?.importance || 0
@@ -280,16 +323,14 @@ async function fetchMemories(
         (a, b) =>
           b._score - a._score
       )
-      .slice(0, 12);
+      .slice(0, 10);
 
 
   } catch (error) {
 
-    // Memory failure must NEVER
-    // break normal AI chat.
     console.error(
       '🧠 Memory recall failed:',
-      error.message
+      error?.message || error
     );
 
     return [];
@@ -384,11 +425,13 @@ ${memoryLines}
 // ==========================================
 // FETCH WITH TIMEOUT
 // ==========================================
+// For normal requests.
+// Timeout is cleared as soon as headers arrive.
 
 async function fetchWithTimeout(
   url,
   options,
-  timeoutMs = 15000
+  timeoutMs = 10000
 ) {
 
   const controller =
@@ -415,6 +458,60 @@ async function fetchWithTimeout(
       );
 
 
+    clearTimeout(timeoutId);
+
+    return response;
+
+  } catch (err) {
+
+    clearTimeout(timeoutId);
+
+    throw err;
+  }
+
+}
+
+
+// ==========================================
+// STREAMING FETCH
+// ==========================================
+// IMPORTANT:
+// This timeout ONLY protects connection/header
+// establishment. It does NOT abort a long stream.
+
+async function fetchStreaming(
+  url,
+  options,
+  connectionTimeoutMs = 12000
+) {
+
+  const controller =
+    new AbortController();
+
+
+  const timeoutId =
+    setTimeout(
+      () => controller.abort(),
+      connectionTimeoutMs
+    );
+
+
+  try {
+
+    const response =
+      await fetch(
+        url,
+        {
+          ...options,
+          signal:
+            controller.signal
+        }
+      );
+
+
+    // Headers arrived successfully.
+    // From this point the stream may continue
+    // for as long as Gemini needs.
     clearTimeout(timeoutId);
 
     return response;
@@ -528,19 +625,81 @@ function looksLikeFreshInfoQuestion(
 
 
 // ==========================================
-// EXTRACT GEMINI TEXT
+// SEARCH DECISION FAST FILTER
 // ==========================================
 
-function extractModelText(
-  data
+function definitelyDoesNotNeedSearch(
+  text
 ) {
 
-  return (
-    data?.candidates?.[0]?.content?.parts
-      ?.map(
-        p => p?.text || ''
-      )
-      .join('') || ''
+  const q =
+    String(text || '')
+      .trim()
+      .toLowerCase();
+
+
+  if (!q) {
+    return true;
+  }
+
+
+  // Code-like content
+  if (
+    q.includes('```') ||
+    /(^|\n)\s*(const|let|var|function|class|import|export)\b/i.test(q)
+  ) {
+    return true;
+  }
+
+
+  // Math / physics / chemistry expressions
+  if (
+    /[=+\-*/^√∫Σπ]/.test(q) &&
+    /\d/.test(q)
+  ) {
+    return true;
+  }
+
+
+  const stablePatterns = [
+
+    /\bwhat is\b.*\b(gravity|photosynthesis|algorithm|variable|function|atom|molecule)\b/i,
+
+    /\bhow do i\b.*\b(code|program|calculate|solve|write)\b/i,
+
+    /\bexplain\b/i,
+
+    /\bdefine\b/i,
+
+    /\bmeaning of\b/i,
+
+    /\btranslate\b/i,
+
+    /\bproofread\b/i,
+
+    /\bsolve\b/i,
+
+    /\bcalculate\b/i,
+
+    /\bformula\b/i,
+
+    /\bsyntax\b/i,
+
+    /\bjavascript\b/i,
+
+    /\bhtml\b/i,
+
+    /\bcss\b/i,
+
+    /\bc\+\+\b/i,
+
+    /\bpython\b/i
+
+  ];
+
+
+  return stablePatterns.some(
+    re => re.test(q)
   );
 
 }
@@ -555,7 +714,8 @@ async function askSearchDecision(
   userText
 ) {
 
-  // Fresh questions automatically search
+  // Fresh/current questions skip the
+  // decision Gemini call completely.
   if (
     looksLikeFreshInfoQuestion(
       userText
@@ -566,6 +726,23 @@ async function askSearchDecision(
       search: true,
       reason:
         'fresh/current information'
+    };
+
+  }
+
+
+  // Obvious stable questions also skip
+  // the extra Gemini call.
+  if (
+    definitelyDoesNotNeedSearch(
+      userText
+    )
+  ) {
+
+    return {
+      search: false,
+      reason:
+        'obviously stable question'
     };
 
   }
@@ -607,7 +784,7 @@ or
 
 User question:
 
-${userText}
+${String(userText).slice(0, 5000)}
 `;
 
 
@@ -643,15 +820,19 @@ ${userText}
             ],
 
             generationConfig: {
+
               temperature: 0,
+
+              maxOutputTokens: 20,
 
               responseMimeType:
                 'application/json'
+
             }
 
           })
         },
-        8000
+        5000
       );
 
 
@@ -683,23 +864,27 @@ ${userText}
 
 
       return {
+
         search:
           parsed.search === true,
 
         reason:
           'model decision'
+
       };
 
 
     } catch {
 
       return {
+
         search:
           /"search"\s*:\s*true/i
             .test(raw),
 
         reason:
           'parsed fallback'
+
       };
 
     }
@@ -708,9 +893,12 @@ ${userText}
   } catch {
 
     return {
+
       search: false,
+
       reason:
         'decision timeout'
+
     };
 
   }
@@ -761,7 +949,8 @@ async function tavilySearch(
           api_key:
             tavilyKey,
 
-          query,
+          query:
+            String(query).slice(0, 5000),
 
           search_depth:
             'basic',
@@ -781,7 +970,7 @@ async function tavilySearch(
         })
       },
 
-      12000
+      10000
     );
 
 
@@ -950,7 +1139,12 @@ async function createGeminiStream(
     `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
 
-  return fetchWithTimeout(
+  // IMPORTANT:
+  // This only protects the initial connection.
+  // Once Gemini sends headers, the timeout is cleared
+  // and the response stream can continue normally.
+
+  return fetchStreaming(
 
     url,
 
@@ -969,7 +1163,7 @@ async function createGeminiStream(
 
     },
 
-    15000
+    12000
   );
 
 }
@@ -980,10 +1174,14 @@ async function createGeminiStream(
 // ==========================================
 
 export default async function handler(
-  req
+  req,
+  context
 ) {
 
+  // ========================================
   // OPTIONS
+  // ========================================
+
   if (
     req.method === 'OPTIONS'
   ) {
@@ -992,6 +1190,7 @@ export default async function handler(
       null,
       {
         status: 200,
+
         headers:
           CORS_HEADERS
       }
@@ -1000,7 +1199,10 @@ export default async function handler(
   }
 
 
+  // ========================================
   // ONLY POST
+  // ========================================
+
   if (
     req.method !== 'POST'
   ) {
@@ -1029,7 +1231,10 @@ export default async function handler(
   }
 
 
+  // ========================================
   // GEMINI KEY
+  // ========================================
+
   const apiKey =
     process.env.GEMINI_API_KEY;
 
@@ -1060,7 +1265,10 @@ export default async function handler(
   }
 
 
+  // ========================================
   // READ REQUEST
+  // ========================================
+
   let body;
 
   try {
@@ -1100,7 +1308,6 @@ export default async function handler(
     generationConfig,
     mode,
 
-    // 🌙 Dreaming
     userId,
     conversationId
 
@@ -1119,7 +1326,7 @@ export default async function handler(
 
 
   console.log(
-    '🌙 DREAM DEBUG:',
+    '⚡ Quantum Core request:',
     {
       hasUserId:
         !!userId,
@@ -1127,84 +1334,117 @@ export default async function handler(
       hasConversationId:
         !!conversationId,
 
-      hasLatestUserText:
-        !!latestUserText,
-
-      latestUserTextLength:
-        latestUserText
-          ? latestUserText.length
-          : 0
+      textLength:
+        latestUserText.length
     }
   );
 
 
   // ========================================
-  // 🧠 MEMORY RECALL
+  // 🧠 MEMORY + SEARCH DECISION
+  // RUN IN PARALLEL
   // ========================================
 
-  let recalledMemories = [];
-
-
-  if (
-    userId &&
-    latestUserText
-  ) {
-
-    recalledMemories =
-      await fetchMemories(
-        userId,
-        latestUserText
-      );
-
-
-    console.log(
-      `🧠 Memory recall: ${recalledMemories.length} memories`
-    );
-
-  }
-
-
-  // ========================================
-  // 🌙 QUEUE DREAMING
-  // ========================================
-
-  if (
-    userId &&
-    latestUserText
-  ) {
-
-    await queueDreaming(
-      userId,
-      conversationId,
+  const memoryPromise =
+    (
+      userId &&
       latestUserText
-    );
+    )
+      ? fetchMemories(
+          userId,
+          latestUserText
+        )
+      : Promise.resolve([]);
 
-  }
+
+  const searchDecisionPromise =
+    latestUserText
+      ? askSearchDecision(
+          apiKey,
+          latestUserText
+        )
+      : Promise.resolve({
+
+          search: false,
+
+          reason:
+            'no user text'
+
+        });
 
 
   // ========================================
-  // THINK → SEARCH DECISION
+  // 🌙 DREAMING
+  // DOES NOT BLOCK AI RESPONSE
   // ========================================
 
-  let searchDecision = {
+  if (
+    userId &&
+    latestUserText
+  ) {
 
-    search: false,
-
-    reason:
-      'no user text'
-
-  };
-
-
-  if (latestUserText) {
-
-    searchDecision =
-      await askSearchDecision(
-        apiKey,
+    const dreamPromise =
+      queueDreaming(
+        userId,
+        conversationId,
         latestUserText
       );
 
+
+    // Vercel/serverless environments that expose
+    // waitUntil can keep this background task alive.
+    // Otherwise it is intentionally fire-and-forget.
+
+    if (
+      context &&
+      typeof context.waitUntil === 'function'
+    ) {
+
+      context.waitUntil(
+        dreamPromise
+      );
+
+    } else {
+
+      dreamPromise.catch(
+        error =>
+          console.error(
+            '🌙 Background dreaming error:',
+            error?.message || error
+          )
+      );
+
+    }
+
   }
+
+
+  // ========================================
+  // WAIT FOR MEMORY + DECISION
+  // ========================================
+
+  const [
+    recalledMemories,
+    searchDecision
+  ] =
+    await Promise.all([
+      memoryPromise,
+      searchDecisionPromise
+    ]);
+
+
+  console.log(
+    `🧠 Memory recall: ${
+      recalledMemories.length
+    } memories`
+  );
+
+
+  console.log(
+    `🔎 Search decision: ${
+      searchDecision.search
+    } (${searchDecision.reason})`
+  );
 
 
   // ========================================
@@ -1234,17 +1474,29 @@ export default async function handler(
 
 
       console.log(
-        `🌐 Web search: ${searchData.results.length} results`
+        `🌐 Web search: ${
+          searchData.results.length
+        } results`
       );
 
 
     } catch (err) {
 
       console.error(
-        `❌ Tavily: ${err.message}`
+        `❌ Tavily: ${
+          err?.message || err
+        }`
       );
 
-      // Search failure does not break AI.
+      // Search failure never breaks AI.
+      searchData = {
+
+        enabled: false,
+
+        results: []
+
+      };
+
     }
 
   }
@@ -1290,7 +1542,7 @@ from memory.
 
 
   // ========================================
-  // 🧠 MEMORY CONTEXT
+  // MEMORY CONTEXT
   // ========================================
 
   const memoryContext =
@@ -1440,6 +1692,11 @@ from memory.
               'X-Web-Search':
                 searchData.results.length
                   ? 'true'
+                  : 'false',
+
+              'X-Search-Decision':
+                searchDecision.search
+                  ? 'true'
                   : 'false'
 
             }
@@ -1451,9 +1708,21 @@ from memory.
       }
 
 
+      // Read small error body for useful logs.
+      let errorDetail = '';
+
+      try {
+
+        errorDetail =
+          await geminiRes.text();
+
+      } catch {}
+
+
       console.warn(
         `⚠️ ${modelName} failed: ` +
         `${geminiRes.status} ` +
+        `${errorDetail.slice(0, 200)} ` +
         `→ trying next...`
       );
 
@@ -1468,7 +1737,8 @@ from memory.
 
       console.error(
         `❌ ${modelName} error: ` +
-        `${err.message} → trying next...`
+        `${err?.message || err} ` +
+        `→ trying next...`
       );
 
 
