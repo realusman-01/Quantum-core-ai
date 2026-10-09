@@ -18,9 +18,6 @@ const SEARCH_DECISION_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_API =
   'https://generativelanguage.googleapis.com/v1beta/models/';
 
-const TAVILY_API =
-  'https://api.tavily.com/search';
-
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -267,7 +264,12 @@ function looksLikeFreshInfoQuestion(text) {
     'available now',
     'who won',
     'current president',
-    'current prime minister'
+    'current prime minister',
+    'aaj',
+    'abhi',
+    'kab',
+    'kab release',
+    'kya hua'
   ];
 
   return patterns.some(
@@ -445,62 +447,318 @@ ${userText}
 
 
 // ============================================================
-// TAVILY
+// QUANTUM SEARCH — Multi-Source Aggregator
+// Sources: DuckDuckGo + Wikipedia + Wikidata + Google News
+// 100% Free — No API key required
 // ============================================================
 
-async function tavilySearch(query) {
-  const apiKey =
-    process.env.TAVILY_API_KEY;
+async function quantumSearch(query) {
+  if (!query) return [];
 
-  if (!apiKey || !query) {
-    return [];
+  const settled = await Promise.allSettled([
+    duckDuckGoSearch(query),
+    wikipediaSearch(query),
+    wikidataSearch(query),
+    googleNewsSearch(query)
+  ]);
+
+  const names = ['DuckDuckGo', 'Wikipedia', 'Wikidata', 'News'];
+  const allResults = [];
+
+  settled.forEach((r, i) => {
+    if (
+      r.status === 'fulfilled' &&
+      r.value &&
+      Array.isArray(r.value.results) &&
+      r.value.results.length
+    ) {
+      allResults.push(
+        ...r.value.results.map(x => ({
+          ...x,
+          source: names[i]
+        }))
+      );
+    }
+  });
+
+  // Deduplicate by URL/title
+  const seen = new Set();
+  const merged = [];
+
+  for (const r of allResults) {
+    const key = (r.url || r.title || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 80);
+
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      merged.push(r);
+    }
   }
 
+  return merged.slice(0, 12);
+}
+
+
+// ============ DuckDuckGo Instant Answers ============
+async function duckDuckGoSearch(query) {
   try {
-    const response =
-      await fetchWithTimeout(
-        TAVILY_API,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':
-              'application/json'
-          },
-          body: JSON.stringify({
-            api_key: apiKey,
-            query,
-            search_depth: 'basic',
-            max_results: 6,
-            include_answer: false,
-            include_raw_content: false
-          })
-        },
-        10000
-      );
+    const url =
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
 
-    if (!response.ok) {
-      console.error(
-        'Tavily HTTP:',
-        response.status
-      );
-
-      return [];
-    }
-
-    const data =
-      await response.json();
-
-    return Array.isArray(data?.results)
-      ? data.results
-      : [];
-
-  } catch (error) {
-    console.error(
-      'Tavily error:',
-      error?.message || error
+    const res = await fetchWithTimeout(
+      url,
+      {
+        headers: {
+          'User-Agent': 'QuantumCore/1.0'
+        }
+      },
+      8000
     );
 
-    return [];
+    if (!res.ok) {
+      return { results: [], error: 'HTTP ' + res.status };
+    }
+
+    const data = await res.json();
+    const results = [];
+
+    if (data.AbstractText && data.AbstractURL) {
+      results.push({
+        title: data.Heading || query,
+        url: data.AbstractURL,
+        content: data.AbstractText
+      });
+    }
+
+    if (data.Answer && data.AbstractURL) {
+      results.push({
+        title: 'Answer',
+        url: data.AbstractURL,
+        content: String(data.Answer)
+      });
+    }
+
+    (data.RelatedTopics || []).slice(0, 5).forEach(t => {
+      if (t.Text && t.FirstURL) {
+        results.push({
+          title: t.Text.slice(0, 90),
+          url: t.FirstURL,
+          content: t.Text
+        });
+      } else if (t.Topics && Array.isArray(t.Topics)) {
+        t.Topics.slice(0, 2).forEach(st => {
+          if (st.Text && st.FirstURL) {
+            results.push({
+              title: st.Text.slice(0, 90),
+              url: st.FirstURL,
+              content: st.Text
+            });
+          }
+        });
+      }
+    });
+
+    return { results, error: null };
+
+  } catch (err) {
+    return { results: [], error: err.message };
+  }
+}
+
+
+// ============ Wikipedia Search + Summary ============
+async function wikipediaSearch(query) {
+  try {
+    const searchUrl =
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=3&origin=*`;
+
+    const res = await fetchWithTimeout(
+      searchUrl,
+      {
+        headers: {
+          'User-Agent': 'QuantumCore/1.0'
+        }
+      },
+      8000
+    );
+
+    if (!res.ok) {
+      return { results: [], error: 'HTTP ' + res.status };
+    }
+
+    const data = await res.json();
+    const searchResults =
+      (data.query && data.query.search) || [];
+
+    const results = searchResults.map(r => ({
+      title: r.title || '',
+      url:
+        'https://en.wikipedia.org/wiki/' +
+        encodeURIComponent(r.title),
+      content: (r.snippet || '').replace(/<[^>]+>/g, '')
+    }));
+
+    // Fetch better summary for top result
+    if (searchResults.length > 0) {
+      const topTitle = searchResults[0].title;
+
+      try {
+        const summaryUrl =
+          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topTitle)}`;
+
+        const sumRes = await fetchWithTimeout(
+          summaryUrl,
+          {
+            headers: {
+              'User-Agent': 'QuantumCore/1.0'
+            }
+          },
+          6000
+        );
+
+        if (sumRes.ok) {
+          const sumData = await sumRes.json();
+
+          if (sumData.extract) {
+            results[0].content = sumData.extract;
+
+            if (
+              sumData.content_urls &&
+              sumData.content_urls.desktop
+            ) {
+              results[0].url =
+                sumData.content_urls.desktop.page;
+            }
+          }
+        }
+      } catch (e) {
+        /* keep snippet */
+      }
+    }
+
+    return { results, error: null };
+
+  } catch (err) {
+    return { results: [], error: err.message };
+  }
+}
+
+
+// ============ Wikidata Structured Facts ============
+async function wikidataSearch(query) {
+  try {
+    const url =
+      `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&limit=3&origin=*`;
+
+    const res = await fetchWithTimeout(
+      url,
+      {
+        headers: {
+          'User-Agent': 'QuantumCore/1.0'
+        }
+      },
+      8000
+    );
+
+    if (!res.ok) {
+      return { results: [], error: 'HTTP ' + res.status };
+    }
+
+    const data = await res.json();
+
+    const results = (data.search || [])
+      .slice(0, 3)
+      .map(r => ({
+        title: r.label || r.id || '',
+        url:
+          r.concepturi ||
+          `https://www.wikidata.org/wiki/${r.id}`,
+        content:
+          (r.description || '') +
+          (r.aliases && r.aliases.length
+            ? ' (aliases: ' +
+              r.aliases.slice(0, 3).join(', ') +
+              ')'
+            : '')
+      }))
+      .filter(r => r.content);
+
+    return { results, error: null };
+
+  } catch (err) {
+    return { results: [], error: err.message };
+  }
+}
+
+
+// ============ Google News RSS ============
+async function googleNewsSearch(query) {
+  try {
+    const url =
+      `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+
+    const res = await fetchWithTimeout(
+      url,
+      {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (compatible; QuantumCore/1.0)'
+        }
+      },
+      8000
+    );
+
+    if (!res.ok) {
+      return { results: [], error: 'HTTP ' + res.status };
+    }
+
+    const xml = await res.text();
+    const items = [];
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+    let match;
+
+    while (
+      (match = itemRegex.exec(xml)) !== null &&
+      items.length < 6
+    ) {
+      const itemXml = match[1];
+
+      const title =
+        (itemXml.match(
+          /<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/
+        ) || [])[1] || '';
+
+      const link =
+        (itemXml.match(/<link>([\s\S]*?)<\/link>/) ||
+          [])[1] || '';
+
+      const pubDate =
+        (itemXml.match(
+          /<pubDate>([\s\S]*?)<\/pubDate>/
+        ) || [])[1] || '';
+
+      const description =
+        (itemXml.match(
+          /<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/
+        ) || [])[1] || '';
+
+      if (title) {
+        items.push({
+          title: title.replace(/<[^>]+>/g, '').trim(),
+          url: link.trim(),
+          content:
+            (pubDate ? '[' + pubDate + '] ' : '') +
+            description.replace(/<[^>]+>/g, '').slice(0, 300)
+        });
+      }
+    }
+
+    return { results: items, error: null };
+
+  } catch (err) {
+    return { results: [], error: err.message };
   }
 }
 
@@ -510,7 +768,7 @@ async function tavilySearch(query) {
 // ============================================================
 
 function buildSearchContext(results) {
-  if (!results.length) {
+  if (!results || !results.length) {
     return '';
   }
 
@@ -518,13 +776,15 @@ function buildSearchContext(results) {
 
 WEB SEARCH RESULTS:
 ${results
-  .map((result, index) => `
-[${index + 1}]
+  .map(
+    (result, index) => `
+[${index + 1}] [${result?.source || 'Web'}]
 Title: ${result?.title || ''}
 URL: ${result?.url || ''}
 Content:
 ${result?.content || ''}
-`)
+`
+  )
   .join('\n')}
 
 Use the web results when relevant.
@@ -575,160 +835,119 @@ function sseEvent(data) {
 // GEMINI STREAM -> QUANTUM CORE STREAM
 // ============================================================
 
-async function streamGeminiToClient(
-  geminiResponse
-) {
-  const source =
-    geminiResponse.body;
+async function streamGeminiToClient(geminiResponse) {
+  const source = geminiResponse.body;
 
   if (!source) {
-    throw new Error(
-      'Gemini returned no stream body'
-    );
+    throw new Error('Gemini returned no stream body');
   }
 
-  const reader =
-    source.getReader();
-
-  const decoder =
-    new TextDecoder();
-
-  const encoder =
-    new TextEncoder();
+  const reader = source.getReader();
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
 
   let buffer = '';
 
-  const stream =
-    new ReadableStream({
-      async start(controller) {
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        // Initial status
+        controller.enqueue(
+          encoder.encode(
+            sseEvent({
+              type: 'status',
+              status: 'Thinking...'
+            })
+          )
+        );
 
-        try {
+        while (true) {
+          const result = await reader.read();
 
-          // Initial status
-          controller.enqueue(
-            encoder.encode(
-              sseEvent({
-                type: 'status',
-                status: 'Thinking...'
-              })
-            )
-          );
-
-          while (true) {
-
-            const result =
-              await reader.read();
-
-            if (result.done) {
-              break;
-            }
-
-            buffer += decoder.decode(
-              result.value,
-              {
-                stream: true
-              }
-            );
-
-            const lines =
-              buffer.split('\n');
-
-            buffer =
-              lines.pop() || '';
-
-            for (
-              const line of lines
-            ) {
-
-              const trimmed =
-                line.trim();
-
-              if (
-                !trimmed.startsWith(
-                  'data:'
-                )
-              ) {
-                continue;
-              }
-
-              const raw =
-                trimmed
-                  .substring(5)
-                  .trim();
-
-              if (
-                !raw ||
-                raw === '[DONE]'
-              ) {
-                continue;
-              }
-
-              let parsed;
-
-              try {
-                parsed =
-                  JSON.parse(raw);
-              } catch {
-                continue;
-              }
-
-              const text =
-                extractModelText(
-                  parsed
-                );
-
-              if (!text) {
-                continue;
-              }
-
-              controller.enqueue(
-                encoder.encode(
-                  sseEvent({
-                    type: 'chunk',
-                    text
-                  })
-                )
-              );
-            }
+          if (result.done) {
+            break;
           }
 
-          controller.enqueue(
-            encoder.encode(
-              sseEvent({
-                type: 'done'
-              })
-            )
-          );
+          buffer += decoder.decode(result.value, {
+            stream: true
+          });
 
-          controller.close();
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
-        } catch (error) {
+          for (const line of lines) {
+            const trimmed = line.trim();
 
-          console.error(
-            'Stream conversion error:',
-            error?.message || error
-          );
+            if (!trimmed.startsWith('data:')) {
+              continue;
+            }
 
-          controller.enqueue(
-            encoder.encode(
-              sseEvent({
-                type: 'error',
-                error:
-                  error?.message ||
-                  'Streaming error'
-              })
-            )
-          );
+            const raw = trimmed.substring(5).trim();
 
-          controller.close();
+            if (!raw || raw === '[DONE]') {
+              continue;
+            }
 
-        } finally {
-          try {
-            reader.releaseLock();
-          } catch {}
+            let parsed;
+
+            try {
+              parsed = JSON.parse(raw);
+            } catch {
+              continue;
+            }
+
+            const text = extractModelText(parsed);
+
+            if (!text) {
+              continue;
+            }
+
+            controller.enqueue(
+              encoder.encode(
+                sseEvent({
+                  type: 'chunk',
+                  text
+                })
+              )
+            );
+          }
         }
+
+        controller.enqueue(
+          encoder.encode(
+            sseEvent({
+              type: 'done'
+            })
+          )
+        );
+
+        controller.close();
+
+      } catch (error) {
+        console.error(
+          'Stream conversion error:',
+          error?.message || error
+        );
+
+        controller.enqueue(
+          encoder.encode(
+            sseEvent({
+              type: 'error',
+              error:
+                error?.message || 'Streaming error'
+            })
+          )
+        );
+
+        controller.close();
+
+      } finally {
+        try {
+          reader.releaseLock();
+        } catch {}
       }
-    });
+    }
+  });
 
   return stream;
 }
@@ -744,69 +963,48 @@ async function createGeminiResponse({
   systemInstruction,
   generationConfig
 }) {
-  const apiKey =
-    process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    throw new Error(
-      'GEMINI_API_KEY is missing'
-    );
+    throw new Error('GEMINI_API_KEY is missing');
   }
 
   const url =
     `${GEMINI_API}${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
 
-  const controller =
-    new AbortController();
+  const controller = new AbortController();
 
   // Only connection timeout.
-  // Once Gemini starts responding,
-  // the stream is NOT aborted.
-  const timer =
-    setTimeout(
-      () => controller.abort(),
-      15000
-    );
+  const timer = setTimeout(
+    () => controller.abort(),
+    15000
+  );
 
   let response;
 
   try {
-
-    response =
-      await fetch(
-        url,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':
-              'application/json'
-          },
-          body: JSON.stringify({
-            contents,
-            systemInstruction: {
-              parts: [
-                {
-                  text:
-                    systemInstruction
-                }
-              ]
-            },
-            generationConfig
-          }),
-          signal: controller.signal
-        }
-      );
-
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents,
+        systemInstruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        generationConfig
+      }),
+      signal: controller.signal
+    });
   } finally {
     clearTimeout(timer);
   }
 
   if (!response.ok) {
-
-    const errorText =
-      await response
-        .text()
-        .catch(() => '');
+    const errorText = await response
+      .text()
+      .catch(() => '');
 
     throw new Error(
       `Gemini ${model} HTTP ${response.status}: ${errorText.substring(0, 300)}`
@@ -822,172 +1020,90 @@ async function createGeminiResponse({
 // ============================================================
 
 export default async function handler(req) {
-
   // OPTIONS
   if (req.method === 'OPTIONS') {
-    return new Response(
-      null,
-      {
-        status: 204,
-        headers: CORS_HEADERS
-      }
-    );
+    return new Response(null, {
+      status: 204,
+      headers: CORS_HEADERS
+    });
   }
 
   // POST ONLY
   if (req.method !== 'POST') {
-    return json(
-      {
-        error:
-          'Method not allowed'
-      },
-      405
-    );
+    return json({ error: 'Method not allowed' }, 405);
   }
 
-  // ----------------------------------------------------------
-  // READ FRONTEND BODY
-  // ----------------------------------------------------------
-
+  // READ BODY
   let body;
 
   try {
     body = await req.json();
-  } catch (error) {
-
-    return json(
-      {
-        error:
-          'Invalid request body'
-      },
-      400
-    );
+  } catch {
+    return json({ error: 'Invalid request body' }, 400);
   }
 
-  // THIS MATCHES YOUR FRONTEND EXACTLY
-  const contents =
-    Array.isArray(body?.contents)
-      ? body.contents
-      : [];
+  const contents = Array.isArray(body?.contents)
+    ? body.contents
+    : [];
 
-  const userId =
-    body?.userId || '';
-
-  const conversationId =
-    body?.conversationId || '';
-
-  const activeMode =
-    body?.mode || 'core';
+  const userId = body?.userId || '';
+  const conversationId = body?.conversationId || '';
+  const activeMode = body?.mode || 'core';
 
   const generationConfig =
     body?.generationConfig &&
     typeof body.generationConfig === 'object'
       ? body.generationConfig
-      : {
-          temperature: 0.7
-        };
-
-
-  // ----------------------------------------------------------
-  // VALIDATION
-  // ----------------------------------------------------------
+      : { temperature: 0.7 };
 
   if (!contents.length) {
-
     return json(
-      {
-        error:
-          'Invalid request: contents missing'
-      },
+      { error: 'Invalid request: contents missing' },
       400
     );
   }
 
-  const userText =
-    getLatestUserText(contents);
+  const userText = getLatestUserText(contents);
 
   if (!userText) {
-
     return json(
-      {
-        error:
-          'Invalid request: user message missing'
-      },
+      { error: 'Invalid request: user message missing' },
       400
     );
   }
 
-
-  // ----------------------------------------------------------
   // MEMORY + SEARCH DECISION
-  // ----------------------------------------------------------
-
-  const memoryPromise =
-    fetchMemories(
-      userId,
-      userText
-    );
-
-  const searchPromise =
-    askSearchDecision(
-      userText
-    );
-
+  const memoryPromise = fetchMemories(userId, userText);
+  const searchPromise = askSearchDecision(userText);
 
   let memories = [];
   let shouldSearch = false;
 
   try {
-
-    [
-      memories,
-      shouldSearch
-    ] = await Promise.all([
+    [memories, shouldSearch] = await Promise.all([
       memoryPromise,
       searchPromise
     ]);
-
   } catch (error) {
-
     console.error(
       'Preparation error:',
       error?.message || error
     );
   }
 
-
-  // ----------------------------------------------------------
-  // WEB SEARCH
-  // ----------------------------------------------------------
-
+  // WEB SEARCH (Quantum Search — no API key needed)
   let searchResults = [];
 
   if (shouldSearch) {
-
-    searchResults =
-      await tavilySearch(
-        userText
-      );
+    searchResults = await quantumSearch(userText);
   }
 
-
-  // ----------------------------------------------------------
   // SYSTEM INSTRUCTION
-  // ----------------------------------------------------------
-
   const clientInstruction =
-    body?.systemInstruction?.parts?.[0]?.text ||
-    '';
+    body?.systemInstruction?.parts?.[0]?.text || '';
 
-  const memoryContext =
-    buildMemoryContext(
-      memories
-    );
-
-  const searchContext =
-    buildSearchContext(
-      searchResults
-    );
+  const memoryContext = buildMemoryContext(memories);
+  const searchContext = buildSearchContext(searchResults);
 
   const finalSystemInstruction = `
 
@@ -1011,62 +1127,40 @@ GENERAL RULES:
 - Use web results for current information when provided.
 `;
 
-
-  // ----------------------------------------------------------
   // MODEL CHAIN
-  // ----------------------------------------------------------
-
   const chain =
     activeMode === 'fast'
       ? MODEL_CHAIN.fast
       : MODEL_CHAIN.core;
 
-
   let lastError = null;
 
-
-  // ----------------------------------------------------------
   // TRY MODELS
-  // ----------------------------------------------------------
-
   for (const model of chain) {
-
     try {
+      const geminiResponse = await createGeminiResponse({
+        model,
+        contents,
+        systemInstruction: finalSystemInstruction,
+        generationConfig
+      });
 
-      const geminiResponse =
-        await createGeminiResponse({
-          model,
-          contents,
-          systemInstruction:
-            finalSystemInstruction,
-          generationConfig
-        });
-
-
-      // Convert Gemini SSE into
-      // the format your frontend expects.
-      const stream =
-        await streamGeminiToClient(
-          geminiResponse
-        );
-
-
-      return new Response(
-        stream,
-        {
-          status: 200,
-          headers: {
-            ...CORS_HEADERS,
-            'Content-Type':
-              'text/event-stream; charset=utf-8',
-            'Cache-Control':
-              'no-cache, no-transform'
-          }
-        }
+      // Convert Gemini SSE -> client SSE
+      const stream = await streamGeminiToClient(
+        geminiResponse
       );
 
-    } catch (error) {
+      return new Response(stream, {
+        status: 200,
+        headers: {
+          ...CORS_HEADERS,
+          'Content-Type':
+            'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform'
+        }
+      });
 
+    } catch (error) {
       lastError = error;
 
       console.error(
@@ -1078,18 +1172,12 @@ GENERAL RULES:
     }
   }
 
-
-  // ----------------------------------------------------------
   // EVERYTHING FAILED
-  // ----------------------------------------------------------
-
   return json(
     {
-      error:
-        'All Gemini models failed',
+      error: 'All Gemini models failed',
       details:
-        lastError?.message ||
-        'Unknown server error'
+        lastError?.message || 'Unknown server error'
     },
     500
   );
