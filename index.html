@@ -1433,7 +1433,26 @@ function initImagePreviewPanZoom(){
     lastTap=now;
   },{passive:true});
 }
-
+async function waitForMermaid(maxWaitMs){
+  const start = Date.now();
+  while(!window.mermaid && Date.now() - start < maxWaitMs){
+    await new Promise(r => setTimeout(r, 100));
+  }
+  if(window.mermaid){
+    try{
+      const isDark = document.body.classList.contains("dark-mode");
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: isDark ? "dark" : "default",
+        securityLevel: "loose",
+        fontFamily: "Inter, Segoe UI, sans-serif",
+        flowchart: { curve: "basis", htmlLabels: true },
+        sequence: { useMaxWidth: true }
+      });
+    }catch(e){}
+  }
+  return !!window.mermaid;
+}
 function initMermaid(){
   if(window.mermaid){
     try{
@@ -1451,8 +1470,9 @@ function initMermaid(){
   }
 }
 
-async function renderAllMermaids(container){
-  if(!window.mermaid)return;
+async function renderAllMermaids(container) {
+    const ready = await waitForMermaid(3000);
+    if (!ready) return;
   const codeBlocks=container.querySelectorAll("pre > code");
   const mermaidKeywords=/^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
   let idx=0;
@@ -1804,7 +1824,9 @@ async function processStream(response,botElement,userPrompt,botRef){
     }
     botElement.innerHTML=renderMarkdown(fullText);
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
-    renderAllMermaids(botElement);
+    renderAllMermaids(botElement).then(function() {
+  setTimeout(function() { renderAllMermaids(botElement); }, 800);
+});
     const latestChat=getCurrentChat();
     if(latestChat)latestChat.messages.push({role:"bot",content:fullText,image:null});
     await updateSmartTitle(userPrompt);
@@ -2267,15 +2289,29 @@ async function callTakeSnapshot(){
 
   // Capture frame
   try{
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUri = canvas.toDataURL("image/jpeg", 0.75);
+    // Capture at reduced resolution to keep payload small
+const maxDim = 1024;
+let cw = video.videoWidth;
+let ch = video.videoHeight;
+if(cw > maxDim || ch > maxDim){
+if(cw > ch){ ch = Math.round((ch*maxDim)/cw); cw = maxDim; }
+else{ cw = Math.round((cw*maxDim)/ch); ch = maxDim; }
+}
+const canvas = document.createElement("canvas");
+canvas.width = cw;
+canvas.height = ch;
+const ctx = canvas.getContext("2d");
+ctx.drawImage(video, 0, 0, cw, ch);
+const rawUri = canvas.toDataURL("image/jpeg", 0.7);
 
-    // Attach as image & send with prompt
-    base64Image = dataUri;
+// Compress again (safety) — ensures under ~150KB
+let compressed = rawUri;
+try{
+compressed = await compressImage(rawUri, 1024, 0.7);
+}catch(e){ compressed = rawUri; }
+
+// Attach as image & send with prompt
+base64Image = compressed;
     document.getElementById("preview-img").src = dataUri;
     document.getElementById("image-preview-wrap").style.display = "";
     document.getElementById("preview").classList.add("active");
