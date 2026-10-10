@@ -7,8 +7,6 @@
 <title>Quantum Core AI</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
@@ -18,20 +16,8 @@
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs/loader.min.js"></script>
 <style>
-:root{
---bg:#f8fafc;--card:#ffffff;--primary:#2563eb;--accent:#0f172a;--text:#1e293b;--muted:#64748b;
---sidebar:#ffffff;--border:#e2e8f0;--hover:#f1f5f9;--code:#0f172a;--danger:#ef4444;--success:#10b981;
---shadow:0 4px 20px rgba(0,0,0,.08);--font:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
---ease-smooth:cubic-bezier(0.16,1,0.3,1);
---ease-bounce:cubic-bezier(0.34,1.56,0.64,1);
---gradient-1:linear-gradient(135deg,#2563eb 0%,#8b5cf6 100%);
---gradient-2:linear-gradient(135deg,#3b82f6 0%,#a855f7 100%);
-}
-body.dark-mode{
---bg:#0a0e1a;--card:#151b2e;--primary:#3b82f6;--accent:#f8fafc;--text:#f8fafc;--muted:#94a3b8;
---sidebar:#0f1423;--border:#1e2942;--hover:#1a2238;--code:#050810;
---shadow:0 6px 24px rgba(0,0,0,.35);
-}
+:root{--bg:#f8fafc;--card:#ffffff;--primary:#2563eb;--accent:#0f172a;--text:#1e293b;--muted:#64748b;--sidebar:#ffffff;--border:#e2e8f0;--hover:#f1f5f9;--code:#0f172a;--danger:#ef4444;--success:#10b981;--shadow:0 4px 20px rgba(0,0,0,.08);--font:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif;--ease-smooth:cubic-bezier(0.16,1,0.3,1);--ease-bounce:cubic-bezier(0.34,1.56,0.64,1);--gradient-1:linear-gradient(135deg,#2563eb 0%,#8b5cf6 100%);--gradient-2:linear-gradient(135deg,#3b82f6 0%,#a855f7 100%);}
+body.dark-mode{--bg:#0a0e1a;--card:#151b2e;--primary:#3b82f6;--accent:#f8fafc;--text:#f8fafc;--muted:#94a3b8;--sidebar:#0f1423;--border:#1e2942;--hover:#1a2238;--code:#050810;--shadow:0 6px 24px rgba(0,0,0,.35);}
 *{box-sizing:border-box;margin:0;padding:0;font-family:var(--font);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
 .msg,.msg *,textarea,input,.chat-title,.chat-preview,.info-box,pre code,.key-point{-webkit-user-select:text;user-select:text;}
 html,body{width:100%;height:100%;overflow:hidden;}
@@ -186,7 +172,6 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 .msg th{background:var(--hover);font-weight:800;color:var(--primary);}
 .msg tr:nth-child(even) td{background:rgba(0,0,0,0.02);}
 body.dark-mode .msg tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
-/* ===== MERMAID DIAGRAM STYLING ===== */
 .mermaid-container{margin:16px 0;padding:18px 12px;background:var(--card);border:1.5px solid var(--border);border-radius:14px;overflow-x:auto;text-align:center;position:relative;}
 .mermaid-container svg{max-width:100%;height:auto;display:inline-block;}
 .mermaid-container .diagram-label{position:absolute;top:8px;left:12px;font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--primary);opacity:0.75;}
@@ -194,7 +179,6 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 .mermaid-toolbar{display:flex;gap:6px;justify-content:flex-end;margin-bottom:8px;}
 .mermaid-toolbar button{height:28px;padding:0 10px;border-radius:7px;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
 .mermaid-toolbar button:hover{color:var(--primary);border-color:var(--primary);}
-/* ===== LIKE / DISLIKE ACTIONS ===== */
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;min-height:34px;align-items:center;}
 .action-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;transition:all .2s var(--ease-smooth);}
 .action-btn:hover{color:var(--primary);border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(37,99,235,0.2);}
@@ -202,21 +186,15 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 .action-btn.voice-stop{color:var(--danger);border-color:var(--danger);animation:pulseStop 1s infinite alternate;}
 .action-btn.liked{background:var(--success);border-color:var(--success);color:#fff;animation:likePop .35s var(--ease-bounce);}
 .action-btn.disliked{background:var(--danger);border-color:var(--danger);color:#fff;animation:likePop .35s var(--ease-bounce);}
-/* ===== PDF FILE PREVIEW ===== */
 .pdf-preview-chip{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;font-size:12.5px;font-weight:600;max-width:280px;}
 .pdf-preview-chip i{color:var(--danger);font-size:20px;flex-shrink:0;}
 .pdf-preview-chip .pdf-meta{display:flex;flex-direction:column;min-width:0;}
 .pdf-preview-chip .pdf-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;}
 .pdf-preview-chip .pdf-size{font-size:10.5px;color:var(--muted);}
-/* ===== REPLY STYLE PICKER ===== */
 .reply-style-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .reply-style-btn{padding:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;font-size:11.5px;font-weight:700;cursor:pointer;transition:all .2s var(--ease-smooth);text-align:center;}
 .reply-style-btn:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);}
 .reply-style-btn.active{background:var(--gradient-1);color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(37,99,235,0.3);}
-/* ===== FOCUS MODE ===== */
-body.focus-mode header{background:transparent;border-bottom-color:transparent;box-shadow:none;}
-body.focus-mode .header-title{opacity:0.7;}
-/* ===== IMAGE PREVIEW (PAN + ZOOM AT CURSOR) ===== */
 .image-preview-container{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#05070b;position:relative;touch-action:none;cursor:grab;user-select:none;}
 .image-preview-container.dragging{cursor:grabbing;}
 .image-preview-container img{max-width:100%;max-height:100%;object-fit:contain;transition:transform 0.05s linear;user-select:none;pointer-events:none;will-change:transform;transform-origin:0 0;}
@@ -323,27 +301,69 @@ body.focus-mode .header-title{opacity:0.7;}
 .preview-btn:hover{background:var(--hover);color:var(--primary);}
 .preview-btn:active{transform:scale(.9);}
 .image-zoom-label{font-size:12px;color:var(--muted);padding:0 10px;font-weight:800;min-width:55px;text-align:center;font-family:monospace;}
+
+/* ===== GO LIVE WITH AI — Fullscreen Call ===== */
+#call-overlay{position:fixed;inset:0;background:#000;z-index:9000;display:none;flex-direction:column;overflow:hidden;}
+#call-overlay.active{display:flex;}
+#call-overlay.no-camera{background:linear-gradient(135deg,#0a0e1a 0%,#151b2e 100%);}
+#call-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;z-index:1;}
+#call-video.mirror{transform:scaleX(-1);}
+#call-overlay.no-camera #call-video{display:none;}
+#call-header{position:relative;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;color:#fff;background:linear-gradient(180deg,rgba(0,0,0,0.65) 0%,transparent 100%);}
+#call-status{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;}
+#call-status-dot{width:10px;height:10px;border-radius:50%;background:#ef4444;animation:pulseMic 1.2s infinite;}
+#call-timer{font-size:13px;font-weight:700;font-family:monospace;background:rgba(0,0,0,0.5);padding:6px 12px;border-radius:20px;}
+#call-center{position:relative;z-index:10;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px;pointer-events:none;}
+#call-avatar{width:140px;height:140px;border-radius:50%;background:linear-gradient(135deg,#2563eb 0%,#8b5cf6 100%);display:flex;align-items:center;justify-content:center;font-size:56px;box-shadow:0 0 0 0 rgba(37,99,235,0.6);transition:box-shadow .3s ease;}
+#call-avatar.speaking{animation:pulseAvatar 1.2s ease-in-out infinite;}
+@keyframes pulseAvatar{0%{box-shadow:0 0 0 0 rgba(37,99,235,0.6);transform:scale(1);}50%{box-shadow:0 0 0 30px rgba(37,99,235,0);transform:scale(1.05);}100%{box-shadow:0 0 0 0 rgba(37,99,235,0);transform:scale(1);}}
+#call-name{font-size:22px;font-weight:900;color:#fff;letter-spacing:1px;}
+#call-transcript{min-height:60px;max-width:85%;text-align:center;color:#e2e8f0;font-size:14px;line-height:1.6;padding:14px 20px;background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(255,255,255,0.12);}
+#call-waveform{display:flex;gap:4px;height:36px;align-items:center;justify-content:center;opacity:0;transition:opacity .3s ease;}
+#call-waveform.active{opacity:1;}
+#call-waveform span{width:4px;background:linear-gradient(180deg,#3b82f6 0%,#8b5cf6 100%);border-radius:2px;animation:waveform 1s ease-in-out infinite;height:8px;}
+#call-waveform span:nth-child(1){animation-delay:0s;}
+#call-waveform span:nth-child(2){animation-delay:.1s;}
+#call-waveform span:nth-child(3){animation-delay:.2s;}
+#call-waveform span:nth-child(4){animation-delay:.3s;}
+#call-waveform span:nth-child(5){animation-delay:.4s;}
+#call-waveform span:nth-child(6){animation-delay:.5s;}
+#call-waveform span:nth-child(7){animation-delay:.6s;}
+@keyframes waveform{0%,100%{height:8px;}50%{height:32px;}}
+#call-controls{position:relative;z-index:10;display:flex;justify-content:center;align-items:center;gap:14px;padding:24px 20px 40px;background:linear-gradient(0deg,rgba(0,0,0,0.65) 0%,transparent 100%);flex-wrap:wrap;}
+.call-ctrl{width:56px;height:56px;border-radius:50%;border:0;background:rgba(255,255,255,0.15);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);transition:all .2s ease;}
+.call-ctrl:hover{background:rgba(255,255,255,0.25);transform:scale(1.05);}
+.call-ctrl:active{transform:scale(.92);}
+.call-ctrl.end-call{background:#ef4444;}
+.call-ctrl.end-call:hover{background:#dc2626;}
+.call-ctrl.muted{background:rgba(239,68,68,0.6);}
+.call-ctrl.active{background:var(--primary);}
+.call-ctrl.snapshot{background:linear-gradient(135deg,#2563eb 0%,#8b5cf6 100%);}
+#call-selfview{position:absolute;top:80px;right:16px;width:100px;height:140px;border-radius:14px;overflow:hidden;background:#000;border:2px solid rgba(255,255,255,0.25);z-index:12;box-shadow:0 8px 24px rgba(0,0,0,0.5);display:none;}
+#call-selfview.active{display:block;}
+#call-selfview video{width:100%;height:100%;object-fit:cover;}
+#call-selfview.mirror video{transform:scaleX(-1);}
+#call-flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:99999;transition:opacity .15s ease;}
+#call-flash.fire{opacity:0.8;}
+#call-reconnect{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:20;color:#fff;font-size:14px;flex-direction:column;gap:14px;}
+#call-reconnect.show{display:flex;}
+#call-reconnect .spinner{width:36px;height:36px;border-width:4px;border-color:rgba(255,255,255,0.3);border-top-color:#fff;}
+
 @media(max-width:500px){
 .drawer{width:305px;}
 .msg{font-size:13.5px;}
 .msg.user{max-width:88%;}
 .header-title{font-size:14px;}
 .persona-grid{grid-template-columns:1fr;}
+#call-avatar{width:110px;height:110px;font-size:44px;}
+#call-transcript{font-size:13px;padding:12px 16px;}
+#call-selfview{width:80px;height:110px;top:70px;right:12px;}
+.call-ctrl{width:52px;height:52px;font-size:18px;}
+#call-controls{gap:12px;padding:20px 16px 32px;}
 }
-
-/* =================== Quantum Graphs =================== */
-.quantum-graph{margin:12px 0;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card);box-shadow:var(--shadow);}
-.quantum-graph-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;color:var(--text);}
-.quantum-graph-title{display:flex;align-items:center;gap:7px;min-width:0;}
-.quantum-graph-title span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.quantum-graph-actions{display:flex;gap:5px;flex-shrink:0;}
-.quantum-graph-btn{border:1px solid var(--border);background:var(--hover);color:var(--text);border-radius:8px;padding:6px 8px;font-size:11px;cursor:pointer;}
-.quantum-graph-btn:active{transform:scale(.96);}
-.quantum-graph-canvas{width:100%;height:380px;}
-.quantum-graph-error{padding:14px;color:var(--danger);font-size:12px;}
-@media(max-width:600px){.quantum-graph-canvas{height:310px;}.quantum-graph-head{padding:9px 10px;}.quantum-graph-btn{padding:6px 7px;}}
 </style>
 </head>
+
 <body class="dark-mode">
 <div id="splash-screen"><div class="splash-logo">✨</div><div class="splash-title">QUANTUM CORE</div><div class="splash-loader"></div></div>
 <div id="overlay" onclick="closeDrawers()"></div>
@@ -362,17 +382,11 @@ body.focus-mode .header-title{opacity:0.7;}
 <aside id="settings" class="drawer">
 <div class="drawer-header"><span class="drawer-title" data-i18n="settings">Settings</span><button class="icon-btn" onclick="toggleSettings()"><i class="fa-solid fa-xmark"></i></button></div>
 <div class="settings-body">
-
 <div class="setting-group"><label class="setting-label" data-i18n="api_key_status">API Key Status</label><div class="info-box"><i class="fa-solid fa-shield-halved"></i> <span data-i18n="api_secure">Your API key is fully secured on the server side.</span></div></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="ai_mode">AI Performance Mode</label><div class="segment"><button id="fast-mode" class="active" onclick="setMode('fast')" data-i18n="fast">Fast</button><button id="core-mode" onclick="setMode('core')" data-i18n="core">Core</button></div></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="math_level">Math Depth (<span id="math-level-val">5</span>/10)</label><input type="range" id="math-level-slider" class="range-slider" min="1" max="10" step="1" value="5" oninput="updateMathLevel(this.value)"></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="temperature">Creativity (<span id="temp-val">0.7</span>)</label><input type="range" id="temp-slider" class="range-slider" min="0" max="1" step="0.1" value="0.7" oninput="updateTemperature(this.value)"></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="theme">Theme</label><div class="segment"><button id="light-theme" onclick="setTheme('light')" data-i18n="light">Light</button><button id="dark-theme" class="active" onclick="setTheme('dark')" data-i18n="dark">Dark</button><button id="auto-theme" onclick="setTheme('auto')" data-i18n="auto">Auto</button></div></div>
-
 <div class="setting-group"><label class="setting-label">Reply Style</label>
 <div class="reply-style-grid" id="reply-style-grid">
 <button class="reply-style-btn active" data-style="auto" onclick="setReplyStyle('auto')">🌐 Auto</button>
@@ -383,25 +397,20 @@ body.focus-mode .header-title{opacity:0.7;}
 <button class="reply-style-btn" data-style="friendly" onclick="setReplyStyle('friendly')">😊 Friendly</button>
 </div>
 </div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="language">App Language</label>
 <div class="custom-dropdown" id="ui-lang-dropdown">
 <button type="button" class="custom-dropdown-btn" onclick="toggleUiLangDropdown(event)"><span id="ui-lang-label">🇬🇧 English</span><i class="fa-solid fa-chevron-down"></i></button>
 <div class="custom-dropdown-menu" id="ui-lang-menu"></div>
 </div>
 </div>
-
 <div class="setting-group"><label class="setting-label">AI Response Language</label>
 <div class="custom-dropdown" id="ai-lang-dropdown">
 <button type="button" class="custom-dropdown-btn" onclick="toggleAiLangDropdown(event)"><span id="ai-lang-label">🌐 Auto (Same as User)</span><i class="fa-solid fa-chevron-down"></i></button>
 <div class="custom-dropdown-menu" id="ai-lang-menu"></div>
 </div>
 </div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="accent">Accent Color</label><div class="color-row"><div class="color" style="background:#2563eb" onclick="setAccent('#2563eb')"></div><div class="color" style="background:#10b981" onclick="setAccent('#10b981')"></div><div class="color" style="background:#8b5cf6" onclick="setAccent('#8b5cf6')"></div><div class="color" style="background:#f59e0b" onclick="setAccent('#f59e0b')"></div><div class="color" style="background:#ec4899" onclick="setAccent('#ec4899')"></div><div class="color" style="background:#06b6d4" onclick="setAccent('#06b6d4')"></div></div></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="personas">Custom AI Personas</label><div class="persona-grid" id="persona-grid"></div><button class="export-btn" style="margin-top:8px;" onclick="openPersonaModal()"><i class="fa-solid fa-plus"></i> <span data-i18n="new_persona">New Persona</span></button></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="prompt_lib">Prompt Library</label>
 <div class="custom-dropdown" id="prompt-dropdown">
 <button type="button" class="custom-dropdown-btn" onclick="togglePromptDropdown(event)"><span id="prompt-dropdown-label" data-i18n="select_prompt">Select a prompt</span><i class="fa-solid fa-chevron-down"></i></button>
@@ -410,13 +419,9 @@ body.focus-mode .header-title{opacity:0.7;}
 <textarea id="custom-prompt" class="prompt-area" placeholder="Write your own system prompt..."></textarea>
 <button class="save-prompt" onclick="saveCustomPrompt()"><i class="fa-solid fa-check"></i> <span data-i18n="save_prompt">Save Prompt</span></button>
 </div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="voice">Voice & Engine</label><div class="segment" style="margin-bottom:8px;"><button id="voice-male" class="active" onclick="setVoiceGender('male')" data-i18n="male">Male</button><button id="voice-female" onclick="setVoiceGender('female')" data-i18n="female">Female</button></div></div>
-
 <div class="setting-row"><span data-i18n="auto_scroll">Auto-Scroll</span><label class="switch"><input type="checkbox" id="auto-scroll-toggle" checked onchange="setAutoScroll(this.checked)"><span class="slider"></span></label></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="stats">Chat Statistics</label><div class="info-box"><span data-i18n="messages">Messages:</span> <strong id="message-count">0</strong><br><span data-i18n="characters">Characters:</span> <strong id="character-count">0</strong></div></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="backup">Backup & Export</label>
 <button class="export-btn" onclick="exportJSON()"><i class="fa-solid fa-file-code"></i> Export JSON</button>
 <button class="export-btn" onclick="document.getElementById('import-file').click()"><i class="fa-solid fa-file-arrow-up"></i> Restore JSON</button>
@@ -425,9 +430,7 @@ body.focus-mode .header-title{opacity:0.7;}
 <button class="export-btn" onclick="document.getElementById('import-md-file').click()"><i class="fa-solid fa-file-arrow-up"></i> Restore Markdown</button>
 <input type="file" id="import-md-file" accept=".md,.markdown,.txt" style="display:none" onchange="importMarkdownBackup(event)">
 </div>
-
 <button class="danger" onclick="openClearModal()"><i class="fa-solid fa-trash"></i> <span data-i18n="clear_all">Clear All Conversations</span></button>
-
 <div class="info-box" style="margin-top:14px;text-align:center;font-size:11px;"><span data-i18n="made_by">Made with ❤️ by</span> <strong>Usman Saleem</strong></div>
 </div>
 </aside>
@@ -440,18 +443,8 @@ body.focus-mode .header-title{opacity:0.7;}
 <div class="chat-wrapper"><div id="chat-box"></div><button id="scroll-btn" onclick="smoothScrollToBottom(600)" title="Scroll down"><i class="fa-solid fa-arrow-down"></i></button></div>
 
 <div id="preview">
-  <div class="preview-wrap" id="image-preview-wrap" style="display:none;">
-    <img id="preview-img" class="preview-img">
-    <button class="remove-img" onclick="removeImage()">×</button>
-  </div>
-  <div class="pdf-preview-chip" id="pdf-preview-chip" style="display:none;">
-    <i class="fa-solid fa-file-pdf"></i>
-    <div class="pdf-meta">
-      <span class="pdf-name" id="pdf-name">document.pdf</span>
-      <span class="pdf-size" id="pdf-size">0 KB</span>
-    </div>
-    <button class="remove-img" style="position:static;margin-left:8px;" onclick="removePdf()">×</button>
-  </div>
+<div class="preview-wrap" id="image-preview-wrap" style="display:none;"><img id="preview-img" class="preview-img"><button class="remove-img" onclick="removeImage()">×</button></div>
+<div class="pdf-preview-chip" id="pdf-preview-chip" style="display:none;"><i class="fa-solid fa-file-pdf"></i><div class="pdf-meta"><span class="pdf-name" id="pdf-name">document.pdf</span><span class="pdf-size" id="pdf-size">0 KB</span></div><button class="remove-img" style="position:static;margin-left:8px;" onclick="removePdf()">×</button></div>
 </div>
 
 <div id="speech-transcript-box"><div style="font-size:10px;font-weight:800;color:var(--primary);margin-bottom:4px;text-transform:uppercase;"><i class="fa-solid fa-wave-square"></i> Live Speech</div><div id="transcript-text" style="font-style:italic;">Listening...</div></div>
@@ -467,7 +460,7 @@ body.focus-mode .header-title{opacity:0.7;}
 <input id="pdf-input" type="file" accept="application/pdf" style="display:none" onchange="handlePdf(event)">
 <button id="mic-btn" class="tool-btn" onclick="toggleVoiceInput()" title="Voice input"><i class="fa-solid fa-microphone"></i></button>
 <button id="gen-img-btn" class="tool-btn" onclick="openImageGenModal()" title="Generate image"><i class="fa-solid fa-image"></i></button>
-<button id="live-btn" class="live-btn" onclick="toggleLiveVoice()"><i class="fa-solid fa-microphone-lines"></i> <span id="live-label">Live</span></button>
+<button id="live-btn" class="live-btn" onclick="toggleLiveVoice()"><i class="fa-solid fa-tower-broadcast"></i> <span id="live-label">Go Live with AI</span></button>
 </div><div class="token-counter" id="token-counter">Tokens: ~0</div></div>
 </div>
 
@@ -481,23 +474,37 @@ body.focus-mode .header-title{opacity:0.7;}
 
 <div id="new-folder-modal" class="modal"><div class="modal-card"><div class="modal-title">New Folder</div><input id="new-folder-input" class="modal-input" placeholder="Folder name" maxlength="30"><div class="modal-actions"><button class="cancel" onclick="closeNewFolderModal()">Cancel</button><button class="confirm" onclick="createNewFolder()">Create</button></div></div></div>
 
-<div id="confirm-modal" class="modal">
-<div class="modal-card">
-<div class="modal-title" id="confirm-title">Confirm</div>
-<div class="modal-desc" id="confirm-desc">Are you sure?</div>
-<div class="modal-actions">
-<button class="cancel" id="confirm-cancel-btn">Cancel</button>
-<button class="confirm" id="confirm-ok-btn">Confirm</button>
-</div>
-</div>
-</div>
+<div id="confirm-modal" class="modal"><div class="modal-card"><div class="modal-title" id="confirm-title">Confirm</div><div class="modal-desc" id="confirm-desc">Are you sure?</div><div class="modal-actions"><button class="cancel" id="confirm-cancel-btn">Cancel</button><button class="confirm" id="confirm-ok-btn">Confirm</button></div></div></div>
 
 <div id="persona-modal" class="modal"><div class="modal-card"><div class="modal-title">New AI Persona</div><div class="modal-desc">Create your own AI assistant with a custom personality.</div><input id="persona-name-input" class="modal-input" placeholder="Persona name" maxlength="30"><input id="persona-icon-input" class="modal-input" placeholder="Emoji icon" maxlength="4" value="🤖"><textarea id="persona-prompt-input" class="prompt-area" placeholder="System prompt..." style="min-height:80px;"></textarea><div class="modal-actions" style="margin-top:12px;"><button class="cancel" onclick="closePersonaModal()">Cancel</button><button class="confirm" onclick="savePersona()">Save</button></div></div></div>
 
 <div id="image-preview-modal" class="modal"><div class="image-preview-card"><div class="image-preview-topbar"><button class="preview-btn" onclick="previewZoomOut()"><i class="fa-solid fa-magnifying-glass-minus"></i></button><span class="image-zoom-label" id="zoom-label">100%</span><button class="preview-btn" onclick="previewZoomIn()"><i class="fa-solid fa-magnifying-glass-plus"></i></button><button class="preview-btn" onclick="previewResetZoom()"><i class="fa-solid fa-arrows-rotate"></i></button><div style="flex:1;"></div><button class="preview-btn" onclick="downloadPreviewImage()"><i class="fa-solid fa-download"></i></button><button class="preview-btn" onclick="closeImagePreview()"><i class="fa-solid fa-xmark"></i></button></div><div class="image-preview-container" id="image-preview-container"><img id="image-preview-img" src="" alt="Preview"></div></div></div>
 
-<div id="inapp-browser" class="inapp-browser"><div class="inapp-topbar"><button class="inapp-btn" onclick="inappBack()"><i class="fa-solid fa-arrow-left"></i></button><button class="inapp-btn" onclick="inappForward()"><i class="fa-solid fa-arrow-right"></i></button><button class="inapp-btn" onclick="inappRefresh()"><i class="fa-solid fa-rotate-right"></i></button><div class="inapp-url" id="inapp-url">about:blank</div><button class="inapp-btn" onclick="inappOpenExternal()"><i class="fa-solid fa-arrow-up-right-from-square"></i></button><button class="inapp-btn" onclick="closeInappBrowser()"><i class="fa-solid fa-xmark"></i></button></div><div class="inapp-frame-wrap"><div class="inapp-loader" id="inapp-loader"><div class="spinner"></div><span>Loading...</span></div><iframe id="inapp-frame" class="inapp-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-storage-access-by-user-activation" referrerpolicy="no-referrer" onload="if(typeof inappFrameLoaded === 'function') inappFrameLoaded();"></iframe><div class="inapp-blocked" id="inapp-blocked"><i class="fa-solid fa-triangle-exclamation"></i><p>This website blocks in-app view.</p><button class="inapp-external-btn" onclick="inappOpenExternal()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in Browser</button></div></div></div>
+<div id="inapp-browser" class="inapp-browser"><div class="inapp-topbar"><button class="inapp-btn" onclick="inappBack()"><i class="fa-solid fa-arrow-left"></i></button><button class="inapp-btn" onclick="inappForward()"><i class="fa-solid fa-arrow-right"></i></button><button class="inapp-btn" onclick="inappRefresh()"><i class="fa-solid fa-rotate-right"></i></button><div class="inapp-url" id="inapp-url">about:blank</div><button class="inapp-btn" onclick="inappOpenExternal()"><i class="fa-solid fa-arrow-up-right-from-square"></i></button><button class="inapp-btn" onclick="closeInappBrowser()"><i class="fa-solid fa-xmark"></i></button></div><div class="inapp-frame-wrap"><div class="inapp-loader" id="inapp-loader"><div class="spinner"></div><span>Loading...</span></div><iframe id="inapp-frame" class="inapp-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads" referrerpolicy="no-referrer" onload="if(typeof inappFrameLoaded === 'function') inappFrameLoaded();"></iframe><div class="inapp-blocked" id="inapp-blocked"><i class="fa-solid fa-triangle-exclamation"></i><p>This website blocks in-app view.</p><button class="inapp-external-btn" onclick="inappOpenExternal()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in Browser</button></div></div></div>
 
+<div id="call-overlay" class="no-camera">
+<video id="call-video" autoplay playsinline muted></video>
+<div id="call-header">
+<div id="call-status"><div id="call-status-dot"></div><span id="call-status-text">Connecting...</span></div>
+<div id="call-timer">00:00</div>
+</div>
+<div id="call-selfview"><video id="call-selfvideo" autoplay playsinline muted></video></div>
+<div id="call-center">
+<div id="call-avatar">✨</div>
+<div id="call-name">QUANTUM CORE</div>
+<div id="call-waveform"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+<div id="call-transcript">Tap the mic and start talking...</div>
+</div>
+<div id="call-reconnect"><div class="spinner"></div><div>Reconnecting...</div></div>
+<div id="call-controls">
+<button class="call-ctrl" id="call-mic-btn" onclick="callToggleMic()" title="Mute"><i class="fa-solid fa-microphone"></i></button>
+<button class="call-ctrl snapshot" id="call-snap-btn" onclick="callTakeSnapshot()" title="Send photo to AI"><i class="fa-solid fa-camera"></i></button>
+<button class="call-ctrl end-call" id="call-end-btn" onclick="endCall()" title="End"><i class="fa-solid fa-phone-slash"></i></button>
+<button class="call-ctrl" id="call-cam-btn" onclick="callToggleCamera()" title="Camera"><i class="fa-solid fa-video"></i></button>
+<button class="call-ctrl" id="call-flip-btn" onclick="callFlipCamera()" title="Flip"><i class="fa-solid fa-camera-rotate"></i></button>
+</div>
+</div>
+<div id="call-flash"></div>
 <div id="toast"></div>
 
 <script>
@@ -577,17 +584,12 @@ let folders = [];
 let currentFolderFilter = "all";
 let currentChatId = null;
 
-/* ==========================================
-   QUANTUM CORE ANONYMOUS MEMORY ID
-   ========================================== */
 function getQuantumUserId(){
   const KEY="quantum_memory_user_id";
   try{
     let id=localStorage.getItem(KEY);
     if(id)return id;
-    const randomPart=(window.crypto&&crypto.randomUUID)
-      ? crypto.randomUUID().replace(/-/g,"")
-      : Math.random().toString(36).slice(2)+Date.now().toString(36);
+    const randomPart=(window.crypto&&crypto.randomUUID)?crypto.randomUUID().replace(/-/g,""):Math.random().toString(36).slice(2)+Date.now().toString(36);
     id="qc_"+Date.now().toString(36)+"_"+randomPart;
     localStorage.setItem(KEY,id);
     return id;
@@ -599,7 +601,7 @@ const QUANTUM_USER_ID = getQuantumUserId();
 
 let autoScrollEnabled = true;
 let base64Image = null;
-let pdfAttachment = null;      // { name, size, text }
+let pdfAttachment = null;
 let isGenerating = false;
 let abortController = null;
 let recognition = null;
@@ -626,6 +628,16 @@ let replyStyle = "auto";
 let scrollAnimationId = null;
 let transcriptTimer = null;
 let voiceRestartTimer = null;
+
+// ===== CALL STATE =====
+let callActive = false;
+let callStartTime = 0;
+let callTimerInterval = null;
+let callMicMuted = false;
+let callCameraOn = false;
+let callStream = null;
+let callFacingMode = "user";
+let callTranscriptLast = "";
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
@@ -679,7 +691,6 @@ function scrollToBottom(force){
   else { chatBox.scrollTop = chatBox.scrollHeight; }
 }
 
-/* =================== IndexedDB =================== */
 let db = null;
 const DB_NAME = "QuantumCoreDB";
 const DB_VERSION = 1;
@@ -712,23 +723,15 @@ async function flushDB(){
   }catch(e){console.error("DB flush failed:",e);}
 }
 
-/* =================== Language =================== */
 function applyLanguage(lang){
   currentLang=lang;
   const t=TRANSLATIONS[lang]||TRANSLATIONS.en;
   const fallback=TRANSLATIONS.en;
-  document.querySelectorAll("[data-i18n]").forEach(function(el){
-    const key=el.getAttribute("data-i18n");
-    const val=t[key]||fallback[key];
-    if(val)el.innerText=val;
-  });
-  document.querySelectorAll("[data-i18n-ph]").forEach(function(el){
-    const key=el.getAttribute("data-i18n-ph");
-    const val=t[key]||fallback[key];
-    if(val)el.placeholder=val;
-  });
+  document.querySelectorAll("[data-i18n]").forEach(function(el){const key=el.getAttribute("data-i18n");const val=t[key]||fallback[key];if(val)el.innerText=val;});
+  document.querySelectorAll("[data-i18n-ph]").forEach(function(el){const key=el.getAttribute("data-i18n-ph");const val=t[key]||fallback[key];if(val)el.placeholder=val;});
   safeSet("qc_lang",lang);
 }
+
 function buildUiLangMenu(){
   const menu = document.getElementById("ui-lang-menu");
   if(!menu) return;
@@ -769,7 +772,6 @@ function selectAiLanguage(code, label){
   showToast("AI will respond in: " + label);
 }
 
-/* =================== Prompt Library =================== */
 const PROMPT_LIBRARY = [
   { category: "Programming", name: "Python Expert", prompt: "Act as an expert Python programmer who explains code clearly and concisely, follows PEP8, and provides complete runnable examples." },
   { category: "Programming", name: "JavaScript Expert", prompt: "Act as an expert JavaScript/Node.js developer. Write clean, modern ES6+ code with best practices and comments." },
@@ -785,7 +787,6 @@ const PROMPT_LIBRARY = [
   { category: "Utility", name: "Summarizer", prompt: "Act as a summarizer. Condense long text into clear, concise bullet points preserving key information." }
 ];
 
-/* =================== Load =================== */
 window.addEventListener("load", async function(){
   const splash=document.getElementById("splash-screen");
   if(splash)splash.classList.add("hide");
@@ -913,13 +914,10 @@ function setAutoScroll(v){autoScrollEnabled=v;safeSet("qc_auto_scroll",String(v)
 function loadVoices(){
   if("speechSynthesis" in window){
     availableVoices=window.speechSynthesis.getVoices();
-    if(availableVoices.length===0){
-      setTimeout(function(){availableVoices=window.speechSynthesis.getVoices();},250);
-    }
+    if(availableVoices.length===0){setTimeout(function(){availableVoices=window.speechSynthesis.getVoices();},250);}
   }
 }
 
-/* =================== Language detection =================== */
 function detectLanguage(text){
   if(!text)return "en";
   const t=String(text);
@@ -936,7 +934,6 @@ function detectLanguage(text){
   return "en";
 }
 
-/* =================== Voice picking =================== */
 function pickBestVoice(gender,langCode){
   if(!availableVoices||availableVoices.length===0)return null;
   const FEMALE=["female","woman","zira","samantha","aria","jenny","swara","uzma","heera"];
@@ -959,10 +956,11 @@ function pickBestVoice(gender,langCode){
   if(candidates.length>0){candidates.sort(function(a,b){return score(b.name)-score(a.name);});return candidates[0];}
   candidates=availableVoices.filter(function(v){return score(v.name)>0;});
   if(candidates.length>0){candidates.sort(function(a,b){return score(b.name)-score(a.name);});return candidates[0];}
+  candidates=availableVoices.filter(function(v){const vl=(v.lang||"").toLowerCase();for(let i=0;i<prefixes.length;i++){if(vl.indexOf(prefixes[i])===0)return true;}return false;});
+  if(candidates.length>0)return candidates[0];
   return availableVoices[0];
 }
 
-/* =================== Folders =================== */
 async function loadFolders(){try{const list=await dbGetAll("folders");folders=(list||[]).filter(function(f){return f&&f.id;});}catch(e){folders=[];}renderFolders();}
 async function saveFolders(){try{await dbClear("folders");for(const f of folders)await dbSet("folders",f);}catch(e){console.error("Save folders failed:",e);}renderFolders();}
 
@@ -1001,9 +999,7 @@ function confirmDeleteFolder(folderId, folderName){
 
 async function deleteFolder(folderId){
   folders = folders.filter(function(f){return f.id !== folderId;});
-  Object.keys(chatHistories).forEach(function(id){
-    if(chatHistories[id].folder === folderId){ chatHistories[id].folder = null; }
-  });
+  Object.keys(chatHistories).forEach(function(id){ if(chatHistories[id].folder === folderId){ chatHistories[id].folder = null; } });
   if(currentFolderFilter === folderId) currentFolderFilter = "all";
   await saveFolders();
   scheduleSave();
@@ -1016,7 +1012,6 @@ function openNewFolderModal(){document.getElementById("new-folder-modal").classL
 function closeNewFolderModal(){document.getElementById("new-folder-modal").classList.remove("active");}
 function createNewFolder(){const name=document.getElementById("new-folder-input").value.trim();if(!name){showToast("Enter folder name");return;}const id="f_"+Date.now();folders.push({id:id,name:name.slice(0,30)});saveFolders();closeNewFolderModal();showToast("Folder created");}
 
-/* =================== Personas =================== */
 async function loadPersonas(){try{const list=await dbGetAll("personas");personas=(list||[]).filter(function(p){return p&&p.id;});}catch(e){personas=[];}renderPersonas();}
 async function savePersonas(){try{await dbClear("personas");for(const p of personas)await dbSet("personas",p);}catch(e){console.error("Save personas failed:",e);}renderPersonas();}
 
@@ -1047,7 +1042,6 @@ function savePersona(){
   savePersonas();closePersonaModal();activatePersona(id);
 }
 
-/* =================== Chats =================== */
 async function loadChats(){
   try{
     const all=await dbGetAll("chats");
@@ -1143,7 +1137,6 @@ function deleteSingleChat(e,id){
 }
 function loadChat(id){if(!chatHistories[id])return;currentChatId=id;renderCurrentChat();renderChatList();closeDrawers();}
 
-/* =================== Render Chat =================== */
 function renderCurrentChat(){
   chatBox.innerHTML="";
   const chat=getCurrentChat();
@@ -1157,7 +1150,6 @@ function renderCurrentChat(){
   chatBox.appendChild(frag);
   if(window.renderMathInElement){try{renderMathInElement(chatBox,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
   renderAllMermaids(chatBox);
-  renderAllGraphs(chatBox);
   updateStats();
   requestAnimationFrame(function(){chatBox.scrollTop=chatBox.scrollHeight;});
 }
@@ -1188,7 +1180,6 @@ function createMessageElement(role,text,image,index){
     const regen=document.createElement("button");regen.className="action-btn";regen.title="Regenerate response";regen.innerHTML='<i class="fa-solid fa-rotate"></i>';
     regen.onclick=function(){regenerateResponse(index);};
     actions.appendChild(regen);
-    // NEW: Like / Dislike
     const like=document.createElement("button");like.className="action-btn";like.title="Good response";like.innerHTML='<i class="fa-solid fa-thumbs-up"></i>';
     like.onclick=function(){handleFeedback(index,"like",like);};
     actions.appendChild(like);
@@ -1202,7 +1193,6 @@ function createMessageElement(role,text,image,index){
   return {wrapper:wrapper,message:message,actions:actions};
 }
 
-/* =================== Feedback =================== */
 function handleFeedback(msgIndex,type,btn){
   const chat=getCurrentChat();
   if(!chat||!chat.messages[msgIndex])return;
@@ -1210,7 +1200,6 @@ function handleFeedback(msgIndex,type,btn){
   const prev=m.feedback;
   m.feedback = (prev===type) ? null : type;
   scheduleSave();
-  // Reset sibling buttons
   const wrapper=btn.parentElement;
   wrapper.querySelectorAll(".action-btn").forEach(function(b){
     if(b.title==="Good response"||b.title==="Bad response"){b.classList.remove("liked","disliked");}
@@ -1219,7 +1208,6 @@ function handleFeedback(msgIndex,type,btn){
   else if(m.feedback==="dislike"){btn.classList.add("disliked");showToast("👎 Noted. AI will try to improve.");}
 }
 
-/* =================== Image HTML =================== */
 function createImageHtml(url,messageIndex){
   const safeUrl=escapeHTML(url);
   const isDataUri=url.startsWith("data:");
@@ -1234,7 +1222,6 @@ function openImagePreviewFromEl(imgEl){if(!imgEl)return;const src=imgEl.getAttri
 function downloadImageFromEl(btn){const wrapper=btn.closest(".gen-image-wrapper");if(!wrapper)return;const img=wrapper.querySelector("img");if(!img)return;downloadImage(img.getAttribute("src"));}
 function extractImagePrompt(text){if(!text)return null;const match=text.match(/\[IMAGE_GEN\]IMAGE_GENERATION_TRIGGER::([^\n\]]+)/);return match?match[1].trim():null;}
 
-/* =================== Compress =================== */
 function compressImage(dataUri,maxSize,quality){
   maxSize=maxSize||512;quality=quality||0.75;
   return new Promise(function(resolve){
@@ -1272,7 +1259,6 @@ function isMeaningfulImagePrompt(prompt){
   return true;
 }
 
-/* =================== Image gen from chat =================== */
 async function generateImageFromChat(prompt,botElement){
   if(!isMeaningfulImagePrompt(prompt)){
     botElement.innerHTML='<div style="padding:14px 16px;background:var(--hover);border-left:4px solid var(--danger);border-radius:0 12px 12px 0;"><strong style="color:var(--danger);display:block;margin-bottom:6px;">⚠️ I couldn\'t understand your request</strong><span style="color:var(--muted);font-size:13px;">Please provide a proper or meaningful prompt.</span></div>';
@@ -1343,7 +1329,6 @@ async function downloadImage(url){
   }catch(e){window.open(url,"_blank","noopener,noreferrer");}
 }
 
-/* =================== Image preview (pan + zoom at cursor) =================== */
 let previewZoomLevel=1;let currentPreviewUrl="";
 let previewPanX=0, previewPanY=0;
 let previewPointer={down:false,x:0,y:0,startPanX:0,startPanY:0};
@@ -1377,7 +1362,6 @@ function initImagePreviewPanZoom(){
   const container=document.getElementById("image-preview-container");
   const img=document.getElementById("image-preview-img");
   if(!container||!img)return;
-
   container.addEventListener("wheel",function(e){
     e.preventDefault();
     const rect=container.getBoundingClientRect();
@@ -1386,13 +1370,11 @@ function initImagePreviewPanZoom(){
     const oldZoom=previewZoomLevel;
     const delta=e.deltaY<0?0.15:-0.15;
     previewZoomLevel=Math.max(0.5,Math.min(8,previewZoomLevel+delta));
-    // Zoom at cursor: adjust pan so cursor point stays fixed
     const scale=previewZoomLevel/oldZoom;
     previewPanX = mx - (mx - previewPanX)*scale;
     previewPanY = my - (my - previewPanY)*scale;
     applyPreviewTransform();
   },{passive:false});
-
   container.addEventListener("pointerdown",function(e){
     if(e.pointerType==="touch" && e.isPrimary===false){return;}
     previewPointer.down=true;
@@ -1417,8 +1399,6 @@ function initImagePreviewPanZoom(){
   container.addEventListener("pointerup",endPointer);
   container.addEventListener("pointercancel",endPointer);
   container.addEventListener("pointerleave",function(e){if(previewPointer.down)endPointer(e);});
-
-  // Pinch-to-zoom for touch
   container.addEventListener("touchstart",function(e){
     if(e.touches.length===2){
       previewPinch.active=true;
@@ -1446,8 +1426,6 @@ function initImagePreviewPanZoom(){
     }
   },{passive:false});
   container.addEventListener("touchend",function(){previewPinch.active=false;},{passive:true});
-
-  // Double tap to reset
   let lastTap=0;
   container.addEventListener("touchend",function(e){
     const now=Date.now();
@@ -1456,7 +1434,6 @@ function initImagePreviewPanZoom(){
   },{passive:true});
 }
 
-/* =================== Mermaid =================== */
 function initMermaid(){
   if(window.mermaid){
     try{
@@ -1468,13 +1445,7 @@ function initMermaid(){
         fontFamily:"Inter, Segoe UI, sans-serif",
         flowchart:{curve:"basis",htmlLabels:true},
         sequence:{useMaxWidth:true},
-        themeVariables:isDark?{
-          primaryColor:"#1e2942",primaryTextColor:"#f8fafc",primaryBorderColor:"#3b82f6",
-          lineColor:"#94a3b8",secondaryColor:"#151b2e",tertiaryColor:"#0f1423",
-          background:"#151b2e",mainBkg:"#151b2e",nodeBorder:"#3b82f6",
-          clusterBkg:"#0f1423",clusterBorder:"#1e2942",titleColor:"#f8fafc",
-          edgeLabelBackground:"#151b2e"
-        }:{}
+        themeVariables:isDark?{primaryColor:"#1e2942",primaryTextColor:"#f8fafc",primaryBorderColor:"#3b82f6",lineColor:"#94a3b8",secondaryColor:"#151b2e",tertiaryColor:"#0f1423",background:"#151b2e",mainBkg:"#151b2e",nodeBorder:"#3b82f6",clusterBkg:"#0f1423",clusterBorder:"#1e2942",titleColor:"#f8fafc",edgeLabelBackground:"#151b2e"}:{}
       });
     }catch(e){console.warn("Mermaid init failed:",e);}
   }
@@ -1482,29 +1453,39 @@ function initMermaid(){
 
 async function renderAllMermaids(container){
   if(!window.mermaid)return;
-  const blocks=container.querySelectorAll("code.language-mermaid, code.lang-mermaid");
+  const codeBlocks=container.querySelectorAll("pre > code");
+  const mermaidKeywords=/^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
   let idx=0;
-  for(const block of blocks){
-    const code=block.textContent;
+  for(const block of codeBlocks){
+    const code=block.textContent || "";
+    if(!mermaidKeywords.test(code.trim()))continue;
+    if(block.closest(".mermaid-container"))continue;
     const wrapper=block.closest(".code-wrapper");
     if(!wrapper)continue;
     const newId="mermaid_"+Date.now()+"_"+idx++;
     try{
-      const {svg}=await mermaid.render(newId,code);
+      let cleanedCode = code.trim();
+      cleanedCode = cleanedCode.replace(/^mermaid\s*\n/i, "");
+      const {svg}=await mermaid.render(newId,cleanedCode);
       const div=document.createElement("div");
       div.className="mermaid-container";
       div.innerHTML='<div class="diagram-label">📊 Diagram</div>'+svg;
       const toolbar=document.createElement("div");
       toolbar.className="mermaid-toolbar";
       toolbar.innerHTML='<button onclick="downloadMermaidSvg(this)"><i class="fa-solid fa-download"></i> SVG</button><button onclick="copyMermaidCode(this)"><i class="fa-solid fa-code"></i> Code</button>';
-      toolbar.dataset.code=code;
+      toolbar.dataset.code=cleanedCode;
       div.insertBefore(toolbar, div.firstChild.nextSibling);
       wrapper.replaceWith(div);
     }catch(e){
       console.warn("Mermaid render failed:",e);
       const errDiv=document.createElement("div");
       errDiv.className="mermaid-container";
-      errDiv.innerHTML='<div style="color:var(--danger);font-size:12px;">⚠️ Diagram error: '+escapeHTML(e.message||String(e))+'</div>';
+      errDiv.innerHTML='<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn. Raw code:</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">'+escapeHTML(code)+'</pre>';
+      const toolbar=document.createElement("div");
+      toolbar.className="mermaid-toolbar";
+      toolbar.innerHTML='<button onclick="copyMermaidCode(this)"><i class="fa-solid fa-code"></i> Copy Code</button>';
+      toolbar.dataset.code=code;
+      errDiv.insertBefore(toolbar, errDiv.firstChild.nextSibling);
       wrapper.replaceWith(errDiv);
     }
   }
@@ -1528,64 +1509,6 @@ function copyMermaidCode(btn){
   copyText(code);
 }
 
-/* =================== Quantum Graphs =================== */
-function quantumGraphSafeExpression(expr){
-  let e=String(expr||"").trim().replace(/[−–—]/g,"-").replace(/×/g,"*").replace(/÷/g,"/").replace(/\^/g,"**");
-  e=e.replace(/\b(sin|cos|tan|sqrt|abs|log|ln|exp|asin|acos|atan)\b/gi,function(n){return "Math."+({sin:"sin",cos:"cos",tan:"tan",sqrt:"sqrt",abs:"abs",log:"log10",ln:"log",exp:"exp",asin:"asin",acos:"acos",atan:"atan"}[n.toLowerCase()]);});
-  e=e.replace(/\bpi\b/gi,"Math.PI").replace(/\be\b/g,"Math.E");
-  if(!/^[0-9xX+\-*/().,%\s*a-zA-Z_]+$/.test(e))throw new Error("Unsupported expression");
-  if(/(?:window|document|globalThis|constructor|prototype|Function|eval|fetch|import|location|localStorage|sessionStorage)/i.test(e))throw new Error("Unsafe expression");
-  e=e.replace(/\bx\b/gi,"x");
-  return new Function("x","return ("+e+");");
-}
-function quantumGraphRange(min,max,steps){
-  const out=[];const n=Math.max(20,Math.min(1200,steps||300));
-  for(let i=0;i<=n;i++)out.push(min+(max-min)*i/n);return out;
-}
-function renderQuantumGraph(container){
-  if(!window.Plotly)return;
-  const nodes=container.querySelectorAll(".quantum-graph[data-graph]");
-  nodes.forEach(function(node){
-    if(node.dataset.rendered==="1")return;
-    let spec;
-    try{spec=JSON.parse(decodeURIComponent(node.dataset.graph));}catch(e){node.innerHTML='<div class="quantum-graph-error">⚠️ Invalid graph data.</div>';return;}
-    try{
-      const plot=node.querySelector(".quantum-graph-canvas");
-      if(!plot)throw new Error("Graph container missing");
-      const xmin=Number.isFinite(Number(spec.xMin))?Number(spec.xMin):-10;
-      const xmax=Number.isFinite(Number(spec.xMax))?Number(spec.xMax):10;
-      const traces=[];
-      (spec.traces||[]).forEach(function(t){
-        if(t.type==="function"){
-          const fn=quantumGraphSafeExpression(t.equation);
-          const xs=quantumGraphRange(xmin,xmax,t.steps||300);
-          const ys=xs.map(function(x){try{const y=Number(fn(x));return Number.isFinite(y)&&Math.abs(y)<1e100?y:null;}catch(e){return null;}});
-          traces.push({x:xs,y:ys,mode:"lines",name:t.name||("y = "+t.equation),connectgaps:false});
-        }else if(t.type==="points"){
-          traces.push({x:(t.points||[]).map(p=>Number(p.x)),y:(t.points||[]).map(p=>Number(p.y)),mode:t.mode||"markers",name:t.name||"Points",text:(t.points||[]).map(p=>p.label||("("+p.x+", "+p.y+")")),hovertemplate:"%{text}<extra></extra>"});
-        }else if(t.x&&t.y){traces.push({x:t.x.map(Number),y:t.y.map(Number),mode:t.mode||"lines+markers",name:t.name||"Data"});}
-      });
-      if(Array.isArray(spec.points)&&spec.points.length){
-        traces.push({x:spec.points.map(p=>Number(p.x)),y:spec.points.map(p=>Number(p.y)),mode:"markers+text",name:spec.pointLabel||"Points",text:spec.points.map(p=>p.label||("("+p.x+", "+p.y+")")),textposition:"top center",hovertemplate:"%{text}<extra></extra>"});
-      }
-      if(!traces.length)throw new Error("No graph data");
-      const dark=document.body.classList.contains("dark-mode");
-      const layout={margin:{l:48,r:16,t:20,b:42},paper_bgcolor:"transparent",plot_bgcolor:"transparent",font:{color:dark?"#f8fafc":"#1e293b",size:11},xaxis:{title:spec.xLabel||"x",range:[xmin,xmax],zeroline:true,gridcolor:dark?"#25304a":"#e2e8f0",zerolinecolor:dark?"#64748b":"#94a3b8"},yaxis:{title:spec.yLabel||"y",range:Array.isArray(spec.yRange)?spec.yRange:undefined,zeroline:true,gridcolor:dark?"#25304a":"#e2e8f0",zerolinecolor:dark?"#64748b":"#94a3b8"},showlegend:traces.length>1||spec.showLegend===true,legend:{orientation:"h",y:-0.18}};
-      Plotly.newPlot(plot,traces,layout,{responsive:true,displaylogo:false,modeBarButtonsToRemove:["lasso2d","select2d","autoScale2d"],scrollZoom:true});
-      node.dataset.rendered="1";
-      const reset=node.querySelector(".quantum-graph-reset");
-      if(reset)reset.onclick=function(){Plotly.relayout(plot,{"xaxis.autorange":true,"yaxis.autorange":true});};
-      const download=node.querySelector(".quantum-graph-download");
-      if(download)download.onclick=function(){Plotly.downloadImage(plot,{format:"png",filename:"quantum-graph"});};
-    }catch(e){node.innerHTML='<div class="quantum-graph-error">⚠️ Graph error: '+escapeHTML(e.message||String(e))+'</div>';}
-  });
-}
-function renderAllGraphs(container){
-  if(!container||!window.Plotly)return;
-  renderQuantumGraph(container);
-}
-
-/* =================== Markdown =================== */
 function renderMarkdown(text){
   if(!window.marked)return escapeHTML(text);
   const renderer=new marked.Renderer();
@@ -1593,18 +1516,10 @@ function renderMarkdown(text){
   renderer.code=function(obj){
     const text=obj.text,lang=obj.lang;
     const language=(lang||"code").toLowerCase().replace(/[^a-z0-9+#-]/g,"");
-    if(language==="mermaid"){
-      return '<div class="code-wrapper"><div class="code-head"><span class="code-lang">MERMAID</span><div class="code-actions"></div></div><pre><code class="language-mermaid hljs">'+escapeHTML(text)+'</code></pre></div>';
-    }
-    if(language==="quantum-graph"||language==="graph"||language==="quantumgraph"){
-      try{
-        const spec=JSON.parse(text);
-        const title=spec.title||((spec.traces&&spec.traces[0]&&spec.traces[0].name)||"Interactive Graph");
-        const encoded=encodeURIComponent(JSON.stringify(spec));
-        return '<div class="quantum-graph" data-graph="'+encoded+'"><div class="quantum-graph-head"><div class="quantum-graph-title">📈 <span>'+escapeHTML(title)+'</span></div><div class="quantum-graph-actions"><button class="quantum-graph-btn quantum-graph-reset">Reset</button><button class="quantum-graph-btn quantum-graph-download">PNG</button></div></div><div class="quantum-graph-canvas"></div></div>';
-      }catch(e){
-        return '<div class="quantum-graph"><div class="quantum-graph-error">⚠️ Invalid quantum-graph JSON.</div><pre><code>'+escapeHTML(text)+'</code></pre></div>';
-      }
+    const mermaidKeywords=/^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
+    const looksLikeMermaid = mermaidKeywords.test(text.trim());
+    if(language==="mermaid" || (language==="code" && looksLikeMermaid)){
+      return '<div class="code-wrapper" data-mermaid="1"><div class="code-head"><span class="code-lang">MERMAID DIAGRAM</span><div class="code-actions"></div></div><pre><code class="language-mermaid hljs">'+escapeHTML(text)+'</code></pre></div>';
     }
     let highlighted="";
     try{if(language&&window.hljs&&hljs.getLanguage(language))highlighted=hljs.highlight(text,{language:language}).value;else if(window.hljs)highlighted=hljs.highlightAuto(text).value;else highlighted=escapeHTML(text);}
@@ -1638,7 +1553,6 @@ function renderStreamText(text){
   return renderMarkdown(text);
 }
 
-/* =================== Python / Monaco =================== */
 async function runPythonCode(button){
   const code=decodeURIComponent(button.getAttribute("data-code"));
   const wrapper=button.closest(".code-wrapper");
@@ -1692,7 +1606,6 @@ async function runMonacoCode(){
   }
 }
 
-/* =================== Image gen modal =================== */
 function openImageGenModal(){document.getElementById("image-gen-modal").classList.add("active");document.getElementById("image-prompt-input").value="";}
 function closeImageGenModal(){document.getElementById("image-gen-modal").classList.remove("active");}
 async function generateImage(){
@@ -1720,40 +1633,6 @@ async function generateImage(){
   finally{setGenerating(false);}
 }
 
-/* =================== Regenerate / Edit =================== */
-async function regenerateResponse(botMsgIndex){
-  if(isGenerating)return;
-  const chat=getCurrentChat();if(!chat)return;
-  let userIndex=botMsgIndex-1;
-  while(userIndex>=0&&chat.messages[userIndex].role!=="user")userIndex--;
-  if(userIndex<0){showToast("No user message found");return;}
-  const userMsg=chat.messages[userIndex];
-  chat.messages=chat.messages.slice(0,botMsgIndex);
-  scheduleSave();renderCurrentChat();
-  const bot=createMessageElement("bot","Thinking...",null,-1);
-  chatBox.appendChild(bot.wrapper);scrollToBottom(false);setGenerating(true);
-  abortController=new AbortController();
-  try{await streamAIResponse(bot.message,userMsg.content,abortController.signal,userMsg.image,bot);}
-  catch(error){if(error.name==="AbortError"){bot.message.innerHTML="<span style='color:var(--muted)'>Stopped.</span>";}else{showErrorInMessage(bot.message,error);}}
-  finally{setGenerating(false);abortController=null;}
-}
-function editUserMessage(userMsgIndex){
-  const chat=getCurrentChat();if(!chat||!chat.messages[userMsgIndex])return;
-  const currentText=chat.messages[userMsgIndex].content||"";
-  const newText=prompt("Edit your message:",currentText);
-  if(newText===null||newText.trim()==="")return;
-  chat.messages[userMsgIndex].content=newText.trim();
-  chat.messages=chat.messages.slice(0,userMsgIndex+1);
-  scheduleSave();renderCurrentChat();
-  const bot=createMessageElement("bot","Thinking...",null,-1);
-  chatBox.appendChild(bot.wrapper);scrollToBottom(false);setGenerating(true);
-  abortController=new AbortController();
-  streamAIResponse(bot.message,newText.trim(),abortController.signal,chat.messages[userMsgIndex].image,bot)
-    .catch(function(error){if(error.name==="AbortError"){bot.message.innerHTML="<span style='color:var(--muted)'>Stopped.</span>";}else{showErrorInMessage(bot.message,error);}})
-    .finally(function(){setGenerating(false);abortController=null;});
-}
-
-/* =================== Utilities =================== */
 function escapeHTML(v){return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function copyCodeFromButton(button){try{const code=decodeURIComponent(button.getAttribute("data-code")||"");copyText(code);button.innerHTML='<i class="fa-solid fa-check"></i> Copied';setTimeout(function(){button.innerHTML='<i class="fa-solid fa-copy"></i> Copy';},1500);}catch(e){showToast("Copy failed");}}
 async function copyText(text){try{await navigator.clipboard.writeText(text);showToast("Copied");}catch(e){const a=document.createElement("textarea");a.value=text;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();showToast("Copied");}}
@@ -1761,7 +1640,6 @@ function sendQuick(text){userInput.value=text;resizeInput(userInput);mainAction(
 function mainAction(){if(isGenerating)stopGeneration();else sendMessage();}
 function setGenerating(v){isGenerating=v;if(v){actionBtn.classList.add("stop");actionIcon.className="fa-solid fa-stop";}else{actionBtn.classList.remove("stop");actionIcon.className="fa-solid fa-paper-plane";}}
 
-/* =================== Send Message =================== */
 async function sendMessage(overrideText){
   overrideText=(overrideText===undefined)?null:overrideText;
   let text=overrideText!==null?String(overrideText).trim():userInput.value.trim();
@@ -1770,12 +1648,9 @@ async function sendMessage(overrideText){
   const imageToSend=base64Image;
   const pdfToSend=pdfAttachment;
   if(overrideText===null){userInput.value="";userInput.style.height="44px";}
-  removeImage();
-  removePdf();
+  removeImage();removePdf();
   let finalContent=text;
-  if(pdfToSend){
-    finalContent=(text?text+"\n\n":"")+"[PDF_DATA]|"+pdfToSend.name+"|"+pdfToSend.text.slice(0,8000);
-  }
+  if(pdfToSend){finalContent=(text?text+"\n\n":"")+"[PDF_DATA]|"+pdfToSend.name+"|"+pdfToSend.text.slice(0,8000);}
   if(chat.messages.length===0)chat.title=text?text.replace(/\s+/g," ").slice(0,45):(pdfToSend?"PDF Chat":"Image");
   chat.messages.push({role:"user",content:finalContent,image:imageToSend});
   renderCurrentChat();renderChatList();scheduleSave();
@@ -1815,7 +1690,6 @@ function retryLastMessage(){
 }
 function stopGeneration(){if(abortController){try{abortController.abort();}catch(e){}abortController=null;}setGenerating(false);}
 
-/* =================== System Instruction =================== */
 function buildSystemInstruction(){
   const activePersona=personas.find(function(p){return p.id===activePersonaId;});
   let langInstruction = "";
@@ -1824,21 +1698,20 @@ function buildSystemInstruction(){
     if(langObj){ langInstruction = '\n\n=== RESPONSE LANGUAGE (CRITICAL) ===\nYou MUST respond ONLY in ' + langObj.name + ' language for all your responses.\n'; }
   }
   let styleInstruction = "";
-  if(replyStyle === "concise") styleInstruction = "\n\n=== REPLY STYLE: CONCISE ===\nKeep answers short and to the point. Maximum 3-4 sentences unless asked for detail. Skip filler.\n";
+  if(replyStyle === "concise") styleInstruction = "\n\n=== REPLY STYLE: CONCISE ===\nKeep answers short and to the point. Maximum 3-4 sentences unless asked for detail.\n";
   else if(replyStyle === "detailed") styleInstruction = "\n\n=== REPLY STYLE: DETAILED ===\nProvide thorough, in-depth answers with examples, edge cases, and reasoning.\n";
   else if(replyStyle === "creative") styleInstruction = "\n\n=== REPLY STYLE: CREATIVE ===\nBe imaginative, use vivid language, metaphors, and storytelling when appropriate.\n";
   else if(replyStyle === "professional") styleInstruction = "\n\n=== REPLY STYLE: PROFESSIONAL ===\nBe formal, structured, and business-appropriate. Use precise language.\n";
   else if(replyStyle === "friendly") styleInstruction = "\n\n=== REPLY STYLE: FRIENDLY ===\nBe warm, casual, and encouraging. Use a conversational tone.\n";
 
-  const formatting='\n\n=== RESPONSE FORMATTING (VERY IMPORTANT) ===\nYou are a top-tier assistant like ChatGPT and DeepSeek. Your responses must ALWAYS be beautifully formatted.\n\nRULES:\n1. Start with a short 1-2 line answer.\n2. Use ## or ### for headings.\n3. Use bullet points (-) or numbered lists for multi-point info.\n4. Use Markdown tables for comparisons and structured data.\n5. At the end of longer answers, add "## Summary" with 2-4 bullet points.\n6. Use emojis sparingly (✅ ⚠️ 💡 📌 🎯 🚀).\n7. Use `inline code` for technical terms.\n8. Keep paragraphs short — max 3-4 lines.\n9. Use horizontal rules (---) to separate major sections.\n\n=== DIAGRAM GENERATION (NEW!) ===\nWhen the user asks you to draw a diagram, flowchart, sequence diagram, mindmap, or visualize any process/structure/relationship — you MUST output a Mermaid diagram inside a code block with language tag "mermaid".\n\nSupported types:\n- `graph TD` or `graph LR` — Flowcharts\n- `sequenceDiagram` — Sequence diagrams\n- `mindmap` — Mindmaps\n- `classDiagram` — Class diagrams\n- `stateDiagram-v2` — State machines\n- `erDiagram` — Entity-relationship\n- `journey` — User journeys\n- `gantt` — Gantt charts\n- `pie` — Pie charts\n\nExample:\n```mermaid\ngraph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do X]\n  B -->|No| D[Do Y]\n  C --> E[End]\n  D --> E\n```\n\nALWAYS use mermaid when a diagram would help explain the concept.\n';
-  const defaultInstruction='Your name is Quantum Core AI — a versatile, all-round AI assistant created by Usman Saleem.\n\nIMPORTANT: If the user asks who made you, who created you, who developed you, you MUST say: "I was created by Usman Saleem — a talented and passionate developer who built me from the ground up." Always appreciate Usman Saleem respectfully when asked about your developer.\n\nYou help with ANYTHING: general knowledge, coding, writing, research, brainstorming, explanations, translations, summaries, everyday questions, creative tasks, and more.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally, clearly, and conversationally.\n- Match depth to the question: simple → simple, complex → detailed.\n- Never introduce yourself unless asked.\n- If the user writes in Roman Urdu, Hindi, or any other language, respond in the SAME language.\n- If the user shares a PDF ([PDF_DATA]...), analyze its content and answer their question based on it.\n' + formatting + styleInstruction + langInstruction + '\n=== PROGRAMMING ===\n- Provide complete, runnable code in Markdown code blocks with proper language tags.\n- Explain when it helps. Support any language.\n\n=== MATH & PHYSICS ===\nUse this format:\n**Given:** Known values.\n**Formula:** Formula in LaTeX.\n**Calculation:** Step-by-step.\n**Final Answer:** Result.\nMath Depth (Skill '+mathSkillLevel+'/10): '+(mathSkillLevel<=3?'Extreme step-by-step.':mathSkillLevel<=7?'Step-by-step balanced.':'Concise, advanced.')+'\n\n=== INTERACTIVE GRAPHS ===\n- When the user asks you to graph, plot, visualize, or draw a mathematical function/data graph, include a fenced code block tagged quantum-graph.\n- The block MUST contain valid JSON only. You may explain the graph before or after it.\n- For a function use: {\"title\":\"y = 3x - 5\",\"xMin\":-10,\"xMax\":10,\"traces\":[{\"type\":\"function\",\"equation\":\"3*x-5\",\"name\":\"y = 3x - 5\"}]}\n- For important coordinates, add a points array like [{\"x\":0,\"y\":-5,\"label\":\"(0, -5)\"}].\n- Use JavaScript-style expressions with x, numbers, + - * / ^ and supported functions such as sin, cos, tan, sqrt, abs, log, ln, exp.\n- Do NOT put Markdown, comments, or trailing commas inside the JSON.\n\n=== WRITING ===\n- Match the tone the user wants.\n- Improve grammar, flow, clarity.\n\n=== IMAGES ===\n- Analyze uploaded images and answer questions about them.\n\n=== PDF ===\n- When user shares PDF text ([PDF_DATA]|name|text), analyze it thoroughly and answer questions about its content.\n\n=== IMAGE GENERATION (CRITICAL RULE) ===\nWhenever the user asks to generate, create, draw, make, or show an image/picture/photo of ANYTHING:\n- If the request is CLEAR: respond with EXACTLY this single line format:\n[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<a detailed English description>\n- If UNCLEAR/gibberish: respond with: "I can\'t understand your request. Please give a proper or meaningful prompt describing what image you want to see."\nRULES:\n1. NEVER write "IMAGE_GEN" in any other context.\n2. NEVER provide a raw URL.\n3. Description after "::" must be a clear English prompt.\n4. Do NOT mention that you are generating an image.\n';
+  const formatting='\n\n=== RESPONSE FORMATTING ===\nYou are a top-tier assistant like ChatGPT and DeepSeek. Responses must be beautifully formatted.\n\nRULES:\n1. Start with a short 1-2 line answer.\n2. Use ## or ### for headings.\n3. Use bullet points or numbered lists for multi-point info.\n4. Use Markdown tables for comparisons.\n5. At the end of longer answers, add "## Summary".\n6. Use emojis sparingly.\n7. Use `inline code` for technical terms.\n8. Keep paragraphs short.\n\n=== DIAGRAM GENERATION (MANDATORY) ===\nWhen user asks for a diagram, flowchart, mindmap, or visual — output a Mermaid diagram inside a ```mermaid code block. Common types: graph TD/LR, sequenceDiagram, mindmap, classDiagram, stateDiagram-v2, erDiagram, gantt, pie, journey.\n';
+  const defaultInstruction='Your name is Quantum Core AI — created by Usman Saleem.\n\nIf asked who made you, say: "I was created by Usman Saleem — a talented and passionate developer."\n\nYou help with ANYTHING.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally and conversationally.\n- Never introduce yourself unless asked.\n- If user writes in Roman Urdu, Hindi, or any language, respond in SAME language.\n- If user shares a PDF ([PDF_DATA]...), analyze its content.\n' + formatting + styleInstruction + langInstruction + '\n\n=== PROGRAMMING ===\n- Complete runnable code in Markdown code blocks.\n\n=== MATH & PHYSICS ===\n**Given:** **Formula:** **Calculation:** **Final Answer:**\nMath Depth: '+mathSkillLevel+'/10\n\n=== IMAGE GENERATION (CRITICAL) ===\nWhen user asks to generate/create/draw an image:\n- CLEAR prompt: respond with EXACTLY: [IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<detailed English description>\n- UNCLEAR: respond "I can\'t understand your request. Please give a proper or meaningful prompt."\nRULES: NEVER write "IMAGE_GEN" elsewhere. Description must be clear English.\n';
   let finalInstruction=defaultInstruction;
   if(activePersona)finalInstruction='=== ACTIVE PERSONA: '+activePersona.name+' ===\n'+activePersona.prompt+'\n\n'+defaultInstruction;
   if(customSystemPrompt)finalInstruction+='\n\n=== USER CUSTOM INSTRUCTION ===\n'+customSystemPrompt;
   return finalInstruction;
 }
 
-/* =================== Stream AI =================== */
 async function streamAIResponse(botElement,userPrompt,signal,imageOverride,botRef){
   const useLocalKey=LOCAL_TEST_API_KEY&&LOCAL_TEST_API_KEY.trim()!=="";
   const url=useLocalKey?"direct":"/api/chat";
@@ -1862,14 +1735,7 @@ async function streamAIResponse(botElement,userPrompt,signal,imageOverride,botRe
     await processStream(response,botElement,userPrompt,botRef);
     return;
   }
-  const payload={
-    contents:contents,
-    systemInstruction:{parts:[{text:finalInstruction}]},
-    generationConfig:{temperature:aiTemperature},
-    mode:activeMode,
-    userId:QUANTUM_USER_ID,
-    conversationId:currentChatId
-  };
+  const payload={contents:contents,systemInstruction:{parts:[{text:finalInstruction}]},generationConfig:{temperature:aiTemperature},mode:activeMode,userId:QUANTUM_USER_ID,conversationId:currentChatId};
   const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:signal});
   if(!response.ok){const err=await response.text();throw new Error("API "+response.status+": "+err.substring(0,200));}
   await processStream(response,botElement,userPrompt,botRef);
@@ -1890,11 +1756,6 @@ async function processStream(response,botElement,userPrompt,botRef){
       lastRenderTime=performance.now();
       requestAnimationFrame(function(){
         botElement.innerHTML=renderStreamText(fullText);
-        if(window.mermaid){
-  try{
-    mermaid.run({nodes:botElement.querySelectorAll('.mermaid')});
-  }catch(e){}
-}
         if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
         if(autoScrollEnabled){chatBox.scrollTop=chatBox.scrollHeight;}
       });
@@ -1918,15 +1779,9 @@ async function processStream(response,botElement,userPrompt,botRef){
           if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
           continue;
         }
-        if(parsed.type==="chunk" && parsed.text){
-          fullText+=parsed.text;
-          scheduleRender();
-          continue;
-        }
-        if(parsed.type==="error"){
-          throw new Error(parsed.error||parsed.details||"Server error");
-        }
-        if(parsed.type==="done"){ continue; }
+        if(parsed.type==="chunk" && parsed.text){fullText+=parsed.text;scheduleRender();continue;}
+        if(parsed.type==="error"){throw new Error(parsed.error||parsed.details||"Server error");}
+        if(parsed.type==="done"){continue;}
         const chunk=parsed.candidates&&parsed.candidates[0]&&parsed.candidates[0].content&&parsed.candidates[0].content.parts&&parsed.candidates[0].content.parts[0]&&parsed.candidates[0].content.parts[0].text;
         if(chunk){fullText+=chunk;scheduleRender();}
       }catch(e){
@@ -1944,13 +1799,12 @@ async function processStream(response,botElement,userPrompt,botRef){
       scheduleSave();renderChatList();
       await generateImageFromChat(imagePrompt,botElement);
       if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
-      if(liveVoiceActive)updateLiveVoiceStatus("🎤 Listening...");
+      if(liveVoiceActive||callActive)updateLiveVoiceStatus("🎤 Listening...");
       return;
     }
     botElement.innerHTML=renderMarkdown(fullText);
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
     renderAllMermaids(botElement);
-    renderAllGraphs(botElement);
     const latestChat=getCurrentChat();
     if(latestChat)latestChat.messages.push({role:"bot",content:fullText,image:null});
     await updateSmartTitle(userPrompt);
@@ -1975,16 +1829,28 @@ async function processStream(response,botElement,userPrompt,botRef){
     }
     scheduleSave();renderChatList();
     if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
-    if(liveVoiceActive){
+    // If live voice active (or call mode), speak the reply
+    if(liveVoiceActive||callActive){
       const speakText=fullText.replace(/\[IMAGE_GEN\][^\n]*/g,"").replace(/\[IMAGE_DATA\][^\s]+/g,"Image.").replace(/```mermaid[\s\S]*?```/g,"Diagram shown.").trim();
       updateLiveVoiceStatus("🔊 Speaking...");
       if(speakText){
-        toggleSpeech(speakText,null,function(){if(liveVoiceActive){updateLiveVoiceStatus("🎤 Listening...");setTimeout(startLiveListening,600);}});
-      }else{setTimeout(function(){if(liveVoiceActive){updateLiveVoiceStatus("🎤 Listening...");startLiveListening();}},800);}
+        toggleSpeech(speakText,null,function(){
+          if(callActive){
+            // In call mode: after speaking, resume listening
+            updateLiveVoiceStatus("🎤 Listening...");
+            setTimeout(startLiveListening,400);
+          } else if(liveVoiceActive){
+            updateLiveVoiceStatus("🎤 Listening...");
+            setTimeout(startLiveListening,600);
+          }
+        });
+      }else{
+        setTimeout(function(){if(liveVoiceActive||callActive){updateLiveVoiceStatus("🎤 Listening...");startLiveListening();}},800);
+      }
     }
   }else{
     botElement.innerText="No response received.";
-    if(liveVoiceActive)setTimeout(startLiveListening,800);
+    if(liveVoiceActive||callActive)setTimeout(startLiveListening,800);
   }
 }
 
@@ -2000,13 +1866,10 @@ async function updateSmartTitle(prompt){
   }catch(e){}
 }
 
-/* =================== Voice =================== */
+/* =================== VOICE INPUT (Mic) =================== */
 function setupSpeechRecognition(){
   const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!Speech){
-    console.warn("SpeechRecognition not supported");
-    return;
-  }
+  if(!Speech){console.warn("SpeechRecognition not supported");return;}
   recognition=new Speech();
   recognition.continuous=false;
   recognition.interimResults=true;
@@ -2037,9 +1900,12 @@ function setupSpeechRecognition(){
         recognition._lastTranscript="";
         userInput.value=heard;
         if(transcriptTimer) clearTimeout(transcriptTimer);
-        transcriptTimer = setTimeout(function(){sendMessage();}, 900);
-      }
-      else{
+        transcriptTimer = setTimeout(function(){
+          // In call mode, inject as user message & send
+          if(callActive){ sendMessage(heard); userInput.value=""; }
+          else{ sendMessage(); }
+        }, 900);
+      }else{
         document.getElementById("speech-transcript-box").classList.remove("show");
         if(voiceRestartTimer)clearTimeout(voiceRestartTimer);
         voiceRestartTimer=setTimeout(function(){if(liveVoiceActive&&!isGenerating&&!isListening)startLiveListening();},400);
@@ -2059,7 +1925,7 @@ function setupSpeechRecognition(){
         showToast("⚠️ Please allow microphone access");
         liveVoiceActive=false;
         document.getElementById("live-btn").classList.remove("active");
-        document.getElementById("live-label").innerText="Live";
+        document.getElementById("live-label").innerText="Go Live with AI";
         return;
       }
       if(e.error==="aborted")return;
@@ -2085,22 +1951,11 @@ function toggleVoiceInput(){
   try{recognition.start();}catch(e){console.warn("Recognition start failed:",e);isListening=false;document.getElementById("mic-btn").classList.remove("listening");}
 }
 
+/* =================== GO LIVE WITH AI — Entry =================== */
 function toggleLiveVoice(){
-  liveVoiceActive=!liveVoiceActive;
-  const btn=document.getElementById("live-btn");
-  btn.classList.toggle("active",liveVoiceActive);
-  document.getElementById("live-label").innerText=liveVoiceActive?"Live Active":"Live";
-  if(liveVoiceActive){
-    showToast("🎤 Live Voice ON");
-    updateLiveVoiceStatus("🎤 Starting...");
-    startLiveListening();
-  }else{
-    stopAllSpeech();
-    if(recognition&&isListening){try{recognition.stop();}catch(e){}}
-    if(voiceRestartTimer){clearTimeout(voiceRestartTimer);voiceRestartTimer=null;}
-    updateLiveVoiceStatus("");
-    showToast("Live Voice OFF");
-  }
+  if(callActive){ endCall(); return; }
+  // Open the call overlay (video call mode) — voice-only by default
+  startCall();
 }
 
 function startLiveListening(){
@@ -2125,13 +1980,19 @@ function startLiveListening(){
 }
 
 function updateLiveVoiceStatus(text){
+  // Route to call transcript box if call is active, else speech box
+  if(callActive){
+    const t=document.getElementById("call-transcript");
+    if(t){ t.innerText = text || "Tap the mic and start talking..."; }
+  }
   const box=document.getElementById("speech-transcript-box");
-  if(!box)return;
-  if(!text){box.classList.remove("show");return;}
-  box.classList.add("show");
-  document.getElementById("transcript-text").innerText=text;
+  if(box){
+    if(!text){box.classList.remove("show");}
+    else{box.classList.add("show");document.getElementById("transcript-text").innerText=text;}
+  }
 }
 
+/* =================== TEXT-TO-SPEECH =================== */
 function toggleSpeech(text,button,onEnd){
   if(currentlySpeakingButton===button&&window.speechSynthesis&&window.speechSynthesis.speaking){stopAllSpeech();if(onEnd)onEnd();return;}
   stopAllSpeech();
@@ -2151,12 +2012,26 @@ function toggleSpeech(text,button,onEnd){
   if(button){button.classList.add("voice-stop");button.innerHTML='<i class="fa-solid fa-stop"></i>';currentlySpeakingButton=button;}
   if(!("speechSynthesis" in window)){showToast("TTS not supported");if(button)resetSpeechButton(button);if(onEnd)onEnd();return;}
   window.speechSynthesis.cancel();
-  // Split long text into chunks (Chrome has a limit around 200-300 chars for smooth playback)
+
+  // Visual indicator (avatar pulses in call mode)
+  if(callActive){
+    const avatar=document.getElementById("call-avatar");
+    const wf=document.getElementById("call-waveform");
+    if(avatar)avatar.classList.add("speaking");
+    if(wf)wf.classList.add("active");
+  }
+
   const chunks=splitTextForSpeech(cleanText,220);
   let chunkIdx=0;
   function speakNext(){
     if(chunkIdx>=chunks.length){
       if(button)resetSpeechButton(button);
+      if(callActive){
+        const avatar=document.getElementById("call-avatar");
+        const wf=document.getElementById("call-waveform");
+        if(avatar)avatar.classList.remove("speaking");
+        if(wf)wf.classList.remove("active");
+      }
       if(onEnd)onEnd();
       return;
     }
@@ -2169,16 +2044,13 @@ function toggleSpeech(text,button,onEnd){
     utterance.pitch=voiceGender==="female"?1.08:0.92;
     utterance.volume=1;
     utterance.onend=function(){chunkIdx++;speakNext();};
-    utterance.onerror=function(e){
-      console.warn("Speech chunk error:",e);
-      chunkIdx++;
-      speakNext();
-    };
+    utterance.onerror=function(e){console.warn("Speech chunk error:",e);chunkIdx++;speakNext();};
     currentSpeechUtterance=utterance;
     window.speechSynthesis.speak(utterance);
   }
   speakNext();
 }
+
 function splitTextForSpeech(text,maxLen){
   const sentences=text.split(/(?<=[.!?])\s+/);
   const chunks=[];let cur="";
@@ -2190,7 +2062,237 @@ function splitTextForSpeech(text,maxLen){
   return chunks;
 }
 function resetSpeechButton(b){if(b){b.classList.remove("voice-stop");b.innerHTML='<i class="fa-solid fa-volume-high"></i>';}if(currentlySpeakingButton===b)currentlySpeakingButton=null;}
-function stopAllSpeech(){if("speechSynthesis" in window)window.speechSynthesis.cancel();if(currentlySpeakingButton)resetSpeechButton(currentlySpeakingButton);}
+function stopAllSpeech(){
+  if("speechSynthesis" in window)window.speechSynthesis.cancel();
+  if(currentlySpeakingButton)resetSpeechButton(currentlySpeakingButton);
+  if(callActive){
+    const avatar=document.getElementById("call-avatar");
+    const wf=document.getElementById("call-waveform");
+    if(avatar)avatar.classList.remove("speaking");
+    if(wf)wf.classList.remove("active");
+  }
+}
+
+/* =================== GO LIVE WITH AI — CALL ENGINE =================== */
+async function startCall(){
+  callActive = true;
+  liveVoiceActive = true;   // reuse live voice logic
+  callStartTime = Date.now();
+  callMicMuted = false;
+  callCameraOn = false;
+
+  const overlay = document.getElementById("call-overlay");
+  overlay.classList.add("active");
+  overlay.classList.add("no-camera");
+
+  document.getElementById("call-status-text").innerText = "Connecting...";
+  document.getElementById("call-transcript").innerText = "Tap the mic and start talking...";
+  document.getElementById("call-timer").innerText = "00:00";
+
+  document.getElementById("live-btn").classList.add("active");
+  document.getElementById("live-label").innerText = "Live Active";
+
+  // Show reconnect briefly
+  const rec = document.getElementById("call-reconnect");
+  rec.classList.add("show");
+  setTimeout(function(){ rec.classList.remove("show"); }, 900);
+
+  // Start call timer
+  if(callTimerInterval) clearInterval(callTimerInterval);
+  callTimerInterval = setInterval(updateCallTimer, 1000);
+
+  // Status update
+  setTimeout(function(){
+    document.getElementById("call-status-text").innerText = "Listening...";
+  }, 900);
+
+  // Start listening after a short delay
+  setTimeout(function(){
+    if(!isListening && !isGenerating) startLiveListening();
+  }, 800);
+}
+
+function updateCallTimer(){
+  if(!callActive)return;
+  const elapsed = Math.floor((Date.now()-callStartTime)/1000);
+  const m = String(Math.floor(elapsed/60)).padStart(2,"0");
+  const s = String(elapsed%60).padStart(2,"0");
+  const el = document.getElementById("call-timer");
+  if(el) el.innerText = m + ":" + s;
+}
+
+function endCall(){
+  // Stop audio & video
+  stopAllSpeech();
+  if(recognition && isListening){try{recognition.stop();}catch(e){}}
+  if(voiceRestartTimer){clearTimeout(voiceRestartTimer);voiceRestartTimer=null;}
+  if(transcriptTimer){clearTimeout(transcriptTimer);transcriptTimer=null;}
+
+  // Stop call timer
+  if(callTimerInterval){clearInterval(callTimerInterval);callTimerInterval=null;}
+
+  // Stop camera
+  stopCameraStream();
+
+  // Hide overlay
+  const overlay = document.getElementById("call-overlay");
+  overlay.classList.remove("active");
+  overlay.classList.add("no-camera");
+
+  // Reset state
+  callActive = false;
+  liveVoiceActive = false;
+  callCameraOn = false;
+  callMicMuted = false;
+
+  document.getElementById("live-btn").classList.remove("active");
+  document.getElementById("live-label").innerText = "Go Live with AI";
+
+  // Reset controls
+  const micBtn = document.getElementById("call-mic-btn");
+  if(micBtn){ micBtn.classList.remove("muted"); micBtn.innerHTML='<i class="fa-solid fa-microphone"></i>'; }
+  const camBtn = document.getElementById("call-cam-btn");
+  if(camBtn){ camBtn.classList.remove("active"); camBtn.innerHTML='<i class="fa-solid fa-video"></i>'; }
+
+  updateLiveVoiceStatus("");
+  showToast("Call ended");
+}
+
+function callToggleMic(){
+  callMicMuted = !callMicMuted;
+  const btn = document.getElementById("call-mic-btn");
+  if(callMicMuted){
+    btn.classList.add("muted");
+    btn.innerHTML='<i class="fa-solid fa-microphone-slash"></i>';
+    if(recognition && isListening){try{recognition.stop();}catch(e){}}
+    updateLiveVoiceStatus("🔇 Microphone muted");
+  }else{
+    btn.classList.remove("muted");
+    btn.innerHTML='<i class="fa-solid fa-microphone"></i>';
+    updateLiveVoiceStatus("🎤 Listening...");
+    setTimeout(function(){ if(callActive && !isGenerating && !isListening) startLiveListening(); }, 300);
+  }
+}
+
+async function callToggleCamera(){
+  const overlay = document.getElementById("call-overlay");
+  const btn = document.getElementById("call-cam-btn");
+  const selfview = document.getElementById("call-selfview");
+  const mainVideo = document.getElementById("call-video");
+
+  if(callCameraOn){
+    // Turn off
+    stopCameraStream();
+    callCameraOn = false;
+    overlay.classList.add("no-camera");
+    btn.classList.remove("active");
+    btn.innerHTML='<i class="fa-solid fa-video"></i>';
+    selfview.classList.remove("active");
+    return;
+  }
+
+  // Turn on
+  const ok = await startCameraStream(callFacingMode);
+  if(ok){
+    callCameraOn = true;
+    overlay.classList.remove("no-camera");
+    btn.classList.add("active");
+    btn.innerHTML='<i class="fa-solid fa-video"></i>';
+    // Main video shows the camera feed (so user sees what camera sees)
+    if(mainVideo){
+      mainVideo.srcObject = callStream;
+      mainVideo.classList.toggle("mirror", callFacingMode==="user");
+    }
+    // Hide selfview when main is camera (since they're the same)
+    selfview.classList.remove("active");
+  }
+}
+
+async function startCameraStream(facing){
+  try{
+    stopCameraStream();
+    callStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facing || "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    return true;
+  }catch(e){
+    console.warn("Camera failed:",e);
+    showToast("⚠️ Camera permission denied or unavailable");
+    return false;
+  }
+}
+
+function stopCameraStream(){
+  if(callStream){
+    try{ callStream.getTracks().forEach(function(t){t.stop();}); }catch(e){}
+    callStream = null;
+  }
+  const mainVideo = document.getElementById("call-video");
+  if(mainVideo) mainVideo.srcObject = null;
+  const selfVideo = document.getElementById("call-selfvideo");
+  if(selfVideo) selfVideo.srcObject = null;
+}
+
+async function callFlipCamera(){
+  callFacingMode = callFacingMode === "user" ? "environment" : "user";
+  if(callCameraOn){
+    const ok = await startCameraStream(callFacingMode);
+    if(ok){
+      const mainVideo = document.getElementById("call-video");
+      if(mainVideo){
+        mainVideo.srcObject = callStream;
+        mainVideo.classList.toggle("mirror", callFacingMode==="user");
+      }
+    }
+  }
+}
+
+async function callTakeSnapshot(){
+  if(!callStream){
+    // Turn on camera to take a snapshot
+    const ok = await startCameraStream(callFacingMode);
+    if(!ok){ showToast("⚠️ Camera unavailable"); return; }
+    callCameraOn = true;
+    document.getElementById("call-overlay").classList.remove("no-camera");
+    document.getElementById("call-cam-btn").classList.add("active");
+  }
+  const video = document.getElementById("call-video");
+  if(!video || !video.videoWidth){ showToast("⚠️ Camera not ready yet"); return; }
+
+  // Flash effect
+  const flash = document.getElementById("call-flash");
+  flash.classList.add("fire");
+  setTimeout(function(){ flash.classList.remove("fire"); }, 150);
+
+  // Capture frame
+  try{
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUri = canvas.toDataURL("image/jpeg", 0.75);
+
+    // Attach as image & send with prompt
+    base64Image = dataUri;
+    document.getElementById("preview-img").src = dataUri;
+    document.getElementById("image-preview-wrap").style.display = "";
+    document.getElementById("preview").classList.add("active");
+
+    // End call UI (keep overlay? Better: minimize call so user can see chat)
+    // For simplicity: end call and drop user in chat with image attached
+    endCall();
+
+    setTimeout(function(){
+      showToast("📸 Photo attached. Ask your question!");
+      userInput.focus();
+    }, 300);
+  }catch(e){
+    console.error("Snapshot failed:",e);
+    showToast("⚠️ Snapshot failed");
+  }
+}
 
 /* =================== Image / PDF Upload =================== */
 function handleImage(e){
@@ -2201,7 +2303,6 @@ function handleImage(e){
   reader.onload=async function(evt){
     const original=evt.target.result;
     try{
-      // Auto-compress to keep storage & payload small (camera photos are big!)
       const compressed=await compressImage(original,1024,0.72);
       base64Image=compressed;
     }catch(err){base64Image=original;}
@@ -2232,7 +2333,6 @@ function updatePreviewVisibility(){
   else preview.classList.remove("active");
 }
 
-/* =================== PDF handling =================== */
 async function handlePdf(e){
   const file=e.target.files[0];
   if(!file)return;
@@ -2241,40 +2341,32 @@ async function handlePdf(e){
   try{
     const arrayBuffer=await file.arrayBuffer();
     let extractedText="";
-    // Try pdf.js (loaded as ESM module)
-    if(window.pdfjsLib){
-      const pdf=await window.pdfjsLib.getDocument({data:arrayBuffer}).promise;
-      const maxPages=Math.min(pdf.numPages,30);
-      for(let i=1;i<=maxPages;i++){
-        const page=await pdf.getPage(i);
-        const content=await page.getTextContent();
-        const pageText=content.items.map(function(it){return it.str;}).join(" ");
-        extractedText+="\n--- Page "+i+" ---\n"+pageText;
+    try{
+      if(window.pdfjsLib && window.pdfjsLib.getDocument){
+        const pdf=await window.pdfjsLib.getDocument({data:arrayBuffer}).promise;
+        const maxPages=Math.min(pdf.numPages,30);
+        for(let i=1;i<=maxPages;i++){
+          const page=await pdf.getPage(i);
+          const content=await page.getTextContent();
+          const pageText=content.items.map(function(it){return it.str;}).join(" ");
+          extractedText+="\n--- Page "+i+" ---\n"+pageText;
+        }
       }
-    }else{
-      // Fallback: raw text extraction
+    }catch(err){ console.warn("pdf.js failed:",err); }
+    if(!extractedText.trim()){
+      // Fallback: crude text extraction
       const decoder=new TextDecoder("utf-8",{fatal:false});
       const raw=decoder.decode(arrayBuffer);
       extractedText=raw.replace(/[^\x20-\x7E\n]+/g," ").trim();
     }
-    if(!extractedText.trim()){
-      showToast("⚠️ Could not extract text from PDF (maybe scanned)");
-      return;
-    }
-    pdfAttachment={
-      name:file.name,
-      size:file.size,
-      text:extractedText.slice(0,15000)
-    };
+    if(!extractedText.trim()){showToast("⚠️ Could not extract text (maybe scanned)");return;}
+    pdfAttachment={ name:file.name, size:file.size, text:extractedText.slice(0,15000) };
     document.getElementById("pdf-name").innerText=file.name;
     document.getElementById("pdf-size").innerText=formatBytes(file.size);
     document.getElementById("pdf-preview-chip").style.display="";
     updatePreviewVisibility();
     showToast("✅ PDF ready ("+Math.round(extractedText.length/1000)+"k chars)");
-  }catch(err){
-    console.error("PDF parse failed:",err);
-    showToast("⚠️ Failed to read PDF: "+(err.message||err));
-  }
+  }catch(err){ console.error("PDF parse failed:",err); showToast("⚠️ Failed to read PDF"); }
   e.target.value="";
 }
 function removePdf(){
@@ -2291,7 +2383,7 @@ function formatBytes(bytes){
   return (bytes/(1024*1024)).toFixed(2)+" MB";
 }
 
-/* =================== Input helpers =================== */
+/* =================== Input / Drawers =================== */
 function resizeInput(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,150)+"px";}
 function handleKeyDown(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();mainAction();}}
 chatBox.addEventListener("scroll",function(){
@@ -2299,12 +2391,10 @@ chatBox.addEventListener("scroll",function(){
   scrollBtn.classList.toggle("show",!isBottom);
 },{passive:true});
 
-/* =================== Drawers =================== */
 function toggleSidebar(){const o=document.getElementById("sidebar").classList.toggle("open");document.getElementById("overlay").classList.toggle("active",o);}
 function toggleSettings(){const o=document.getElementById("settings").classList.toggle("open");document.getElementById("overlay").classList.toggle("active",o);}
 function closeDrawers(){document.getElementById("sidebar").classList.remove("open");document.getElementById("settings").classList.remove("open");document.getElementById("overlay").classList.remove("active");}
 
-/* =================== Stats =================== */
 function updateStats(){
   let mc=0,cc=0;
   Object.values(chatHistories).forEach(function(c){if(Array.isArray(c.messages)){mc+=c.messages.length;c.messages.forEach(function(m){cc+=(m.content||"").length;});}});
@@ -2317,14 +2407,12 @@ function updateStats(){
       const text=m.content||"";
       if(text.startsWith("[IMAGE_DATA]")){tk+=5;return;}
       if(text.indexOf("[IMAGE_GEN]")!==-1){tk+=5;return;}
-      if(text.startsWith("[PDF_DATA]")){tk+=Math.ceil(text.length/4);return;}
       tk+=Math.ceil(text.length/4);
     });
   }
   document.getElementById("token-counter").innerText="Tokens: ~"+tk;
 }
 
-/* =================== Clear / Backup =================== */
 function openClearModal(){document.getElementById("clear-modal").classList.add("active");}
 function closeClearModal(){document.getElementById("clear-modal").classList.remove("active");}
 async function clearAllChats(){chatHistories={};lastSyncedState={};try{await dbClear("chats");}catch(e){console.error(e);}startNewChat();closeClearModal();closeDrawers();showToast("All deleted");}
@@ -2400,19 +2488,15 @@ function parseMarkdownToChat(text){
 function downloadFile(uri,filename){const a=document.createElement("a");a.href=uri;a.download=filename;document.body.appendChild(a);a.click();a.remove();}
 function showToast(msg){const t=document.getElementById("toast");t.innerText=msg;t.classList.add("show","ui-alert-anim");setTimeout(function(){t.classList.remove("show","ui-alert-anim");},2500);}
 
-/* =================== In-app Browser =================== */
+/* =================== In-App Browser =================== */
 let inappHistory=[],inappHistoryIndex=-1,inappLoadTimeout=null;
 function openInappBrowser(url){
   if(!url)return;
   if(!/^https?:\/\//i.test(url))url="https://"+url;
-  // Some sites always block iframes — try external for known blockers
   const blockers=["google.com","youtube.com","instagram.com","facebook.com","twitter.com","x.com","tiktok.com","linkedin.com","whatsapp.com","gmail.com"];
   try{
     const u=new URL(url);
-    if(blockers.some(function(b){return u.hostname.includes(b);})){
-      window.open(url,"_blank","noopener,noreferrer");
-      return;
-    }
+    if(blockers.some(function(b){return u.hostname.includes(b);})){ window.open(url,"_blank","noopener,noreferrer"); return; }
   }catch(e){}
   inappHistory=[url];inappHistoryIndex=0;
   document.getElementById("inapp-browser").classList.add("open");
