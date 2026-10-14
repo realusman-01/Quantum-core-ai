@@ -179,6 +179,15 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 .mermaid-toolbar{display:flex;gap:6px;justify-content:flex-end;margin-bottom:8px;}
 .mermaid-toolbar button{height:28px;padding:0 10px;border-radius:7px;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
 .mermaid-toolbar button:hover{color:var(--primary);border-color:var(--primary);}
+/* ===== SOURCES BOX ===== */
+.sources-box{margin-top:14px;padding:12px 14px;background:var(--hover);border:1.5px solid var(--border);border-radius:12px;}
+.sources-title{font-size:11px;font-weight:900;color:var(--primary);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;}
+.source-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:9px;text-decoration:none;color:var(--text);transition:background .15s ease;margin-bottom:4px;}
+.source-item:hover{background:var(--card);}
+.source-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--gradient-1);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.source-content{display:flex;flex-direction:column;min-width:0;flex:1;}
+.source-title{font-size:12.5px;font-weight:600;line-height:1.4;color:var(--text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.source-domain{font-size:10.5px;color:var(--muted);margin-top:2px;font-weight:600;}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;min-height:34px;align-items:center;}
 .action-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;transition:all .2s var(--ease-smooth);}
 .action-btn:hover{color:var(--primary);border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(37,99,235,0.2);}
@@ -301,8 +310,6 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 .preview-btn:hover{background:var(--hover);color:var(--primary);}
 .preview-btn:active{transform:scale(.9);}
 .image-zoom-label{font-size:12px;color:var(--muted);padding:0 10px;font-weight:800;min-width:55px;text-align:center;font-family:monospace;}
-
-/* ===== GO LIVE WITH AI — Fullscreen Call ===== */
 #call-overlay{position:fixed;inset:0;background:#000;z-index:9000;display:none;flex-direction:column;overflow:hidden;}
 #call-overlay.active{display:flex;}
 #call-overlay.no-camera{background:linear-gradient(135deg,#0a0e1a 0%,#151b2e 100%);}
@@ -348,7 +355,6 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 #call-reconnect{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:20;color:#fff;font-size:14px;flex-direction:column;gap:14px;}
 #call-reconnect.show{display:flex;}
 #call-reconnect .spinner{width:36px;height:36px;border-width:4px;border-color:rgba(255,255,255,0.3);border-top-color:#fff;}
-
 @media(max-width:500px){
 .drawer{width:305px;}
 .msg{font-size:13.5px;}
@@ -629,7 +635,6 @@ let scrollAnimationId = null;
 let transcriptTimer = null;
 let voiceRestartTimer = null;
 
-// ===== CALL STATE =====
 let callActive = false;
 let callStartTime = 0;
 let callTimerInterval = null;
@@ -1433,6 +1438,24 @@ function initImagePreviewPanZoom(){
     lastTap=now;
   },{passive:true});
 }
+
+function initMermaid(){
+  if(window.mermaid){
+    try{
+      const isDark=document.body.classList.contains("dark-mode");
+      mermaid.initialize({
+        startOnLoad:false,
+        theme:isDark?"dark":"default",
+        securityLevel:"loose",
+        fontFamily:"Inter, Segoe UI, sans-serif",
+        flowchart:{curve:"basis",htmlLabels:true},
+        sequence:{useMaxWidth:true},
+        themeVariables:isDark?{primaryColor:"#1e2942",primaryTextColor:"#f8fafc",primaryBorderColor:"#3b82f6",lineColor:"#94a3b8",secondaryColor:"#151b2e",tertiaryColor:"#0f1423",background:"#151b2e",mainBkg:"#151b2e",nodeBorder:"#3b82f6",clusterBkg:"#0f1423",clusterBorder:"#1e2942",titleColor:"#f8fafc",edgeLabelBackground:"#151b2e"}:{}
+      });
+    }catch(e){console.warn("Mermaid init failed:",e);}
+  }
+}
+
 async function waitForMermaid(maxWaitMs){
   const start = Date.now();
   while(!window.mermaid && Date.now() - start < maxWaitMs){
@@ -1453,26 +1476,10 @@ async function waitForMermaid(maxWaitMs){
   }
   return !!window.mermaid;
 }
-function initMermaid(){
-  if(window.mermaid){
-    try{
-      const isDark=document.body.classList.contains("dark-mode");
-      mermaid.initialize({
-        startOnLoad:false,
-        theme:isDark?"dark":"default",
-        securityLevel:"loose",
-        fontFamily:"Inter, Segoe UI, sans-serif",
-        flowchart:{curve:"basis",htmlLabels:true},
-        sequence:{useMaxWidth:true},
-        themeVariables:isDark?{primaryColor:"#1e2942",primaryTextColor:"#f8fafc",primaryBorderColor:"#3b82f6",lineColor:"#94a3b8",secondaryColor:"#151b2e",tertiaryColor:"#0f1423",background:"#151b2e",mainBkg:"#151b2e",nodeBorder:"#3b82f6",clusterBkg:"#0f1423",clusterBorder:"#1e2942",titleColor:"#f8fafc",edgeLabelBackground:"#151b2e"}:{}
-      });
-    }catch(e){console.warn("Mermaid init failed:",e);}
-  }
-}
 
-async function renderAllMermaids(container) {
-    const ready = await waitForMermaid(3000);
-    if (!ready) return;
+async function renderAllMermaids(container){
+  const ready = await waitForMermaid(3000);
+  if(!ready) return;
   const codeBlocks=container.querySelectorAll("pre > code");
   const mermaidKeywords=/^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
   let idx=0;
@@ -1482,6 +1489,13 @@ async function renderAllMermaids(container) {
     if(block.closest(".mermaid-container"))continue;
     const wrapper=block.closest(".code-wrapper");
     if(!wrapper)continue;
+    
+    // Placeholder while rendering
+    const placeholder=document.createElement("div");
+    placeholder.className="mermaid-container";
+    placeholder.innerHTML='<div class="diagram-label">📊 Diagram</div><div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;"><div class="spinner" style="margin:0 auto 10px;width:24px;height:24px;border-width:3px;"></div>Rendering diagram...</div>';
+    wrapper.parentNode.insertBefore(placeholder, wrapper);
+    
     const newId="mermaid_"+Date.now()+"_"+idx++;
     try{
       let cleanedCode = code.trim();
@@ -1496,6 +1510,7 @@ async function renderAllMermaids(container) {
       toolbar.dataset.code=cleanedCode;
       div.insertBefore(toolbar, div.firstChild.nextSibling);
       wrapper.replaceWith(div);
+      placeholder.remove();
     }catch(e){
       console.warn("Mermaid render failed:",e);
       const errDiv=document.createElement("div");
@@ -1507,6 +1522,7 @@ async function renderAllMermaids(container) {
       toolbar.dataset.code=code;
       errDiv.insertBefore(toolbar, errDiv.firstChild.nextSibling);
       wrapper.replaceWith(errDiv);
+      placeholder.remove();
     }
   }
 }
@@ -1766,6 +1782,7 @@ async function processStream(response,botElement,userPrompt,botRef){
   const reader=response.body.getReader();
   const decoder=new TextDecoder("utf-8");
   let buffer="",fullText="",rafId=null,lastRenderTime=0;
+  let sourcesList = [];
   const MIN_RENDER_INTERVAL=30;
   function scheduleRender(){
     if(rafId)return;
@@ -1799,6 +1816,7 @@ async function processStream(response,botElement,userPrompt,botRef){
           if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
           continue;
         }
+        if(parsed.type==="sources" && Array.isArray(parsed.sources)){sourcesList = parsed.sources;continue;}
         if(parsed.type==="chunk" && parsed.text){fullText+=parsed.text;scheduleRender();continue;}
         if(parsed.type==="error"){throw new Error(parsed.error||parsed.details||"Server error");}
         if(parsed.type==="done"){continue;}
@@ -1824,9 +1842,28 @@ async function processStream(response,botElement,userPrompt,botRef){
     }
     botElement.innerHTML=renderMarkdown(fullText);
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
-    renderAllMermaids(botElement).then(function() {
-  setTimeout(function() { renderAllMermaids(botElement); }, 800);
-});
+    renderAllMermaids(botElement);
+    
+    // Render sources URLs
+    if(sourcesList.length > 0){
+      const sourcesHtml = '<div class="sources-box">' +
+        '<div class="sources-title">🔗 Sources (' + sourcesList.length + ')</div>' +
+        sourcesList.slice(0, 10).map(function(s, i){
+          const domain = (function(){
+            try{ return new URL(s.url).hostname.replace(/^www\./,""); }catch(e){ return s.source || "web"; }
+          })();
+          return '<a class="source-item" href="' + escapeHTML(s.url) + '" target="_blank" rel="noopener noreferrer">' +
+            '<span class="source-num">' + (i+1) + '</span>' +
+            '<span class="source-content">' +
+              '<span class="source-title">' + escapeHTML(s.title || s.url) + '</span>' +
+              '<span class="source-domain">' + escapeHTML(domain) + '</span>' +
+            '</span>' +
+          '</a>';
+        }).join('') +
+      '</div>';
+      botElement.innerHTML += sourcesHtml;
+    }
+    
     const latestChat=getCurrentChat();
     if(latestChat)latestChat.messages.push({role:"bot",content:fullText,image:null});
     await updateSmartTitle(userPrompt);
@@ -1851,24 +1888,15 @@ async function processStream(response,botElement,userPrompt,botRef){
     }
     scheduleSave();renderChatList();
     if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
-    // If live voice active (or call mode), speak the reply
     if(liveVoiceActive||callActive){
       const speakText=fullText.replace(/\[IMAGE_GEN\][^\n]*/g,"").replace(/\[IMAGE_DATA\][^\s]+/g,"Image.").replace(/```mermaid[\s\S]*?```/g,"Diagram shown.").trim();
       updateLiveVoiceStatus("🔊 Speaking...");
       if(speakText){
         toggleSpeech(speakText,null,function(){
-          if(callActive){
-            // In call mode: after speaking, resume listening
-            updateLiveVoiceStatus("🎤 Listening...");
-            setTimeout(startLiveListening,400);
-          } else if(liveVoiceActive){
-            updateLiveVoiceStatus("🎤 Listening...");
-            setTimeout(startLiveListening,600);
-          }
+          if(callActive){updateLiveVoiceStatus("🎤 Listening...");setTimeout(startLiveListening,400);}
+          else if(liveVoiceActive){updateLiveVoiceStatus("🎤 Listening...");setTimeout(startLiveListening,600);}
         });
-      }else{
-        setTimeout(function(){if(liveVoiceActive||callActive){updateLiveVoiceStatus("🎤 Listening...");startLiveListening();}},800);
-      }
+      }else{setTimeout(function(){if(liveVoiceActive||callActive){updateLiveVoiceStatus("🎤 Listening...");startLiveListening();}},800);}
     }
   }else{
     botElement.innerText="No response received.";
@@ -1888,7 +1916,6 @@ async function updateSmartTitle(prompt){
   }catch(e){}
 }
 
-/* =================== VOICE INPUT (Mic) =================== */
 function setupSpeechRecognition(){
   const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!Speech){console.warn("SpeechRecognition not supported");return;}
@@ -1923,7 +1950,6 @@ function setupSpeechRecognition(){
         userInput.value=heard;
         if(transcriptTimer) clearTimeout(transcriptTimer);
         transcriptTimer = setTimeout(function(){
-          // In call mode, inject as user message & send
           if(callActive){ sendMessage(heard); userInput.value=""; }
           else{ sendMessage(); }
         }, 900);
@@ -1973,10 +1999,8 @@ function toggleVoiceInput(){
   try{recognition.start();}catch(e){console.warn("Recognition start failed:",e);isListening=false;document.getElementById("mic-btn").classList.remove("listening");}
 }
 
-/* =================== GO LIVE WITH AI — Entry =================== */
 function toggleLiveVoice(){
   if(callActive){ endCall(); return; }
-  // Open the call overlay (video call mode) — voice-only by default
   startCall();
 }
 
@@ -2002,7 +2026,6 @@ function startLiveListening(){
 }
 
 function updateLiveVoiceStatus(text){
-  // Route to call transcript box if call is active, else speech box
   if(callActive){
     const t=document.getElementById("call-transcript");
     if(t){ t.innerText = text || "Tap the mic and start talking..."; }
@@ -2014,7 +2037,6 @@ function updateLiveVoiceStatus(text){
   }
 }
 
-/* =================== TEXT-TO-SPEECH =================== */
 function toggleSpeech(text,button,onEnd){
   if(currentlySpeakingButton===button&&window.speechSynthesis&&window.speechSynthesis.speaking){stopAllSpeech();if(onEnd)onEnd();return;}
   stopAllSpeech();
@@ -2034,15 +2056,12 @@ function toggleSpeech(text,button,onEnd){
   if(button){button.classList.add("voice-stop");button.innerHTML='<i class="fa-solid fa-stop"></i>';currentlySpeakingButton=button;}
   if(!("speechSynthesis" in window)){showToast("TTS not supported");if(button)resetSpeechButton(button);if(onEnd)onEnd();return;}
   window.speechSynthesis.cancel();
-
-  // Visual indicator (avatar pulses in call mode)
   if(callActive){
     const avatar=document.getElementById("call-avatar");
     const wf=document.getElementById("call-waveform");
     if(avatar)avatar.classList.add("speaking");
     if(wf)wf.classList.add("active");
   }
-
   const chunks=splitTextForSpeech(cleanText,220);
   let chunkIdx=0;
   function speakNext(){
@@ -2072,7 +2091,6 @@ function toggleSpeech(text,button,onEnd){
   }
   speakNext();
 }
-
 function splitTextForSpeech(text,maxLen){
   const sentences=text.split(/(?<=[.!?])\s+/);
   const chunks=[];let cur="";
@@ -2095,45 +2113,28 @@ function stopAllSpeech(){
   }
 }
 
-/* =================== GO LIVE WITH AI — CALL ENGINE =================== */
 async function startCall(){
   callActive = true;
-  liveVoiceActive = true;   // reuse live voice logic
+  liveVoiceActive = true;
   callStartTime = Date.now();
   callMicMuted = false;
   callCameraOn = false;
-
   const overlay = document.getElementById("call-overlay");
   overlay.classList.add("active");
   overlay.classList.add("no-camera");
-
   document.getElementById("call-status-text").innerText = "Connecting...";
   document.getElementById("call-transcript").innerText = "Tap the mic and start talking...";
   document.getElementById("call-timer").innerText = "00:00";
-
   document.getElementById("live-btn").classList.add("active");
   document.getElementById("live-label").innerText = "Live Active";
-
-  // Show reconnect briefly
   const rec = document.getElementById("call-reconnect");
   rec.classList.add("show");
   setTimeout(function(){ rec.classList.remove("show"); }, 900);
-
-  // Start call timer
   if(callTimerInterval) clearInterval(callTimerInterval);
   callTimerInterval = setInterval(updateCallTimer, 1000);
-
-  // Status update
-  setTimeout(function(){
-    document.getElementById("call-status-text").innerText = "Listening...";
-  }, 900);
-
-  // Start listening after a short delay
-  setTimeout(function(){
-    if(!isListening && !isGenerating) startLiveListening();
-  }, 800);
+  setTimeout(function(){ document.getElementById("call-status-text").innerText = "Listening..."; }, 900);
+  setTimeout(function(){ if(!isListening && !isGenerating) startLiveListening(); }, 800);
 }
-
 function updateCallTimer(){
   if(!callActive)return;
   const elapsed = Math.floor((Date.now()-callStartTime)/1000);
@@ -2142,44 +2143,29 @@ function updateCallTimer(){
   const el = document.getElementById("call-timer");
   if(el) el.innerText = m + ":" + s;
 }
-
 function endCall(){
-  // Stop audio & video
   stopAllSpeech();
   if(recognition && isListening){try{recognition.stop();}catch(e){}}
   if(voiceRestartTimer){clearTimeout(voiceRestartTimer);voiceRestartTimer=null;}
   if(transcriptTimer){clearTimeout(transcriptTimer);transcriptTimer=null;}
-
-  // Stop call timer
   if(callTimerInterval){clearInterval(callTimerInterval);callTimerInterval=null;}
-
-  // Stop camera
   stopCameraStream();
-
-  // Hide overlay
   const overlay = document.getElementById("call-overlay");
   overlay.classList.remove("active");
   overlay.classList.add("no-camera");
-
-  // Reset state
   callActive = false;
   liveVoiceActive = false;
   callCameraOn = false;
   callMicMuted = false;
-
   document.getElementById("live-btn").classList.remove("active");
   document.getElementById("live-label").innerText = "Go Live with AI";
-
-  // Reset controls
   const micBtn = document.getElementById("call-mic-btn");
   if(micBtn){ micBtn.classList.remove("muted"); micBtn.innerHTML='<i class="fa-solid fa-microphone"></i>'; }
   const camBtn = document.getElementById("call-cam-btn");
   if(camBtn){ camBtn.classList.remove("active"); camBtn.innerHTML='<i class="fa-solid fa-video"></i>'; }
-
   updateLiveVoiceStatus("");
   showToast("Call ended");
 }
-
 function callToggleMic(){
   callMicMuted = !callMicMuted;
   const btn = document.getElementById("call-mic-btn");
@@ -2195,15 +2181,12 @@ function callToggleMic(){
     setTimeout(function(){ if(callActive && !isGenerating && !isListening) startLiveListening(); }, 300);
   }
 }
-
 async function callToggleCamera(){
   const overlay = document.getElementById("call-overlay");
   const btn = document.getElementById("call-cam-btn");
   const selfview = document.getElementById("call-selfview");
   const mainVideo = document.getElementById("call-video");
-
   if(callCameraOn){
-    // Turn off
     stopCameraStream();
     callCameraOn = false;
     overlay.classList.add("no-camera");
@@ -2212,24 +2195,19 @@ async function callToggleCamera(){
     selfview.classList.remove("active");
     return;
   }
-
-  // Turn on
   const ok = await startCameraStream(callFacingMode);
   if(ok){
     callCameraOn = true;
     overlay.classList.remove("no-camera");
     btn.classList.add("active");
     btn.innerHTML='<i class="fa-solid fa-video"></i>';
-    // Main video shows the camera feed (so user sees what camera sees)
     if(mainVideo){
       mainVideo.srcObject = callStream;
       mainVideo.classList.toggle("mirror", callFacingMode==="user");
     }
-    // Hide selfview when main is camera (since they're the same)
     selfview.classList.remove("active");
   }
 }
-
 async function startCameraStream(facing){
   try{
     stopCameraStream();
@@ -2244,7 +2222,6 @@ async function startCameraStream(facing){
     return false;
   }
 }
-
 function stopCameraStream(){
   if(callStream){
     try{ callStream.getTracks().forEach(function(t){t.stop();}); }catch(e){}
@@ -2255,7 +2232,6 @@ function stopCameraStream(){
   const selfVideo = document.getElementById("call-selfvideo");
   if(selfVideo) selfVideo.srcObject = null;
 }
-
 async function callFlipCamera(){
   callFacingMode = callFacingMode === "user" ? "environment" : "user";
   if(callCameraOn){
@@ -2269,10 +2245,8 @@ async function callFlipCamera(){
     }
   }
 }
-
 async function callTakeSnapshot(){
   if(!callStream){
-    // Turn on camera to take a snapshot
     const ok = await startCameraStream(callFacingMode);
     if(!ok){ showToast("⚠️ Camera unavailable"); return; }
     callCameraOn = true;
@@ -2281,45 +2255,30 @@ async function callTakeSnapshot(){
   }
   const video = document.getElementById("call-video");
   if(!video || !video.videoWidth){ showToast("⚠️ Camera not ready yet"); return; }
-
-  // Flash effect
   const flash = document.getElementById("call-flash");
   flash.classList.add("fire");
   setTimeout(function(){ flash.classList.remove("fire"); }, 150);
-
-  // Capture frame
   try{
-    // Capture at reduced resolution to keep payload small
-const maxDim = 1024;
-let cw = video.videoWidth;
-let ch = video.videoHeight;
-if(cw > maxDim || ch > maxDim){
-if(cw > ch){ ch = Math.round((ch*maxDim)/cw); cw = maxDim; }
-else{ cw = Math.round((cw*maxDim)/ch); ch = maxDim; }
-}
-const canvas = document.createElement("canvas");
-canvas.width = cw;
-canvas.height = ch;
-const ctx = canvas.getContext("2d");
-ctx.drawImage(video, 0, 0, cw, ch);
-const rawUri = canvas.toDataURL("image/jpeg", 0.7);
-
-// Compress again (safety) — ensures under ~150KB
-let compressed = rawUri;
-try{
-compressed = await compressImage(rawUri, 1024, 0.7);
-}catch(e){ compressed = rawUri; }
-
-// Attach as image & send with prompt
-base64Image = compressed;
-    document.getElementById("preview-img").src = dataUri;
+    const maxDim = 1024;
+    let cw = video.videoWidth;
+    let ch = video.videoHeight;
+    if(cw > maxDim || ch > maxDim){
+      if(cw > ch){ ch = Math.round((ch*maxDim)/cw); cw = maxDim; }
+      else{ cw = Math.round((cw*maxDim)/ch); ch = maxDim; }
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, cw, ch);
+    const rawUri = canvas.toDataURL("image/jpeg", 0.7);
+    let compressed = rawUri;
+    try{ compressed = await compressImage(rawUri, 1024, 0.7); }catch(e){ compressed = rawUri; }
+    base64Image = compressed;
+    document.getElementById("preview-img").src = compressed;
     document.getElementById("image-preview-wrap").style.display = "";
     document.getElementById("preview").classList.add("active");
-
-    // End call UI (keep overlay? Better: minimize call so user can see chat)
-    // For simplicity: end call and drop user in chat with image attached
     endCall();
-
     setTimeout(function(){
       showToast("📸 Photo attached. Ask your question!");
       userInput.focus();
@@ -2330,7 +2289,6 @@ base64Image = compressed;
   }
 }
 
-/* =================== Image / PDF Upload =================== */
 function handleImage(e){
   const file=e.target.files[0];
   if(!file)return;
@@ -2390,7 +2348,6 @@ async function handlePdf(e){
       }
     }catch(err){ console.warn("pdf.js failed:",err); }
     if(!extractedText.trim()){
-      // Fallback: crude text extraction
       const decoder=new TextDecoder("utf-8",{fatal:false});
       const raw=decoder.decode(arrayBuffer);
       extractedText=raw.replace(/[^\x20-\x7E\n]+/g," ").trim();
@@ -2419,7 +2376,6 @@ function formatBytes(bytes){
   return (bytes/(1024*1024)).toFixed(2)+" MB";
 }
 
-/* =================== Input / Drawers =================== */
 function resizeInput(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,150)+"px";}
 function handleKeyDown(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();mainAction();}}
 chatBox.addEventListener("scroll",function(){
@@ -2524,7 +2480,6 @@ function parseMarkdownToChat(text){
 function downloadFile(uri,filename){const a=document.createElement("a");a.href=uri;a.download=filename;document.body.appendChild(a);a.click();a.remove();}
 function showToast(msg){const t=document.getElementById("toast");t.innerText=msg;t.classList.add("show","ui-alert-anim");setTimeout(function(){t.classList.remove("show","ui-alert-anim");},2500);}
 
-/* =================== In-App Browser =================== */
 let inappHistory=[],inappHistoryIndex=-1,inappLoadTimeout=null;
 function openInappBrowser(url){
   if(!url)return;
