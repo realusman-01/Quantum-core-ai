@@ -15,7 +15,6 @@ const RADOX_MODELS = {
 
 const RADOX_DECISION_MODEL = 'gemini-3.6-flash';
 
-// Gemini fallback (agar Radox bilkul fail ho)
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const GEMINI_MODEL_CHAIN = {
   fast: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
@@ -138,7 +137,7 @@ function definitelyDoesNotNeedSearch(text) {
 }
 
 /* =========================================================
-   GEMINI TEXT EXTRACTION (for fallback)
+   GEMINI TEXT EXTRACTION
    ========================================================= */
 
 function extractModelText(data) {
@@ -156,7 +155,7 @@ function extractModelText(data) {
 }
 
 /* =========================================================
-   SEARCH DECISION (via Radox — fast model)
+   SEARCH DECISION (via Radox fast model)
    ========================================================= */
 
 async function askSearchDecision(userText) {
@@ -349,10 +348,23 @@ flowchart LR
 `;
 
 /* =========================================================
+   SOURCES EVENT HELPER
+   ========================================================= */
+
+function sourcesEventForClient(searchResults) {
+  if (!searchResults || !searchResults.length) return null;
+  return searchResults.slice(0, 10).map(r => ({
+    title: r.title || '',
+    url: r.url || '',
+    source: r.source || 'Web'
+  }));
+}
+
+/* =========================================================
    RADOX STREAM → CLIENT SSE
    ========================================================= */
 
-async function streamRadoxToClient(radoxResponse) {
+async function streamRadoxToClient(radoxResponse, searchResults) {
   if (!radoxResponse.body) throw new Error('Radox returned no stream body');
   const reader = radoxResponse.body.getReader();
   const decoder = new TextDecoder();
@@ -364,6 +376,11 @@ async function streamRadoxToClient(radoxResponse) {
       const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
       try {
         send({ type: 'status', status: 'Thinking...' });
+        
+        // Send sources early so frontend can render them
+        const srcEvt = sourcesEventForClient(searchResults);
+        if (srcEvt) send({ type: 'sources', sources: srcEvt });
+
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -400,7 +417,7 @@ async function streamRadoxToClient(radoxResponse) {
    GEMINI STREAM → CLIENT SSE (Fallback)
    ========================================================= */
 
-async function streamGeminiToClient(geminiResponse) {
+async function streamGeminiToClient(geminiResponse, searchResults) {
   const reader = geminiResponse.body.getReader();
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
@@ -411,6 +428,10 @@ async function streamGeminiToClient(geminiResponse) {
       const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
       try {
         send({ type: 'status', status: 'Thinking...' });
+
+        const srcEvt = sourcesEventForClient(searchResults);
+        if (srcEvt) send({ type: 'sources', sources: srcEvt });
+
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -443,7 +464,7 @@ async function streamGeminiToClient(geminiResponse) {
 }
 
 /* =========================================================
-   CALL RADOX AI (streaming)
+   CALL RADOX AI
    ========================================================= */
 
 async function callRadoxAI(model, messages, systemPrompt, temperature) {
@@ -476,7 +497,7 @@ async function callRadoxAI(model, messages, systemPrompt, temperature) {
 }
 
 /* =========================================================
-   CALL GEMINI (streaming) — fallback
+   CALL GEMINI (fallback)
    ========================================================= */
 
 async function callGemini(model, contents, systemInstruction, generationConfig) {
@@ -544,19 +565,19 @@ export default async function handler(req) {
   const userText = getLatestUserText(contents);
   if (!userText) return json({ error: 'Invalid request: user message missing' }, 400);
 
-  // ============ MEMORY + SEARCH DECISION (parallel) ============
+  // Memory + search decision in parallel
   const [memories, shouldSearch] = await Promise.all([
     fetchMemories(userId, userText),
     askSearchDecision(userText)
   ]);
 
-  // ============ WEB SEARCH ============
+  // Web search
   let searchResults = [];
   if (shouldSearch) {
     searchResults = await quantumSearch(userText);
   }
 
-  // ============ SYSTEM INSTRUCTION ============
+  // System instruction
   const clientInstruction = body?.systemInstruction?.parts?.[0]?.text || '';
   const memoryContext = buildMemoryContext(memories);
   const searchContext = buildSearchContext(searchResults);
@@ -576,9 +597,10 @@ GENERAL RULES:
 - For math and physics, show useful working.
 - For coding, provide working code.
 - Use web results for current information when provided.
+- When citing sources, use [1], [2], [3] format matching the numbered WEB SEARCH RESULTS above.
 `;
 
-  // ============ TRY RADOX MODELS ============
+  // Try Radox models
   const radoxChain = RADOX_MODELS[activeMode] || RADOX_MODELS.fast;
   const openaiMessages = contentsToMessages(contents);
   let lastError = null;
@@ -587,7 +609,7 @@ GENERAL RULES:
     try {
       console.log(`Trying Radox: ${model}`);
       const radoxRes = await callRadoxAI(model, openaiMessages, finalSystemInstruction, generationConfig.temperature);
-      const stream = await streamRadoxToClient(radoxRes);
+      const stream = await streamRadoxToClient(radoxRes, searchResults);
       return new Response(stream, {
         status: 200,
         headers: {
@@ -604,7 +626,7 @@ GENERAL RULES:
     }
   }
 
-  // ============ FALLBACK TO GEMINI ============
+  // Gemini fallback
   console.log('All Radox models failed. Trying Gemini fallback...');
   const geminiChain = GEMINI_MODEL_CHAIN[activeMode] || GEMINI_MODEL_CHAIN.fast;
 
@@ -612,7 +634,7 @@ GENERAL RULES:
     try {
       console.log(`Trying Gemini fallback: ${model}`);
       const geminiRes = await callGemini(model, contents, finalSystemInstruction, generationConfig);
-      const stream = await streamGeminiToClient(geminiRes);
+      const stream = await streamGeminiToClient(geminiRes, searchResults);
       return new Response(stream, {
         status: 200,
         headers: {
@@ -629,7 +651,6 @@ GENERAL RULES:
     }
   }
 
-  // ============ EVERYTHING FAILED ============
   return json({
     error: 'All AI models failed',
     details: lastError?.message || 'Unknown server error'
