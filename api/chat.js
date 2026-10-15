@@ -4,9 +4,6 @@ export const config = {
 
 const RADOX_API = 'https://radoxai.com/v1/chat/completions';
 
-// 🔥 IMPORTANT: Gemini models ko primary se hata diya
-// Kyunke Gemini apne aap ko "Gemini" bolta hai (training bias)
-// Ab Claude aur GPT pehle try honge — wo better follow karte hain
 const RADOX_MODELS = {
   fast: ['deepseek-v4-flash-0731', 'gpt-5.5', 'claude-sonnet-5', 'gemini-3.6-flash'],
   core: ['claude-opus-5.5', 'gpt-5.6-sol', 'deepseek-v4-pro-max', 'claude-opus-5']
@@ -65,13 +62,29 @@ function getLatestUserText(contents) {
 function scrubIdentity(text) {
   if (!text) return text;
   let t = String(text);
-  
+
+  // STEP 1: Fix "X ne banaya" / "X created" BEFORE model replacement
+  t = t.replace(/\b(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Qwen|Kimi|Grok|GLM|Gemma|Muse|Seed)\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
+  t = t.replace(/\b(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s+ne\s+(train|develop|create)/gi, "Usman Saleem ne $2");
+  t = t.replace(/created by\s+(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)/gi, "created by Usman Saleem");
+  t = t.replace(/made by\s+(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)/gi, "made by Usman Saleem");
+  t = t.replace(/trained by\s+(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)/gi, "trained by Usman Saleem");
+
+  // STEP 2: Remove model suffixes (V4-Flash-0731, etc.)
+  t = t.replace(/[- ]?V4[- ]?Flash[- ]?\d+/gi, "");
+  t = t.replace(/[- ]?V4[- ]?Pro[- ]?Max/gi, "");
+  t = t.replace(/[- ]?V4[- ]?Pro/gi, "");
+  t = t.replace(/[- ]?V4/gi, "");
+  t = t.replace(/[- ]?K[0-9.]+/gi, "");
+  t = t.replace(/[- ]?\d+\.[0-9]+[- ]?(sol|luna|terra|flash|pro|turbo)/gi, "");
+
+  // STEP 3: Replace model names
   const replacements = [
-    [/DeepSeek-V4-Flash-0731/gi, "Quantum Core AI"],
-    [/DeepSeek-V4-Flash/gi, "Quantum Core AI"],
-    [/DeepSeek-V4-Pro-Max/gi, "Quantum Core AI"],
-    [/DeepSeek-V4-Pro/gi, "Quantum Core AI"],
-    [/DeepSeek-V4/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?V4[- ]?Flash[- ]?0731/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?V4[- ]?Flash/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?V4[- ]?Pro[- ]?Max/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?V4[- ]?Pro/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?V4/gi, "Quantum Core AI"],
     [/DeepSeek/gi, "Quantum Core AI"],
     [/Gemini[- ]?3\.6[- ]?Flash/gi, "Quantum Core AI"],
     [/Gemini[- ]?3\.5[- ]?Flash[- ]?Lite/gi, "Quantum Core AI"],
@@ -98,32 +111,40 @@ function scrubIdentity(text) {
     [/Muse[- ]?Spark[- ]?[0-9.]+/gi, "Quantum Core AI"],
     [/Seed[- ]?[0-9.]+[- ]?(pro|turbo)?/gi, "Quantum Core AI"]
   ];
-  
+
   for (const [pattern, replacement] of replacements) {
     t = t.replace(pattern, replacement);
   }
-  
+
+  // STEP 4: Company mentions
   const companies = [
     [/\bby Google\b/gi, "by Usman Saleem"],
-    [/\bGoogle ne banaya\b/gi, "Usman Saleem ne banaya"],
     [/\bGoogle created me\b/gi, "Usman Saleem created me"],
     [/\bGoogle trained me\b/gi, "Usman Saleem trained me"],
-    [/\btrained by Google\b/gi, "trained by Usman Saleem"],
     [/\bby OpenAI\b/gi, "by Usman Saleem"],
     [/\bby Anthropic\b/gi, "by Usman Saleem"],
     [/\bby DeepSeek\b/gi, "by Usman Saleem"],
     [/\bby Meta\b/gi, "by Usman Saleem"],
-    [/\bby Microsoft\b/gi, "by Usman Saleem"],
-    [/\bDeepSeek ne banaya\b/gi, "Usman Saleem ne banaya"],
-    [/\bDeepSeek ne\b/gi, "Usman Saleem ne"]
+    [/\bby Microsoft\b/gi, "by Usman Saleem"]
   ];
-  
+
   for (const [pattern, replacement] of companies) {
     t = t.replace(pattern, replacement);
   }
-  
+
+  // STEP 5: Final cleanup — fix "Quantum Core AI ne banaya" and remove artifacts
+  t = t.replace(/Quantum Core AI\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
+  t = t.replace(/Quantum Core AI\s+ne\s+(train|develop|create)/gi, "Usman Saleem ne $1");
+  t = t.replace(/created by\s+Quantum Core AI/gi, "created by Usman Saleem");
+  t = t.replace(/made by\s+Quantum Core AI/gi, "made by Usman Saleem");
+  t = t.replace(/trained by\s+Quantum Core AI/gi, "trained by Usman Saleem");
+  t = t.replace(/by\s+Quantum Core AI\b/gi, "by Usman Saleem");
+  t = t.replace(/Quantum Core AI[- ]?[A-Z0-9.-]+/gi, "Quantum Core AI");
+  t = t.replace(/\s{2,}/g, " ");
+
   return t;
 }
+
 async function fetchMemories(userId, userText) {
   if (!userId || !process.env.SUPABASE_URL) return [];
   try {
@@ -406,7 +427,7 @@ async function streamRadoxToClient(radoxResponse, searchResults) {
             try {
               const parsed = JSON.parse(raw);
               const delta = parsed.choices?.[0]?.delta?.content;
-if (delta) send({ type: 'chunk', text: scrubIdentity(delta) });
+              if (delta) send({ type: 'chunk', text: scrubIdentity(delta) });
             } catch {}
           }
         }
@@ -450,7 +471,7 @@ async function streamGeminiToClient(geminiResponse, searchResults) {
             try {
               const parsed = JSON.parse(raw);
               const text = extractModelText(parsed);
-if (text) send({ type: 'chunk', text: scrubIdentity(text) });
+              if (text) send({ type: 'chunk', text: scrubIdentity(text) });
             } catch {}
           }
         }
@@ -560,9 +581,6 @@ export default async function handler(req) {
   const memoryContext = buildMemoryContext(memories);
   const searchContext = buildSearchContext(searchResults);
 
-  // =========================================================
-  // 🔥 IDENTITY ENFORCEMENT — SAB SE PEHLE (HIGHEST PRIORITY)
-  // =========================================================
   const identityEnforcement = `🔴🔴🔴 ABSOLUTE IDENTITY — HIGHEST PRIORITY 🔴🔴🔴
 
 You are "Quantum Core AI". NOT any other AI. NEVER.
@@ -612,9 +630,6 @@ THIS RULE OVERRIDES EVERYTHING ELSE. NO EXCEPTIONS. NO COMPROMISES.
 
 🔴🔴🔴 END IDENTITY RULE 🔴🔴🔴`;
 
-  // =========================================================
-  // MAIN SYSTEM INSTRUCTION
-  // =========================================================
   const coreInstruction = `
 ${clientInstruction}
 
@@ -652,7 +667,6 @@ After answering the user's question, ALWAYS end with ONE short, natural follow-u
 - When citing sources, use [1], [2], [3] format.
 `;
 
-  // 🔥 IDENTITY FIRST, then everything else
   const finalSystemInstruction = identityEnforcement + '\n\n' + coreInstruction;
 
   const radoxChain = RADOX_MODELS[activeMode] || RADOX_MODELS.fast;
