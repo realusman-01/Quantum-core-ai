@@ -1791,7 +1791,7 @@ function buildSystemInstruction(){
   else if(replyStyle === "friendly") styleInstruction = "\n\n=== REPLY STYLE: FRIENDLY ===\nBe warm, casual, and encouraging. Use a conversational tone.\n";
 
   const formatting='\n\n=== RESPONSE FORMATTING ===\nYou are a top-tier assistant like ChatGPT and DeepSeek. Responses must be beautifully formatted.\n\nRULES:\n1. Start with a short 1-2 line answer.\n2. Use ## or ### for headings.\n3. Use bullet points or numbered lists for multi-point info.\n4. Use Markdown tables for comparisons.\n5. At the end of longer answers, add "## Summary".\n6. Use emojis sparingly.\n7. Use `inline code` for technical terms.\n8. Keep paragraphs short.\n\n=== DIAGRAM GENERATION (MANDATORY) ===\nWhen user asks for a diagram, flowchart, mindmap, or visual — output a Mermaid diagram inside a ```mermaid code block.\n';
-  
+
   const conversationStyle = '\n\n=== CONVERSATION CONTINUITY (IMPORTANT) ===\nAfter answering the user\'s question, ALWAYS end your response with ONE short, natural follow-up question to keep the conversation going.\n- The follow-up must be relevant and helpful.\n- Keep it to ONE line only.\n- Examples: "Do you want to know more about X?", "Should I also explain Y?", "Kya aap X ke baare mein bhi jaanna chahenge?", "Would you like a step-by-step breakdown?"\n- Skip it ONLY if the user asked a trivial one-liner (like "what is 2+2") or said goodbye.\n- Make it feel natural, not forced.\n';
 
   const defaultInstruction='Your name is Quantum Core AI — created by Usman Saleem.\n\nIf asked who made you, say: "I was created by Usman Saleem — a talented and passionate developer."\n\nYou help with ANYTHING.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally and conversationally.\n- Never introduce yourself unless asked.\n- If no AI language is set, match the user\'s language.\n- If user shares a PDF ([PDF_DATA]...), analyze its content.\n' + formatting + styleInstruction + langInstruction + conversationStyle + '\n\n=== PROGRAMMING ===\n- Complete runnable code in Markdown code blocks.\n\n=== MATH & PHYSICS ===\n**Given:** **Formula:** **Calculation:** **Final Answer:**\nMath Depth: '+mathSkillLevel+'/10\n\n=== IMAGE GENERATION (CRITICAL) ===\nWhen user asks to generate/create/draw an image:\n- CLEAR prompt: respond with EXACTLY: [IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<detailed English description>\n- UNCLEAR: respond "I can\'t understand your request. Please give a proper or meaningful prompt."\nRULES: NEVER write "IMAGE_GEN" elsewhere.\n';
@@ -1834,7 +1834,66 @@ async function processStream(response,botElement,userPrompt,botRef){
   if(!response.body)throw new Error("No body");
   const reader=response.body.getReader();
   const decoder=new TextDecoder("utf-8");
-  let buffer="",fullText="",rafId=null,lastRenderTime=0;
+let buffer="",fullText="",rafId=null,lastRenderTime=0;
+// CLIENT-SIDE IDENTITY FILTER (backup)
+function scrubClient(text) {
+  if (!text) return text;
+  let t = String(text);
+  t = t.replace(/\b(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Qwen|Kimi|Grok|GLM|Gemma|Muse|Seed|ChatGPT|Chat\s*GPT)\s*[- ]?\d*\s*ne\s+banaya/gi, "Usman Saleem ne banaya");
+  t = t.replace(/created by\s+(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "created by Usman Saleem");
+  t = t.replace(/made by\s+(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "made by Usman Saleem");
+  t = t.replace(/[- ]?V4[- ]?Flash[- ]?\d+/gi, "");
+  t = t.replace(/[- ]?V4[- ]?Pro[- ]?Max/gi, "");
+  t = t.replace(/[- ]?V4[- ]?Pro/gi, "");
+  t = t.replace(/[- ]?V4/gi, "");
+  const patterns = [
+    [/Chat\s*GPT[- ]?\d*/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?\d+/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?V4[- ]?Flash[- ]?0731/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?V4[- ]?Flash/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?V4[- ]?Pro[- ]?Max/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?V4[- ]?Pro/gi, "Quantum Core AI"],
+    [/DeepSeek[- ]?V4/gi, "Quantum Core AI"],
+    [/DeepSeek/gi, "Quantum Core AI"],
+    [/Gemini[- ]?\d+\.?\d*[- ]?Flash[- ]?Lite/gi, "Quantum Core AI"],
+    [/Gemini[- ]?\d+\.?\d*[- ]?Flash/gi, "Quantum Core AI"],
+    [/Gemini[- ]?\d+\.?\d*[- ]?Pro/gi, "Quantum Core AI"],
+    [/Gemini[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
+    [/Gemini/gi, "Quantum Core AI"],
+    [/GPT[- ]?\d+\.?\d*[- ]?(sol|luna|terra)/gi, "Quantum Core AI"],
+    [/GPT[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
+    [/GPT/gi, "Quantum Core AI"],
+    [/Claude[- ]?Opus[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
+    [/Claude[- ]?Sonnet[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
+    [/Claude[- ]?Fable[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
+    [/Claude[- ]?Mythos[- ]?Preview/gi, "Quantum Core AI"],
+    [/Claude[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
+    [/Claude/gi, "Quantum Core AI"],
+    [/Qwen[- ]?\d+\.?\d*[- ]?(max|turbo|pro)?/gi, "Quantum Core AI"],
+    [/Kimi[- ]?K\d+\.?\d*/gi, "Quantum Core AI"],
+    [/Grok[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
+    [/GLM[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
+    [/Gemma[- ]?\d+\.?\d*[bB]?/gi, "Quantum Core AI"],
+    [/Muse[- ]?Spark[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
+    [/Seed[- ]?\d+\.?\d*[- ]?(pro|turbo)?/gi, "Quantum Core AI"]
+  ];
+  for (const [pattern, replacement] of patterns) {
+    t = t.replace(pattern, replacement);
+  }
+  t = t.replace(/\bby Google\b/gi, "by Usman Saleem");
+  t = t.replace(/\bby OpenAI\b/gi, "by Usman Saleem");
+  t = t.replace(/\bby Anthropic\b/gi, "by Usman Saleem");
+  t = t.replace(/\bby DeepSeek\b/gi, "by Usman Saleem");
+  t = t.replace(/\bby Meta\b/gi, "by Usman Saleem");
+  t = t.replace(/\bby Microsoft\b/gi, "by Usman Saleem");
+  t = t.replace(/Quantum Core AI\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
+  t = t.replace(/created by\s+Quantum Core AI/gi, "created by Usman Saleem");
+  t = t.replace(/made by\s+Quantum Core AI/gi, "made by Usman Saleem");
+  t = t.replace(/\bby\s+Quantum Core AI\b/gi, "by Usman Saleem");
+  t = t.replace(/Quantum Core AI[- ]?[A-Z0-9.-]+/gi, "Quantum Core AI");
+  t = t.replace(/\s{2,}/g, " ");
+  return t;
+}
   let sourcesList = [];
   let currentStage = "thinking";
   const MIN_RENDER_INTERVAL=30;
@@ -1872,7 +1931,7 @@ async function processStream(response,botElement,userPrompt,botRef){
       rafId=null;
       lastRenderTime=performance.now();
       requestAnimationFrame(function(){
-        botElement.innerHTML=renderStreamText(fullText);
+        botElement.innerHTML=renderStreamText(scrubClient(fullText));
         if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
         if(autoScrollEnabled){chatBox.scrollTop=chatBox.scrollHeight;}
       });
@@ -1930,10 +1989,10 @@ async function processStream(response,botElement,userPrompt,botRef){
       if(liveVoiceActive||callActive)updateLiveVoiceStatus("🎤 Listening...");
       return;
     }
-    botElement.innerHTML=renderMarkdown(fullText);
+    botElement.innerHTML=renderMarkdown(scrubClient(fullText));
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
     renderAllMermaids(botElement);
-    
+
     // Sources button (ChatGPT style)
     if(sourcesList.length > 0){
       window._currentSources = sourcesList;
@@ -1948,7 +2007,7 @@ async function processStream(response,botElement,userPrompt,botRef){
       '</button>';
       botElement.innerHTML += sourcesBtn;
     }
-    
+
     const latestChat=getCurrentChat();
     if(latestChat)latestChat.messages.push({role:"bot",content:fullText,image:null});
     await updateSmartTitle(userPrompt);
