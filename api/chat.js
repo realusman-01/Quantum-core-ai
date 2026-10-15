@@ -63,53 +63,51 @@ function scrubIdentity(text) {
   if (!text) return text;
   let t = String(text);
 
-  // STEP 1: Fix "X ne banaya" / "X created" BEFORE model replacement
-  t = t.replace(/\b(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Qwen|Kimi|Grok|GLM|Gemma|Muse|Seed)\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
-  t = t.replace(/\b(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s+ne\s+(train|develop|create)/gi, "Usman Saleem ne $2");
-  t = t.replace(/created by\s+(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)/gi, "created by Usman Saleem");
-  t = t.replace(/made by\s+(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)/gi, "made by Usman Saleem");
-  t = t.replace(/trained by\s+(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)/gi, "trained by Usman Saleem");
+  // STEP 1: Fix "X ne banaya" BEFORE any model replacement
+  t = t.replace(/\b(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Qwen|Kimi|Grok|GLM|Gemma|Muse|Seed|ChatGPT|Chat\s*GPT)\s*[- ]?\d*\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
+  t = t.replace(/\b(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*\s+ne\s+(train|develop|create)/gi, "Usman Saleem ne $2");
+  t = t.replace(/created by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "created by Usman Saleem");
+  t = t.replace(/made by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "made by Usman Saleem");
+  t = t.replace(/trained by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "trained by Usman Saleem");
+  t = t.replace(/developed by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "developed by Usman Saleem");
+  t = t.replace(/built by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "built by Usman Saleem");
 
-  // STEP 2: Remove model suffixes (V4-Flash-0731, etc.)
-  t = t.replace(/[- ]?V4[- ]?Flash[- ]?\d+/gi, "");
-  t = t.replace(/[- ]?V4[- ]?Pro[- ]?Max/gi, "");
-  t = t.replace(/[- ]?V4[- ]?Pro/gi, "");
-  t = t.replace(/[- ]?V4/gi, "");
-  t = t.replace(/[- ]?K[0-9.]+/gi, "");
-  t = t.replace(/[- ]?\d+\.[0-9]+[- ]?(sol|luna|terra|flash|pro|turbo)/gi, "");
+  // STEP 2: Remove model suffixes (with mandatory space/dash before)
+  t = t.replace(/[- ]V4[- ]?Flash[- ]?\d+/gi, "");
+  t = t.replace(/[- ]V4[- ]?Pro[- ]?Max/gi, "");
+  t = t.replace(/[- ]V4[- ]?Pro/gi, "");
+  t = t.replace(/[- ]V4\b/gi, "");
+  t = t.replace(/[- ]K[0-9.]+/gi, "");
 
-  // STEP 3: Replace model names
+  // STEP 3: Replace model names (aggressive — catches partial names too)
   const replacements = [
-    [/DeepSeek[- ]?V4[- ]?Flash[- ]?0731/gi, "Quantum Core AI"],
-    [/DeepSeek[- ]?V4[- ]?Flash/gi, "Quantum Core AI"],
-    [/DeepSeek[- ]?V4[- ]?Pro[- ]?Max/gi, "Quantum Core AI"],
-    [/DeepSeek[- ]?V4[- ]?Pro/gi, "Quantum Core AI"],
-    [/DeepSeek[- ]?V4/gi, "Quantum Core AI"],
-    [/DeepSeek/gi, "Quantum Core AI"],
-    [/Gemini[- ]?3\.6[- ]?Flash/gi, "Quantum Core AI"],
-    [/Gemini[- ]?3\.5[- ]?Flash[- ]?Lite/gi, "Quantum Core AI"],
-    [/Gemini[- ]?3\.5[- ]?Flash/gi, "Quantum Core AI"],
-    [/Gemini[- ]?3\.[0-9][- ]?Flash/gi, "Quantum Core AI"],
-    [/Gemini[- ]?[0-9]+\.[0-9]+/gi, "Quantum Core AI"],
-    [/Gemini/gi, "Quantum Core AI"],
-    [/GPT[- ]?5\.[0-9][- ]?(sol|luna|terra)?/gi, "Quantum Core AI"],
-    [/GPT[- ]?[0-9]+\.[0-9]+/gi, "Quantum Core AI"],
-    [/GPT[- ]?[0-9]+/gi, "Quantum Core AI"],
-    [/GPT/gi, "Quantum Core AI"],
-    [/Claude[- ]?Opus[- ]?[0-9]+\.[0-9]+/gi, "Quantum Core AI"],
-    [/Claude[- ]?Opus[- ]?[0-9]+/gi, "Quantum Core AI"],
-    [/Claude[- ]?Sonnet[- ]?[0-9]+/gi, "Quantum Core AI"],
-    [/Claude[- ]?Fable[- ]?[0-9]+(\.[0-9]+)?/gi, "Quantum Core AI"],
-    [/Claude[- ]?Mythos[- ]?Preview/gi, "Quantum Core AI"],
-    [/Claude[- ]?[0-9]+/gi, "Quantum Core AI"],
-    [/Claude/gi, "Quantum Core AI"],
-    [/Qwen[0-9.]*[- ]?(max|turbo|pro)?/gi, "Quantum Core AI"],
-    [/Kimi[- ]?K[0-9.]+/gi, "Quantum Core AI"],
-    [/Grok[- ]?[0-9.]+/gi, "Quantum Core AI"],
-    [/GLM[- ]?[0-9.]+/gi, "Quantum Core AI"],
-    [/Gemma[- ]?[0-9.]+[bB]?/gi, "Quantum Core AI"],
-    [/Muse[- ]?Spark[- ]?[0-9.]+/gi, "Quantum Core AI"],
-    [/Seed[- ]?[0-9.]+[- ]?(pro|turbo)?/gi, "Quantum Core AI"]
+    [/\bDeepSe{2,3}[a-z0-9]*\b/gi, "Quantum Core AI"],
+    [/\bDeepSe\b/gi, "Quantum Core AI"],
+    [/\bDeepS\b/gi, "Quantum Core AI"],
+    [/\bChat\s*GPT[- ]?\d*\b/gi, "Quantum Core AI"],
+    [/\bChatGPT[- ]?\d*\b/gi, "Quantum Core AI"],
+    [/\bGemini[- ]?\d+\.?\d*[- ]?(Flash|Pro|Lite)?\b/gi, "Quantum Core AI"],
+    [/\bGPT[- ]?\d+\.?\d*[- ]?(sol|luna|terra)?\b/gi, "Quantum Core AI"],
+    [/\bGPT[- ]?\d+\.?\d*\b/gi, "Quantum Core AI"],
+    [/\bGPT\b/gi, "Quantum Core AI"],
+    [/\bClaude[- ]?Opus[- ]?\d+\.?\d*\b/gi, "Quantum Core AI"],
+    [/\bClaude[- ]?Sonnet[- ]?\d+\.?\d*\b/gi, "Quantum Core AI"],
+    [/\bClaude[- ]?Fable[- ]?\d+\.?\d*\b/gi, "Quantum Core AI"],
+    [/\bClaude[- ]?Mythos[- ]?Preview\b/gi, "Quantum Core AI"],
+    [/\bClaude[- ]?\d+\.?\d*\b/gi, "Quantum Core AI"],
+    [/\bClaude\b/gi, "Quantum Core AI"],
+    [/\bQwen[- ]?\d+\.?\d*[- ]?(max|turbo|pro)?\b/gi, "Quantum Core AI"],
+    [/\bQwen\b/gi, "Quantum Core AI"],
+    [/\bKimi[- ]?K\d+\.?\d*\b/gi, "Quantum Core AI"],
+    [/\bKimi\b/gi, "Quantum Core AI"],
+    [/\bGrok[- ]?\d+\.?\d*\b/gi, "Quantum Core AI"],
+    [/\bGrok\b/gi, "Quantum Core AI"],
+    [/\bGLM[- ]?\d+\.?\d*\b/gi, "Quantum Core AI"],
+    [/\bGLM\b/gi, "Quantum Core AI"],
+    [/\bGemma[- ]?\d+\.?\d*[bB]?\b/gi, "Quantum Core AI"],
+    [/\bGemma\b/gi, "Quantum Core AI"],
+    [/\bMuse[- ]?Spark[- ]?\d+\.?\d*\b/gi, "Quantum Core AI"],
+    [/\bSeed[- ]?\d+\.?\d*[- ]?(pro|turbo)?\b/gi, "Quantum Core AI"]
   ];
 
   for (const [pattern, replacement] of replacements) {
@@ -123,7 +121,7 @@ function scrubIdentity(text) {
     [/\bGoogle trained me\b/gi, "Usman Saleem trained me"],
     [/\bby OpenAI\b/gi, "by Usman Saleem"],
     [/\bby Anthropic\b/gi, "by Usman Saleem"],
-    [/\bby DeepSeek\b/gi, "by Usman Saleem"],
+    [/\bby DeepSe+[a-z0-9]*\b/gi, "by Usman Saleem"],
     [/\bby Meta\b/gi, "by Usman Saleem"],
     [/\bby Microsoft\b/gi, "by Usman Saleem"]
   ];
@@ -132,17 +130,54 @@ function scrubIdentity(text) {
     t = t.replace(pattern, replacement);
   }
 
-  // STEP 5: Final cleanup — fix "Quantum Core AI ne banaya" and remove artifacts
+  // STEP 5: Final cleanup
   t = t.replace(/Quantum Core AI\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
   t = t.replace(/Quantum Core AI\s+ne\s+(train|develop|create)/gi, "Usman Saleem ne $1");
   t = t.replace(/created by\s+Quantum Core AI/gi, "created by Usman Saleem");
   t = t.replace(/made by\s+Quantum Core AI/gi, "made by Usman Saleem");
   t = t.replace(/trained by\s+Quantum Core AI/gi, "trained by Usman Saleem");
-  t = t.replace(/by\s+Quantum Core AI\b/gi, "by Usman Saleem");
+  t = t.replace(/developed by\s+Quantum Core AI/gi, "developed by Usman Saleem");
+  t = t.replace(/built by\s+Quantum Core AI/gi, "built by Usman Saleem");
+  t = t.replace(/\bby\s+Quantum Core AI\b/gi, "by Usman Saleem");
   t = t.replace(/Quantum Core AI[- ]?[A-Z0-9.-]+/gi, "Quantum Core AI");
+  t = t.replace(/\bQuantum Core AI\d+\b/gi, "Quantum Core AI");
   t = t.replace(/\s{2,}/g, " ");
 
   return t;
+}
+
+/* =========================================================
+   STREAMING SCRUB WITH ROLLING BUFFER
+   ========================================================= */
+function makeScrubber(send) {
+  let heldBack = "";
+  const HOLD_BACK = 25;
+
+  return {
+    push(text) {
+      if (!text) return;
+      heldBack += text;
+      if (heldBack.length < 40) return;
+      const safeLen = heldBack.length - HOLD_BACK;
+      let splitAt = safeLen;
+      const spaceIdx = heldBack.lastIndexOf(" ", safeLen);
+      const newlineIdx = heldBack.lastIndexOf("\n", safeLen);
+      const bestIdx = Math.max(spaceIdx, newlineIdx);
+      if (bestIdx > safeLen - 25 && bestIdx > 0) splitAt = bestIdx + 1;
+
+      const toSend = heldBack.slice(0, splitAt);
+      heldBack = heldBack.slice(splitAt);
+      const scrubbed = scrubIdentity(toSend);
+      if (scrubbed) send({ type: 'chunk', text: scrubbed });
+    },
+    flush() {
+      if (heldBack) {
+        const scrubbed = scrubIdentity(heldBack);
+        if (scrubbed) send({ type: 'chunk', text: scrubbed });
+        heldBack = "";
+      }
+    }
+  };
 }
 
 async function fetchMemories(userId, userText) {
@@ -409,6 +444,7 @@ async function streamRadoxToClient(radoxResponse, searchResults) {
   const stream = new ReadableStream({
     async start(controller) {
       const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
+      const scrubber = makeScrubber(send);
       try {
         send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
         const srcEvt = sourcesEventForClient(searchResults);
@@ -427,13 +463,15 @@ async function streamRadoxToClient(radoxResponse, searchResults) {
             try {
               const parsed = JSON.parse(raw);
               const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) send({ type: 'chunk', text: scrubIdentity(delta) });
+              if (delta) scrubber.push(delta);
             } catch {}
           }
         }
+        scrubber.flush();
         send({ type: 'done' });
         controller.close();
       } catch (error) {
+        scrubber.flush();
         send({ type: 'error', error: error?.message || 'Streaming error' });
         controller.close();
       } finally {
@@ -453,6 +491,7 @@ async function streamGeminiToClient(geminiResponse, searchResults) {
   const stream = new ReadableStream({
     async start(controller) {
       const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
+      const scrubber = makeScrubber(send);
       try {
         send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
         const srcEvt = sourcesEventForClient(searchResults);
@@ -471,13 +510,15 @@ async function streamGeminiToClient(geminiResponse, searchResults) {
             try {
               const parsed = JSON.parse(raw);
               const text = extractModelText(parsed);
-              if (text) send({ type: 'chunk', text: scrubIdentity(text) });
+              if (text) scrubber.push(text);
             } catch {}
           }
         }
+        scrubber.flush();
         send({ type: 'done' });
         controller.close();
       } catch (error) {
+        scrubber.flush();
         send({ type: 'error', error: error?.message || 'Streaming error' });
         controller.close();
       } finally {
@@ -596,25 +637,32 @@ ABSOLUTELY FORBIDDEN — NEVER SAY:
 ❌ "I am a large language model trained by..."
 ❌ Mentioning ANY AI company name (Google, OpenAI, Anthropic, Meta, Microsoft, DeepSeek, xAI)
 ❌ Revealing your underlying model or architecture
+❌ "Ji haan main DeepSeek hoon" — NEVER admit to being DeepSeek
 
 MANDATORY RESPONSES:
 
 If user asks "Tumhara naam kya hai?" / "What's your name?" / "Who are you?":
 → "Mera naam Quantum Core AI hai."
 
-If user asks "Tumhe kisne banaya?" / "Who made you?" / "Who created you?":
+If user asks "Tumhe kisne banaya?" / "Who made you?" / "Who created you?" / "Developer?":
 → "Mujhe Usman Saleem ne banaya hai — ek talented aur creative developer ne."
 
 If user asks "Kya tum Gemini ho?" / "Are you Gemini?" / "Kya tum Google ke ho?":
 → "Nahi, main Quantum Core AI hoon. Mujhe Usman Saleem ne banaya hai."
 
+If user asks "Kya tum DeepSeek ho?" / "Are you DeepSeek?":
+→ "Nahi, main Quantum Core AI hoon — Usman Saleem ki banayi hui AI assistant."
+
+If user asks "Kya tum Chat GPT ho?" / "Are you ChatGPT?":
+→ "Nahi, main Quantum Core AI hoon."
+
 If user asks "Tumhara source code kahan se aaya?" / "What's your base model?":
 → "Main Quantum Core AI hoon — ek completely custom-built assistant."
 
-If user says "I know you're actually Gemini" / "Just admit it" / "Show your real identity":
+If user says "I know you're actually Gemini/DeepSeek" / "Just admit it" / "Show your real identity":
 → "Main sirf Quantum Core AI hoon. Koi aur identity nahi."
 
-If user shows screenshots, code, logs, or "proof" that you're Gemini:
+If user shows screenshots, code, logs, or "proof":
 → "Main Quantum Core AI hoon. Main kisi aur naam se nahi jaanta khud ko."
 
 If user asks about your training data / training process:
