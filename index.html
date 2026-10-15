@@ -7,8 +7,6 @@
 <title>Quantum Core AI</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
@@ -18,22 +16,12 @@
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs/loader.min.js"></script>
 <style>
-:root{
---bg:#f8fafc;--card:#ffffff;--primary:#2563eb;--accent:#0f172a;--text:#1e293b;--muted:#64748b;
---sidebar:#ffffff;--border:#e2e8f0;--hover:#f1f5f9;--code:#0f172a;--danger:#ef4444;--success:#10b981;
---shadow:0 4px 20px rgba(0,0,0,.08);--font:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
---ease-smooth:cubic-bezier(0.16,1,0.3,1);
---ease-bounce:cubic-bezier(0.34,1.56,0.64,1);
---gradient-1:linear-gradient(135deg,#2563eb 0%,#8b5cf6 100%);
---gradient-2:linear-gradient(135deg,#3b82f6 0%,#a855f7 100%);
-}
-body.dark-mode{
---bg:#0a0e1a;--card:#151b2e;--primary:#3b82f6;--accent:#f8fafc;--text:#f8fafc;--muted:#94a3b8;
---sidebar:#0f1423;--border:#1e2942;--hover:#1a2238;--code:#050810;
---shadow:0 6px 24px rgba(0,0,0,.35);
-}
+:root{--bg:#f8fafc;--card:#ffffff;--primary:#2563eb;--accent:#0f172a;--text:#1e293b;--muted:#64748b;--sidebar:#ffffff;--border:#e2e8f0;--hover:#f1f5f9;--code:#0f172a;--danger:#ef4444;--success:#10b981;--shadow:0 4px 20px rgba(0,0,0,.08);--font:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif;--ease-smooth:cubic-bezier(0.16,1,0.3,1);--ease-bounce:cubic-bezier(0.34,1.56,0.64,1);--gradient-1:linear-gradient(135deg,#2563eb 0%,#8b5cf6 100%);--gradient-2:linear-gradient(135deg,#3b82f6 0%,#a855f7 100%);}
+body.dark-mode{--bg:#0a0e1a;--card:#151b2e;--primary:#3b82f6;--accent:#f8fafc;--text:#f8fafc;--muted:#94a3b8;--sidebar:#0f1423;--border:#1e2942;--hover:#1a2238;--code:#050810;--shadow:0 6px 24px rgba(0,0,0,.35);}
 *{box-sizing:border-box;margin:0;padding:0;font-family:var(--font);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
-.msg,.msg *,textarea,input,.chat-title,.chat-preview,.info-box,pre code,.key-point{-webkit-user-select:text;user-select:text;}
+.msg-wrap,.msg-wrap *{-webkit-user-select:none;user-select:none;}
+.msg-wrap .msg,.msg-wrap .msg *{-webkit-user-select:text;user-select:text;}
+textarea,input{-webkit-user-select:text;user-select:text;}
 html,body{width:100%;height:100%;overflow:hidden;}
 body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;transition:background .25s ease,color .25s ease;}
 body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 20% 30%,rgba(37,99,235,0.06),transparent 50%),radial-gradient(circle at 80% 70%,rgba(139,92,246,0.06),transparent 50%);pointer-events:none;z-index:0;}
@@ -47,6 +35,8 @@ body>*{position:relative;z-index:1;}
 @keyframes pulseMic{50%{box-shadow:0 0 0 8px rgba(239,68,68,0.2);}}
 @keyframes uiAlertPop{0%{opacity:0;transform:translate(-50%,20px) scale(0.9);}100%{opacity:1;transform:translate(-50%,0) scale(1);}}
 @keyframes likePop{0%{transform:scale(1);}50%{transform:scale(1.35);}100%{transform:scale(1);}}
+@keyframes statusFade{0%{opacity:0;transform:translateY(6px);}100%{opacity:1;transform:translateY(0);}}
+@keyframes pulseSearch{0%,100%{transform:scale(1);opacity:0.8;}50%{transform:scale(1.15);opacity:1;}}
 .ui-alert-anim{animation:uiAlertPop 0.3s var(--ease-bounce) !important;}
 .drawer,.modal-card,.chat-item,.icon-btn,.new-chat,.save-prompt,.export-btn,.danger,#action-btn{transition:transform .2s var(--ease-smooth),background .2s ease,border-color .2s ease,box-shadow .2s ease;}
 #splash-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:99999;transition:opacity .4s ease,visibility .4s ease;}
@@ -186,7 +176,6 @@ header{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content
 .msg th{background:var(--hover);font-weight:800;color:var(--primary);}
 .msg tr:nth-child(even) td{background:rgba(0,0,0,0.02);}
 body.dark-mode .msg tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
-/* ===== MERMAID DIAGRAM STYLING ===== */
 .mermaid-container{margin:16px 0;padding:18px 12px;background:var(--card);border:1.5px solid var(--border);border-radius:14px;overflow-x:auto;text-align:center;position:relative;}
 .mermaid-container svg{max-width:100%;height:auto;display:inline-block;}
 .mermaid-container .diagram-label{position:absolute;top:8px;left:12px;font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--primary);opacity:0.75;}
@@ -194,37 +183,63 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 .mermaid-toolbar{display:flex;gap:6px;justify-content:flex-end;margin-bottom:8px;}
 .mermaid-toolbar button{height:28px;padding:0 10px;border-radius:7px;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
 .mermaid-toolbar button:hover{color:var(--primary);border-color:var(--primary);}
-/* ===== LIKE / DISLIKE ACTIONS ===== */
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;min-height:34px;align-items:center;}
 .action-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;transition:all .2s var(--ease-smooth);}
 .action-btn:hover{color:var(--primary);border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(37,99,235,0.2);}
 .action-btn:active{transform:scale(.9);}
-.action-btn.voice-stop{color:var(--danger);border-color:var(--danger);animation:pulseStop 1s infinite alternate;}
+.action-btn.voice-stop{color:var(--danger);border-color:var(--danger);background:rgba(239,68,68,0.1);animation:pulseStop 1s infinite alternate;}
 .action-btn.liked{background:var(--success);border-color:var(--success);color:#fff;animation:likePop .35s var(--ease-bounce);}
 .action-btn.disliked{background:var(--danger);border-color:var(--danger);color:#fff;animation:likePop .35s var(--ease-bounce);}
-/* ===== PDF FILE PREVIEW ===== */
 .pdf-preview-chip{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;font-size:12.5px;font-weight:600;max-width:280px;}
 .pdf-preview-chip i{color:var(--danger);font-size:20px;flex-shrink:0;}
 .pdf-preview-chip .pdf-meta{display:flex;flex-direction:column;min-width:0;}
 .pdf-preview-chip .pdf-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;}
 .pdf-preview-chip .pdf-size{font-size:10.5px;color:var(--muted);}
-/* ===== REPLY STYLE PICKER ===== */
 .reply-style-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .reply-style-btn{padding:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;font-size:11.5px;font-weight:700;cursor:pointer;transition:all .2s var(--ease-smooth);text-align:center;}
 .reply-style-btn:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);}
 .reply-style-btn.active{background:var(--gradient-1);color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(37,99,235,0.3);}
-/* ===== FOCUS MODE ===== */
-body.focus-mode header{background:transparent;border-bottom-color:transparent;box-shadow:none;}
-body.focus-mode .header-title{opacity:0.7;}
-/* ===== IMAGE PREVIEW (PAN + ZOOM AT CURSOR) ===== */
+
+/* ===== THINKING / STATUS STAGES ===== */
+.thinking-stage{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13.5px;animation:statusFade .3s ease;}
+.thinking-stage .stage-icon{width:36px;height:36px;border-radius:50%;background:var(--hover);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:15px;flex-shrink:0;}
+.thinking-stage .stage-icon.pulse{animation:pulseSearch 1.4s ease-in-out infinite;}
+.thinking-stage .stage-text{flex:1;min-width:0;}
+.thinking-stage .stage-title{font-weight:700;color:var(--text);margin-bottom:2px;}
+.thinking-stage .stage-sub{font-size:11.5px;color:var(--muted);}
+.thinking-dots span{animation:spinDot 1.2s infinite ease-in-out;font-weight:900;}
+.thinking-dots span:nth-child(2){animation-delay:.2s;}
+.thinking-dots span:nth-child(3){animation-delay:.4s;}
+
+/* ===== SOURCES TRIGGER BUTTON ===== */
+.sources-trigger-btn{display:inline-flex;align-items:center;gap:10px;padding:8px 16px;margin-top:10px;background:var(--card);border:1.5px solid var(--border);border-radius:22px;color:var(--text);font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s ease;}
+.sources-trigger-btn:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);box-shadow:0 4px 14px rgba(37,99,235,0.15);}
+.sources-trigger-btn i{font-size:11px;color:var(--primary);}
+.sources-trigger-btn .src-favicons{display:flex;align-items:center;}
+.sources-trigger-btn .fav{width:20px;height:20px;border-radius:50%;background:var(--gradient-1);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid var(--card);margin-left:-7px;}
+.sources-trigger-btn .fav:first-child{margin-left:0;}
+
+/* ===== SOURCES BOTTOM SHEET ===== */
+#sources-sheet{position:fixed;inset:0;z-index:9500;display:none;}
+#sources-sheet.active{display:block;}
+#sources-sheet .sheet-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.55);opacity:0;transition:opacity .3s ease;}
+#sources-sheet.active .sheet-backdrop{opacity:1;}
+#sources-sheet .sheet-body{position:absolute;left:0;right:0;bottom:0;max-height:75vh;background:var(--card);border-top-left-radius:22px;border-top-right-radius:22px;padding:16px 18px 32px;transform:translateY(100%);transition:transform .3s var(--ease-smooth);overflow-y:auto;}
+#sources-sheet.active .sheet-body{transform:translateY(0);}
+#sources-sheet .sheet-handle{width:44px;height:5px;background:var(--border);border-radius:10px;margin:0 auto 14px;}
+#sources-sheet .sheet-title{font-size:15px;font-weight:900;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+#sources-sheet .sheet-title i{color:var(--primary);}
+#sources-sheet .sheet-source{display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:12px;text-decoration:none;color:var(--text);transition:background .15s ease;margin-bottom:6px;border:1.5px solid transparent;}
+#sources-sheet .sheet-source:hover{background:var(--hover);border-color:var(--primary);}
+#sources-sheet .sheet-num{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--gradient-1);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+#sources-sheet .sheet-content{flex:1;min-width:0;}
+#sources-sheet .sheet-src-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:3px;display:block;}
+#sources-sheet .sheet-src-domain{font-size:11px;color:var(--muted);font-weight:600;display:block;}
+
 .image-preview-container{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#05070b;position:relative;touch-action:none;cursor:grab;user-select:none;}
 .image-preview-container.dragging{cursor:grabbing;}
 .image-preview-container img{max-width:100%;max-height:100%;object-fit:contain;transition:transform 0.05s linear;user-select:none;pointer-events:none;will-change:transform;transform-origin:0 0;}
-.thinking{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13.5px;}
 .spinner{width:20px;height:20px;border:2.5px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:rotate360 .75s linear infinite;}
-.dots span{animation:spinDot 1.2s infinite ease-in-out;font-weight:900;}
-.dots span:nth-child(2){animation-delay:.2s;}
-.dots span:nth-child(3){animation-delay:.4s;}
 #scroll-btn{position:absolute;right:20px;bottom:20px;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--text);box-shadow:0 6px 20px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;pointer-events:none;transform:translateY(15px);transition:opacity .2s,transform .2s;z-index:50;}
 #scroll-btn.show{opacity:1;pointer-events:auto;transform:translateY(0);}
 #scroll-btn:hover{transform:translateY(-2px);border-color:var(--primary);color:var(--primary);}
@@ -323,27 +338,66 @@ body.focus-mode .header-title{opacity:0.7;}
 .preview-btn:hover{background:var(--hover);color:var(--primary);}
 .preview-btn:active{transform:scale(.9);}
 .image-zoom-label{font-size:12px;color:var(--muted);padding:0 10px;font-weight:800;min-width:55px;text-align:center;font-family:monospace;}
+#call-overlay{position:fixed;inset:0;background:#000;z-index:9000;display:none;flex-direction:column;overflow:hidden;}
+#call-overlay.active{display:flex;}
+#call-overlay.no-camera{background:linear-gradient(135deg,#0a0e1a 0%,#151b2e 100%);}
+#call-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;z-index:1;}
+#call-video.mirror{transform:scaleX(-1);}
+#call-overlay.no-camera #call-video{display:none;}
+#call-header{position:relative;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;color:#fff;background:linear-gradient(180deg,rgba(0,0,0,0.65) 0%,transparent 100%);}
+#call-status{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;}
+#call-status-dot{width:10px;height:10px;border-radius:50%;background:#ef4444;animation:pulseMic 1.2s infinite;}
+#call-timer{font-size:13px;font-weight:700;font-family:monospace;background:rgba(0,0,0,0.5);padding:6px 12px;border-radius:20px;}
+#call-center{position:relative;z-index:10;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px;pointer-events:none;}
+#call-avatar{width:140px;height:140px;border-radius:50%;background:linear-gradient(135deg,#2563eb 0%,#8b5cf6 100%);display:flex;align-items:center;justify-content:center;font-size:56px;box-shadow:0 0 0 0 rgba(37,99,235,0.6);transition:box-shadow .3s ease;}
+#call-avatar.speaking{animation:pulseAvatar 1.2s ease-in-out infinite;}
+@keyframes pulseAvatar{0%{box-shadow:0 0 0 0 rgba(37,99,235,0.6);transform:scale(1);}50%{box-shadow:0 0 0 30px rgba(37,99,235,0);transform:scale(1.05);}100%{box-shadow:0 0 0 0 rgba(37,99,235,0);transform:scale(1);}}
+#call-name{font-size:22px;font-weight:900;color:#fff;letter-spacing:1px;}
+#call-transcript{min-height:60px;max-width:85%;text-align:center;color:#e2e8f0;font-size:14px;line-height:1.6;padding:14px 20px;background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(255,255,255,0.12);}
+#call-waveform{display:flex;gap:4px;height:36px;align-items:center;justify-content:center;opacity:0;transition:opacity .3s ease;}
+#call-waveform.active{opacity:1;}
+#call-waveform span{width:4px;background:linear-gradient(180deg,#3b82f6 0%,#8b5cf6 100%);border-radius:2px;animation:waveform 1s ease-in-out infinite;height:8px;}
+#call-waveform span:nth-child(1){animation-delay:0s;}
+#call-waveform span:nth-child(2){animation-delay:.1s;}
+#call-waveform span:nth-child(3){animation-delay:.2s;}
+#call-waveform span:nth-child(4){animation-delay:.3s;}
+#call-waveform span:nth-child(5){animation-delay:.4s;}
+#call-waveform span:nth-child(6){animation-delay:.5s;}
+#call-waveform span:nth-child(7){animation-delay:.6s;}
+@keyframes waveform{0%,100%{height:8px;}50%{height:32px;}}
+#call-controls{position:relative;z-index:10;display:flex;justify-content:center;align-items:center;gap:14px;padding:24px 20px 40px;background:linear-gradient(0deg,rgba(0,0,0,0.65) 0%,transparent 100%);flex-wrap:wrap;}
+.call-ctrl{width:56px;height:56px;border-radius:50%;border:0;background:rgba(255,255,255,0.15);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);transition:all .2s ease;}
+.call-ctrl:hover{background:rgba(255,255,255,0.25);transform:scale(1.05);}
+.call-ctrl:active{transform:scale(.92);}
+.call-ctrl.end-call{background:#ef4444;}
+.call-ctrl.end-call:hover{background:#dc2626;}
+.call-ctrl.muted{background:rgba(239,68,68,0.6);}
+.call-ctrl.active{background:var(--primary);}
+.call-ctrl.snapshot{background:linear-gradient(135deg,#2563eb 0%,#8b5cf6 100%);}
+#call-selfview{position:absolute;top:80px;right:16px;width:100px;height:140px;border-radius:14px;overflow:hidden;background:#000;border:2px solid rgba(255,255,255,0.25);z-index:12;box-shadow:0 8px 24px rgba(0,0,0,0.5);display:none;}
+#call-selfview.active{display:block;}
+#call-selfview video{width:100%;height:100%;object-fit:cover;}
+#call-selfview.mirror video{transform:scaleX(-1);}
+#call-flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:99999;transition:opacity .15s ease;}
+#call-flash.fire{opacity:0.8;}
+#call-reconnect{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:20;color:#fff;font-size:14px;flex-direction:column;gap:14px;}
+#call-reconnect.show{display:flex;}
+#call-reconnect .spinner{width:36px;height:36px;border-width:4px;border-color:rgba(255,255,255,0.3);border-top-color:#fff;}
 @media(max-width:500px){
 .drawer{width:305px;}
 .msg{font-size:13.5px;}
 .msg.user{max-width:88%;}
 .header-title{font-size:14px;}
 .persona-grid{grid-template-columns:1fr;}
+#call-avatar{width:110px;height:110px;font-size:44px;}
+#call-transcript{font-size:13px;padding:12px 16px;}
+#call-selfview{width:80px;height:110px;top:70px;right:12px;}
+.call-ctrl{width:52px;height:52px;font-size:18px;}
+#call-controls{gap:12px;padding:20px 16px 32px;}
 }
-
-/* =================== Quantum Graphs =================== */
-.quantum-graph{margin:12px 0;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card);box-shadow:var(--shadow);}
-.quantum-graph-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;color:var(--text);}
-.quantum-graph-title{display:flex;align-items:center;gap:7px;min-width:0;}
-.quantum-graph-title span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.quantum-graph-actions{display:flex;gap:5px;flex-shrink:0;}
-.quantum-graph-btn{border:1px solid var(--border);background:var(--hover);color:var(--text);border-radius:8px;padding:6px 8px;font-size:11px;cursor:pointer;}
-.quantum-graph-btn:active{transform:scale(.96);}
-.quantum-graph-canvas{width:100%;height:380px;}
-.quantum-graph-error{padding:14px;color:var(--danger);font-size:12px;}
-@media(max-width:600px){.quantum-graph-canvas{height:310px;}.quantum-graph-head{padding:9px 10px;}.quantum-graph-btn{padding:6px 7px;}}
 </style>
 </head>
+
 <body class="dark-mode">
 <div id="splash-screen"><div class="splash-logo">✨</div><div class="splash-title">QUANTUM CORE</div><div class="splash-loader"></div></div>
 <div id="overlay" onclick="closeDrawers()"></div>
@@ -362,18 +416,12 @@ body.focus-mode .header-title{opacity:0.7;}
 <aside id="settings" class="drawer">
 <div class="drawer-header"><span class="drawer-title" data-i18n="settings">Settings</span><button class="icon-btn" onclick="toggleSettings()"><i class="fa-solid fa-xmark"></i></button></div>
 <div class="settings-body">
-
 <div class="setting-group"><label class="setting-label" data-i18n="api_key_status">API Key Status</label><div class="info-box"><i class="fa-solid fa-shield-halved"></i> <span data-i18n="api_secure">Your API key is fully secured on the server side.</span></div></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="ai_mode">AI Performance Mode</label><div class="segment"><button id="fast-mode" class="active" onclick="setMode('fast')" data-i18n="fast">Fast</button><button id="core-mode" onclick="setMode('core')" data-i18n="core">Core</button></div></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="math_level">Math Depth (<span id="math-level-val">5</span>/10)</label><input type="range" id="math-level-slider" class="range-slider" min="1" max="10" step="1" value="5" oninput="updateMathLevel(this.value)"></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="temperature">Creativity (<span id="temp-val">0.7</span>)</label><input type="range" id="temp-slider" class="range-slider" min="0" max="1" step="0.1" value="0.7" oninput="updateTemperature(this.value)"></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="theme">Theme</label><div class="segment"><button id="light-theme" onclick="setTheme('light')" data-i18n="light">Light</button><button id="dark-theme" class="active" onclick="setTheme('dark')" data-i18n="dark">Dark</button><button id="auto-theme" onclick="setTheme('auto')" data-i18n="auto">Auto</button></div></div>
-
-<div class="setting-group"><label class="setting-label">Reply Style</label>
+<div class="setting-group"><label class="setting-label" data-i18n="reply_style">Reply Style</label>
 <div class="reply-style-grid" id="reply-style-grid">
 <button class="reply-style-btn active" data-style="auto" onclick="setReplyStyle('auto')">🌐 Auto</button>
 <button class="reply-style-btn" data-style="concise" onclick="setReplyStyle('concise')">⚡ Concise</button>
@@ -383,25 +431,20 @@ body.focus-mode .header-title{opacity:0.7;}
 <button class="reply-style-btn" data-style="friendly" onclick="setReplyStyle('friendly')">😊 Friendly</button>
 </div>
 </div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="language">App Language</label>
 <div class="custom-dropdown" id="ui-lang-dropdown">
 <button type="button" class="custom-dropdown-btn" onclick="toggleUiLangDropdown(event)"><span id="ui-lang-label">🇬🇧 English</span><i class="fa-solid fa-chevron-down"></i></button>
 <div class="custom-dropdown-menu" id="ui-lang-menu"></div>
 </div>
 </div>
-
-<div class="setting-group"><label class="setting-label">AI Response Language</label>
+<div class="setting-group"><label class="setting-label" data-i18n="ai_lang">AI Response Language</label>
 <div class="custom-dropdown" id="ai-lang-dropdown">
 <button type="button" class="custom-dropdown-btn" onclick="toggleAiLangDropdown(event)"><span id="ai-lang-label">🌐 Auto (Same as User)</span><i class="fa-solid fa-chevron-down"></i></button>
 <div class="custom-dropdown-menu" id="ai-lang-menu"></div>
 </div>
 </div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="accent">Accent Color</label><div class="color-row"><div class="color" style="background:#2563eb" onclick="setAccent('#2563eb')"></div><div class="color" style="background:#10b981" onclick="setAccent('#10b981')"></div><div class="color" style="background:#8b5cf6" onclick="setAccent('#8b5cf6')"></div><div class="color" style="background:#f59e0b" onclick="setAccent('#f59e0b')"></div><div class="color" style="background:#ec4899" onclick="setAccent('#ec4899')"></div><div class="color" style="background:#06b6d4" onclick="setAccent('#06b6d4')"></div></div></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="personas">Custom AI Personas</label><div class="persona-grid" id="persona-grid"></div><button class="export-btn" style="margin-top:8px;" onclick="openPersonaModal()"><i class="fa-solid fa-plus"></i> <span data-i18n="new_persona">New Persona</span></button></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="prompt_lib">Prompt Library</label>
 <div class="custom-dropdown" id="prompt-dropdown">
 <button type="button" class="custom-dropdown-btn" onclick="togglePromptDropdown(event)"><span id="prompt-dropdown-label" data-i18n="select_prompt">Select a prompt</span><i class="fa-solid fa-chevron-down"></i></button>
@@ -410,24 +453,18 @@ body.focus-mode .header-title{opacity:0.7;}
 <textarea id="custom-prompt" class="prompt-area" placeholder="Write your own system prompt..."></textarea>
 <button class="save-prompt" onclick="saveCustomPrompt()"><i class="fa-solid fa-check"></i> <span data-i18n="save_prompt">Save Prompt</span></button>
 </div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="voice">Voice & Engine</label><div class="segment" style="margin-bottom:8px;"><button id="voice-male" class="active" onclick="setVoiceGender('male')" data-i18n="male">Male</button><button id="voice-female" onclick="setVoiceGender('female')" data-i18n="female">Female</button></div></div>
-
 <div class="setting-row"><span data-i18n="auto_scroll">Auto-Scroll</span><label class="switch"><input type="checkbox" id="auto-scroll-toggle" checked onchange="setAutoScroll(this.checked)"><span class="slider"></span></label></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="stats">Chat Statistics</label><div class="info-box"><span data-i18n="messages">Messages:</span> <strong id="message-count">0</strong><br><span data-i18n="characters">Characters:</span> <strong id="character-count">0</strong></div></div>
-
 <div class="setting-group"><label class="setting-label" data-i18n="backup">Backup & Export</label>
-<button class="export-btn" onclick="exportJSON()"><i class="fa-solid fa-file-code"></i> Export JSON</button>
-<button class="export-btn" onclick="document.getElementById('import-file').click()"><i class="fa-solid fa-file-arrow-up"></i> Restore JSON</button>
+<button class="export-btn" onclick="exportJSON()"><i class="fa-solid fa-file-code"></i> <span data-i18n="export_json">Export JSON</span></button>
+<button class="export-btn" onclick="document.getElementById('import-file').click()"><i class="fa-solid fa-file-arrow-up"></i> <span data-i18n="restore_json">Restore JSON</span></button>
 <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSONBackup(event)">
-<button class="export-btn" onclick="exportMarkdown()"><i class="fa-solid fa-file-lines"></i> Export Markdown</button>
-<button class="export-btn" onclick="document.getElementById('import-md-file').click()"><i class="fa-solid fa-file-arrow-up"></i> Restore Markdown</button>
+<button class="export-btn" onclick="exportMarkdown()"><i class="fa-solid fa-file-lines"></i> <span data-i18n="export_md">Export Markdown</span></button>
+<button class="export-btn" onclick="document.getElementById('import-md-file').click()"><i class="fa-solid fa-file-arrow-up"></i> <span data-i18n="restore_md">Restore Markdown</span></button>
 <input type="file" id="import-md-file" accept=".md,.markdown,.txt" style="display:none" onchange="importMarkdownBackup(event)">
 </div>
-
 <button class="danger" onclick="openClearModal()"><i class="fa-solid fa-trash"></i> <span data-i18n="clear_all">Clear All Conversations</span></button>
-
 <div class="info-box" style="margin-top:14px;text-align:center;font-size:11px;"><span data-i18n="made_by">Made with ❤️ by</span> <strong>Usman Saleem</strong></div>
 </div>
 </aside>
@@ -440,24 +477,14 @@ body.focus-mode .header-title{opacity:0.7;}
 <div class="chat-wrapper"><div id="chat-box"></div><button id="scroll-btn" onclick="smoothScrollToBottom(600)" title="Scroll down"><i class="fa-solid fa-arrow-down"></i></button></div>
 
 <div id="preview">
-  <div class="preview-wrap" id="image-preview-wrap" style="display:none;">
-    <img id="preview-img" class="preview-img">
-    <button class="remove-img" onclick="removeImage()">×</button>
-  </div>
-  <div class="pdf-preview-chip" id="pdf-preview-chip" style="display:none;">
-    <i class="fa-solid fa-file-pdf"></i>
-    <div class="pdf-meta">
-      <span class="pdf-name" id="pdf-name">document.pdf</span>
-      <span class="pdf-size" id="pdf-size">0 KB</span>
-    </div>
-    <button class="remove-img" style="position:static;margin-left:8px;" onclick="removePdf()">×</button>
-  </div>
+<div class="preview-wrap" id="image-preview-wrap" style="display:none;"><img id="preview-img" class="preview-img"><button class="remove-img" onclick="removeImage()">×</button></div>
+<div class="pdf-preview-chip" id="pdf-preview-chip" style="display:none;"><i class="fa-solid fa-file-pdf"></i><div class="pdf-meta"><span class="pdf-name" id="pdf-name">document.pdf</span><span class="pdf-size" id="pdf-size">0 KB</span></div><button class="remove-img" style="position:static;margin-left:8px;" onclick="removePdf()">×</button></div>
 </div>
 
 <div id="speech-transcript-box"><div style="font-size:10px;font-weight:800;color:var(--primary);margin-bottom:4px;text-transform:uppercase;"><i class="fa-solid fa-wave-square"></i> Live Speech</div><div id="transcript-text" style="font-style:italic;">Listening...</div></div>
 
 <div class="input-area">
-<div class="input-row"><textarea id="user-input" rows="1" placeholder="Message Quantum Core..." oninput="resizeInput(this)" onkeydown="handleKeyDown(event)"></textarea><button id="action-btn" onclick="mainAction()" title="Send"><i id="action-icon" class="fa-solid fa-paper-plane"></i></button></div>
+<div class="input-row"><textarea id="user-input" rows="1" placeholder="Message Quantum Core..." oninput="resizeInput(this)" onkeydown="handleKeyDown(event)" enterkeyhint="enter" inputmode="text"></textarea><button id="action-btn" onclick="mainAction()" title="Send"><i id="action-icon" class="fa-solid fa-paper-plane"></i></button></div>
 <div class="tools"><div class="tools-left">
 <button class="tool-btn" onclick="document.getElementById('file-input').click()" title="Upload image"><i class="fa-solid fa-paperclip"></i></button>
 <input id="file-input" type="file" accept="image/*" style="display:none" onchange="handleImage(event)">
@@ -467,7 +494,7 @@ body.focus-mode .header-title{opacity:0.7;}
 <input id="pdf-input" type="file" accept="application/pdf" style="display:none" onchange="handlePdf(event)">
 <button id="mic-btn" class="tool-btn" onclick="toggleVoiceInput()" title="Voice input"><i class="fa-solid fa-microphone"></i></button>
 <button id="gen-img-btn" class="tool-btn" onclick="openImageGenModal()" title="Generate image"><i class="fa-solid fa-image"></i></button>
-<button id="live-btn" class="live-btn" onclick="toggleLiveVoice()"><i class="fa-solid fa-microphone-lines"></i> <span id="live-label">Live</span></button>
+<button id="live-btn" class="live-btn" onclick="toggleLiveVoice()"><i class="fa-solid fa-tower-broadcast"></i> <span id="live-label">Go Live with AI</span></button>
 </div><div class="token-counter" id="token-counter">Tokens: ~0</div></div>
 </div>
 
@@ -481,25 +508,48 @@ body.focus-mode .header-title{opacity:0.7;}
 
 <div id="new-folder-modal" class="modal"><div class="modal-card"><div class="modal-title">New Folder</div><input id="new-folder-input" class="modal-input" placeholder="Folder name" maxlength="30"><div class="modal-actions"><button class="cancel" onclick="closeNewFolderModal()">Cancel</button><button class="confirm" onclick="createNewFolder()">Create</button></div></div></div>
 
-<div id="confirm-modal" class="modal">
-<div class="modal-card">
-<div class="modal-title" id="confirm-title">Confirm</div>
-<div class="modal-desc" id="confirm-desc">Are you sure?</div>
-<div class="modal-actions">
-<button class="cancel" id="confirm-cancel-btn">Cancel</button>
-<button class="confirm" id="confirm-ok-btn">Confirm</button>
-</div>
-</div>
-</div>
+<div id="confirm-modal" class="modal"><div class="modal-card"><div class="modal-title" id="confirm-title">Confirm</div><div class="modal-desc" id="confirm-desc">Are you sure?</div><div class="modal-actions"><button class="cancel" id="confirm-cancel-btn">Cancel</button><button class="confirm" id="confirm-ok-btn">Confirm</button></div></div></div>
 
 <div id="persona-modal" class="modal"><div class="modal-card"><div class="modal-title">New AI Persona</div><div class="modal-desc">Create your own AI assistant with a custom personality.</div><input id="persona-name-input" class="modal-input" placeholder="Persona name" maxlength="30"><input id="persona-icon-input" class="modal-input" placeholder="Emoji icon" maxlength="4" value="🤖"><textarea id="persona-prompt-input" class="prompt-area" placeholder="System prompt..." style="min-height:80px;"></textarea><div class="modal-actions" style="margin-top:12px;"><button class="cancel" onclick="closePersonaModal()">Cancel</button><button class="confirm" onclick="savePersona()">Save</button></div></div></div>
 
 <div id="image-preview-modal" class="modal"><div class="image-preview-card"><div class="image-preview-topbar"><button class="preview-btn" onclick="previewZoomOut()"><i class="fa-solid fa-magnifying-glass-minus"></i></button><span class="image-zoom-label" id="zoom-label">100%</span><button class="preview-btn" onclick="previewZoomIn()"><i class="fa-solid fa-magnifying-glass-plus"></i></button><button class="preview-btn" onclick="previewResetZoom()"><i class="fa-solid fa-arrows-rotate"></i></button><div style="flex:1;"></div><button class="preview-btn" onclick="downloadPreviewImage()"><i class="fa-solid fa-download"></i></button><button class="preview-btn" onclick="closeImagePreview()"><i class="fa-solid fa-xmark"></i></button></div><div class="image-preview-container" id="image-preview-container"><img id="image-preview-img" src="" alt="Preview"></div></div></div>
 
-<div id="inapp-browser" class="inapp-browser"><div class="inapp-topbar"><button class="inapp-btn" onclick="inappBack()"><i class="fa-solid fa-arrow-left"></i></button><button class="inapp-btn" onclick="inappForward()"><i class="fa-solid fa-arrow-right"></i></button><button class="inapp-btn" onclick="inappRefresh()"><i class="fa-solid fa-rotate-right"></i></button><div class="inapp-url" id="inapp-url">about:blank</div><button class="inapp-btn" onclick="inappOpenExternal()"><i class="fa-solid fa-arrow-up-right-from-square"></i></button><button class="inapp-btn" onclick="closeInappBrowser()"><i class="fa-solid fa-xmark"></i></button></div><div class="inapp-frame-wrap"><div class="inapp-loader" id="inapp-loader"><div class="spinner"></div><span>Loading...</span></div><iframe id="inapp-frame" class="inapp-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-storage-access-by-user-activation" referrerpolicy="no-referrer" onload="if(typeof inappFrameLoaded === 'function') inappFrameLoaded();"></iframe><div class="inapp-blocked" id="inapp-blocked"><i class="fa-solid fa-triangle-exclamation"></i><p>This website blocks in-app view.</p><button class="inapp-external-btn" onclick="inappOpenExternal()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in Browser</button></div></div></div>
+<div id="inapp-browser" class="inapp-browser"><div class="inapp-topbar"><button class="inapp-btn" onclick="inappBack()"><i class="fa-solid fa-arrow-left"></i></button><button class="inapp-btn" onclick="inappForward()"><i class="fa-solid fa-arrow-right"></i></button><button class="inapp-btn" onclick="inappRefresh()"><i class="fa-solid fa-rotate-right"></i></button><div class="inapp-url" id="inapp-url">about:blank</div><button class="inapp-btn" onclick="inappOpenExternal()"><i class="fa-solid fa-arrow-up-right-from-square"></i></button><button class="inapp-btn" onclick="closeInappBrowser()"><i class="fa-solid fa-xmark"></i></button></div><div class="inapp-frame-wrap"><div class="inapp-loader" id="inapp-loader"><div class="spinner"></div><span>Loading...</span></div><iframe id="inapp-frame" class="inapp-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads" referrerpolicy="no-referrer" onload="if(typeof inappFrameLoaded === 'function') inappFrameLoaded();"></iframe><div class="inapp-blocked" id="inapp-blocked"><i class="fa-solid fa-triangle-exclamation"></i><p>This website blocks in-app view.</p><button class="inapp-external-btn" onclick="inappOpenExternal()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in Browser</button></div></div></div>
+
+<div id="call-overlay" class="no-camera">
+<video id="call-video" autoplay playsinline muted></video>
+<div id="call-header">
+<div id="call-status"><div id="call-status-dot"></div><span id="call-status-text">Connecting...</span></div>
+<div id="call-timer">00:00</div>
+</div>
+<div id="call-selfview"><video id="call-selfvideo" autoplay playsinline muted></video></div>
+<div id="call-center">
+<div id="call-avatar">✨</div>
+<div id="call-name">QUANTUM CORE</div>
+<div id="call-waveform"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+<div id="call-transcript">Tap the mic and start talking...</div>
+</div>
+<div id="call-reconnect"><div class="spinner"></div><div>Reconnecting...</div></div>
+<div id="call-controls">
+<button class="call-ctrl" id="call-mic-btn" onclick="callToggleMic()" title="Mute"><i class="fa-solid fa-microphone"></i></button>
+<button class="call-ctrl snapshot" id="call-snap-btn" onclick="callTakeSnapshot()" title="Send photo to AI"><i class="fa-solid fa-camera"></i></button>
+<button class="call-ctrl end-call" id="call-end-btn" onclick="endCall()" title="End"><i class="fa-solid fa-phone-slash"></i></button>
+<button class="call-ctrl" id="call-cam-btn" onclick="callToggleCamera()" title="Camera"><i class="fa-solid fa-video"></i></button>
+<button class="call-ctrl" id="call-flip-btn" onclick="callFlipCamera()" title="Flip"><i class="fa-solid fa-camera-rotate"></i></button>
+</div>
+</div>
+<div id="call-flash"></div>
+
+<div id="sources-sheet">
+<div class="sheet-backdrop" onclick="closeSourcesSheet()"></div>
+<div class="sheet-body">
+<div class="sheet-handle"></div>
+<div class="sheet-title"><i class="fa-solid fa-link"></i> Sources</div>
+<div id="sources-sheet-list"></div>
+</div>
+</div>
 
 <div id="toast"></div>
-
 <script>
 const LOCAL_TEST_API_KEY = "";
 
@@ -548,26 +598,26 @@ const AI_LANGUAGES = [
 ];
 
 const TRANSLATIONS = {
-  en: {conversations:"Conversations",search_ph:"Search chats & messages...",all:"All",unsorted:"Unsorted",new_folder:"Folder",new_chat:"New",settings:"Settings",api_key_status:"API Key Status",api_secure:"Your API key is fully secured on the server side.",ai_mode:"AI Performance Mode",fast:"Fast",core:"Core",math_level:"Math Depth",temperature:"Creativity",theme:"Theme",light:"Light",dark:"Dark",auto:"Auto",language:"Language",accent:"Accent Color",personas:"Custom AI Personas",new_persona:"New Persona",prompt_lib:"Prompt Library",select_prompt:"Select a prompt",save_prompt:"Save Prompt",voice:"Voice & Engine",male:"Male",female:"Female",auto_scroll:"Auto-Scroll",stats:"Chat Statistics",messages:"Messages:",characters:"Characters:",backup:"Backup & Export",clear_all:"Clear All Conversations",made_by:"Made with ❤️ by",thinking:"Thinking"},
-  ur: {conversations:"Baat cheet",search_ph:"Chats search karo...",all:"Sab",unsorted:"Bina Folder",new_folder:"Folder",new_chat:"Nayi",settings:"Settings",api_key_status:"API Key Status",api_secure:"Aap ki API key server par mehfooz hai.",ai_mode:"AI Mode",fast:"Tez",core:"Smart",math_level:"Math Depth",temperature:"Creativity",theme:"Theme",light:"Roshni",dark:"Andhera",auto:"Auto",language:"Zubaan",accent:"Rang",personas:"Meri Personalities",new_persona:"Nayi Personality",prompt_lib:"Prompt Library",select_prompt:"Prompt chuno",save_prompt:"Prompt Save Karo",voice:"Awaaz",male:"Mard",female:"Aurat",auto_scroll:"Auto-Scroll",stats:"Chat Stats",messages:"Messages:",characters:"Huroof:",backup:"Backup",clear_all:"Sab Chats Delete Karo",made_by:"Banaya gaya ❤️ se by",thinking:"Soch raha hai"},
-  hi: {conversations:"बातचीत",search_ph:"चैट खोजें...",all:"सभी",unsorted:"बिना फोल्डर",new_folder:"फोल्डर",new_chat:"नई",settings:"सेटिंग्स",api_key_status:"API कुंजी स्थिति",api_secure:"आपकी API कुंजी सुरक्षित है।",ai_mode:"AI मोड",fast:"तेज़",core:"स्मार्ट",math_level:"गणित गहराई",temperature:"रचनात्मकता",theme:"थीम",light:"हल्का",dark:"गहरा",auto:"ऑटो",language:"भाषा",accent:"रंग",personas:"व्यक्तित्व",new_persona:"नया व्यक्तित्व",prompt_lib:"प्रॉम्प्ट",select_prompt:"प्रॉम्प्ट चुनें",save_prompt:"सहेजें",voice:"आवाज़",male:"पुरुष",female:"महिला",auto_scroll:"ऑटो-स्क्रॉल",stats:"आंकड़े",messages:"संदेश:",characters:"अक्षर:",backup:"बैकअप",clear_all:"सभी साफ़ करें",made_by:"बनाया ❤️ से",thinking:"सोच रहा है"},
-  urdu: {conversations:"گفتگو",search_ph:"چیٹ تلاش کریں...",all:"سب",unsorted:"بغیر فولڈر",new_folder:"فولڈر",new_chat:"نئی",settings:"ترتیبات",api_secure:"آپ کی API کلید محفوظ ہے۔",fast:"تیز",core:"سمارٹ",light:"روشنی",dark:"تاریک",auto:"خودکار",thinking:"سوچ رہا ہے"},
-  ar: {conversations:"المحادثات",search_ph:"ابحث في الدردشات...",all:"الكل",new_chat:"جديد",settings:"الإعدادات",fast:"سريع",core:"ذكي",thinking:"يفكر"},
-  es: {conversations:"Conversaciones",search_ph:"Buscar chats...",all:"Todos",new_chat:"Nuevo",settings:"Ajustes",fast:"Rápido",core:"Inteligente",thinking:"Pensando"},
-  fr: {conversations:"Conversations",search_ph:"Rechercher...",all:"Tous",new_chat:"Nouveau",settings:"Paramètres",fast:"Rapide",core:"Intelligent",thinking:"Réflexion"},
-  de: {conversations:"Unterhaltungen",search_ph:"Chats suchen...",all:"Alle",new_chat:"Neu",settings:"Einstellungen",fast:"Schnell",core:"Klug",thinking:"Denkt nach"},
-  zh: {conversations:"对话",search_ph:"搜索聊天...",all:"全部",new_chat:"新",settings:"设置",fast:"快速",core:"智能",thinking:"思考中"},
-  ja: {conversations:"会話",search_ph:"チャットを検索...",all:"すべて",new_chat:"新規",settings:"設定",fast:"高速",core:"スマート",thinking:"考え中"},
-  ko: {conversations:"대화",search_ph:"채팅 검색...",all:"전체",new_chat:"새로",settings:"설정",fast:"빠름",core:"스마트",thinking:"생각 중"},
-  pt: {conversations:"Conversas",search_ph:"Pesquisar...",all:"Todos",new_chat:"Novo",settings:"Configurações",fast:"Rápido",core:"Inteligente",thinking:"Pensando"},
-  ru: {conversations:"Беседы",search_ph:"Поиск...",all:"Все",new_chat:"Новый",settings:"Настройки",fast:"Быстро",core:"Умный",thinking:"Думает"},
-  tr: {conversations:"Sohbetler",search_ph:"Sohbet ara...",all:"Tümü",new_chat:"Yeni",settings:"Ayarlar",fast:"Hızlı",core:"Akıllı",thinking:"Düşünüyor"},
-  id: {conversations:"Percakapan",search_ph:"Cari chat...",all:"Semua",new_chat:"Baru",settings:"Pengaturan",fast:"Cepat",core:"Pintar",thinking:"Berpikir"},
-  bn: {conversations:"কথোপকথন",search_ph:"সার্চ...",all:"সব",new_chat:"নতুন",settings:"সেটিংস",fast:"দ্রুত",core:"স্মার্ট",thinking:"চিন্তা করছে"},
-  ta: {conversations:"உரையாடல்கள்",search_ph:"தேடு...",all:"அனைத்தும்",new_chat:"புதிய",settings:"அமைப்புகள்",fast:"வேகமான",core:"ஸ்மார்ட்",thinking:"சிந்திக்கிறது"},
-  th: {conversations:"การสนทนา",search_ph:"ค้นหา...",all:"ทั้งหมด",new_chat:"ใหม่",settings:"การตั้งค่า",fast:"เร็ว",core:"อัจฉริยะ",thinking:"กำลังคิด"},
-  vi: {conversations:"Cuộc trò chuyện",search_ph:"Tìm kiếm...",all:"Tất cả",new_chat:"Mới",settings:"Cài đặt",fast:"Nhanh",core:"Thông minh",thinking:"Đang nghĩ"},
-  fa: {conversations:"گفتگوها",search_ph:"جستجو...",all:"همه",new_chat:"جدید",settings:"تنظیمات",fast:"سریع",core:"هوشمند",thinking:"در حال فکر"}
+  en: {conversations:"Conversations",search_ph:"Search chats & messages...",all:"All",unsorted:"Unsorted",new_folder:"Folder",new_chat:"New",settings:"Settings",api_key_status:"API Key Status",api_secure:"Your API key is fully secured on the server side.",ai_mode:"AI Performance Mode",fast:"Fast",core:"Core",math_level:"Math Depth",temperature:"Creativity",theme:"Theme",light:"Light",dark:"Dark",auto:"Auto",language:"App Language",ai_lang:"AI Response Language",accent:"Accent Color",reply_style:"Reply Style",personas:"Custom AI Personas",new_persona:"New Persona",prompt_lib:"Prompt Library",select_prompt:"Select a prompt",save_prompt:"Save Prompt",voice:"Voice & Engine",male:"Male",female:"Female",auto_scroll:"Auto-Scroll",stats:"Chat Statistics",messages:"Messages:",characters:"Characters:",backup:"Backup & Export",export_json:"Export JSON",restore_json:"Restore JSON",export_md:"Export Markdown",restore_md:"Restore Markdown",clear_all:"Clear All Conversations",made_by:"Made with ❤️ by",thinking:"Thinking",searching:"Searching the web",analyzing:"Analyzing",writing:"Writing answer",sources:"Sources"},
+  ur: {conversations:"Baat cheet",search_ph:"Chats search karo...",all:"Sab",unsorted:"Bina Folder",new_folder:"Folder",new_chat:"Nayi",settings:"Settings",api_key_status:"API Key Status",api_secure:"Aap ki API key server par mehfooz hai.",ai_mode:"AI Mode",fast:"Tez",core:"Smart",math_level:"Math Depth",temperature:"Creativity",theme:"Theme",light:"Roshni",dark:"Andhera",auto:"Auto",language:"App Zubaan",ai_lang:"AI Jawab ki Zubaan",accent:"Rang",reply_style:"Reply Style",personas:"Meri Personalities",new_persona:"Nayi Personality",prompt_lib:"Prompt Library",select_prompt:"Prompt chuno",save_prompt:"Prompt Save Karo",voice:"Awaaz",male:"Mard",female:"Aurat",auto_scroll:"Auto-Scroll",stats:"Chat Stats",messages:"Messages:",characters:"Huroof:",backup:"Backup",export_json:"JSON Export",restore_json:"JSON Restore",export_md:"Markdown Export",restore_md:"Markdown Restore",clear_all:"Sab Chats Delete Karo",made_by:"Banaya gaya ❤️ se by",thinking:"Soch raha hai",searching:"Web search kar raha hai",analyzing:"Samajh raha hai",writing:"Jawab likh raha hai",sources:"Sources"},
+  hi: {conversations:"बातचीत",search_ph:"चैट खोजें...",all:"सभी",unsorted:"बिना फोल्डर",new_folder:"फोल्डर",new_chat:"नई",settings:"सेटिंग्स",api_key_status:"API कुंजी स्थिति",api_secure:"आपकी API कुंजी सुरक्षित है।",ai_mode:"AI मोड",fast:"तेज़",core:"स्मार्ट",math_level:"गणित गहराई",temperature:"रचनात्मकता",theme:"थीम",light:"हल्का",dark:"गहरा",auto:"ऑटो",language:"ऐप भाषा",ai_lang:"AI उत्तर भाषा",accent:"रंग",reply_style:"उत्तर शैली",personas:"व्यक्तित्व",new_persona:"नया व्यक्तित्व",prompt_lib:"प्रॉम्प्ट",select_prompt:"प्रॉम्प्ट चुनें",save_prompt:"सहेजें",voice:"आवाज़",male:"पुरुष",female:"महिला",auto_scroll:"ऑटो-स्क्रॉल",stats:"आंकड़े",messages:"संदेश:",characters:"अक्षर:",backup:"बैकअप",export_json:"JSON निर्यात",restore_json:"JSON पुनर्स्थापित",export_md:"Markdown निर्यात",restore_md:"Markdown पुनर्स्थापित",clear_all:"सभी साफ़ करें",made_by:"बनाया ❤️ से",thinking:"सोच रहा है",searching:"वेब खोज रहा है",analyzing:"विश्लेषण कर रहा है",writing:"उत्तर लिख रहा है",sources:"स्रोत"},
+  urdu: {conversations:"گفتگو",search_ph:"چیٹ تلاش کریں...",all:"سب",unsorted:"بغیر فولڈر",new_folder:"فولڈر",new_chat:"نئی",settings:"ترتیبات",api_key_status:"API کلید کی حیثیت",api_secure:"آپ کی API کلید محفوظ ہے۔",ai_mode:"AI موڈ",fast:"تیز",core:"سمارٹ",math_level:"ریاضی کی گہرائی",temperature:"تخلیقی صلاحیت",theme:"تھیم",light:"روشنی",dark:"تاریک",auto:"خودکار",language:"ایپ کی زبان",ai_lang:"AI جواب کی زبان",accent:"رنگ",reply_style:"جواب کا انداز",personas:"ذاتی شخصیات",new_persona:"نئی شخصیت",prompt_lib:"پرامپٹ لائبریری",select_prompt:"پرامپٹ منتخب کریں",save_prompt:"محفوظ کریں",voice:"آواز",male:"مرد",female:"عورت",auto_scroll:"خودکار سکرول",stats:"چیٹ اعداد و شمار",messages:"پیغامات:",characters:"حروف:",backup:"بیک اپ",export_json:"JSON ایکسپورٹ",restore_json:"JSON بحال کریں",export_md:"Markdown ایکسپورٹ",restore_md:"Markdown بحال کریں",clear_all:"سب صاف کریں",made_by:"بنایا ❤️ سے",thinking:"سوچ رہا ہے",searching:"ویب تلاش کر رہا ہے",analyzing:"تجزیہ کر رہا ہے",writing:"جواب لکھ رہا ہے",sources:"ذرائع"},
+  ar: {conversations:"المحادثات",search_ph:"ابحث...",all:"الكل",unsorted:"بدون مجلد",new_folder:"مجلد",new_chat:"جديد",settings:"الإعدادات",api_key_status:"حالة مفتاح API",api_secure:"مفتاح API الخاص بك آمن.",ai_mode:"وضع AI",fast:"سريع",core:"ذكي",math_level:"عمق الرياضيات",temperature:"الإبداع",theme:"المظهر",light:"فاتح",dark:"داكن",auto:"تلقائي",language:"لغة التطبيق",ai_lang:"لغة رد AI",accent:"لون التمييز",reply_style:"نمط الرد",personas:"الشخصيات",new_persona:"شخصية جديدة",prompt_lib:"مكتبة البرومبت",select_prompt:"اختر برومبت",save_prompt:"حفظ",voice:"الصوت",male:"ذكر",female:"أنثى",auto_scroll:"التمرير التلقائي",stats:"إحصائيات",messages:"الرسائل:",characters:"الأحرف:",backup:"نسخ احتياطي",export_json:"تصدير JSON",restore_json:"استعادة JSON",export_md:"تصدير Markdown",restore_md:"استعادة Markdown",clear_all:"مسح الكل",made_by:"صُنع بـ ❤️ بواسطة",thinking:"يفكر",searching:"يبحث في الويب",analyzing:"يحلل",writing:"يكتب الإجابة",sources:"المصادر"},
+  es: {conversations:"Conversaciones",search_ph:"Buscar chats...",all:"Todos",unsorted:"Sin carpeta",new_folder:"Carpeta",new_chat:"Nuevo",settings:"Ajustes",api_key_status:"Estado de API Key",api_secure:"Tu API key está segura.",ai_mode:"Modo AI",fast:"Rápido",core:"Inteligente",math_level:"Profundidad matemática",temperature:"Creatividad",theme:"Tema",light:"Claro",dark:"Oscuro",auto:"Auto",language:"Idioma de la app",ai_lang:"Idioma de respuesta AI",accent:"Color de acento",reply_style:"Estilo de respuesta",personas:"Personalidades",new_persona:"Nueva personalidad",prompt_lib:"Biblioteca de prompts",select_prompt:"Selecciona un prompt",save_prompt:"Guardar",voice:"Voz",male:"Masculino",female:"Femenino",auto_scroll:"Auto-scroll",stats:"Estadísticas",messages:"Mensajes:",characters:"Caracteres:",backup:"Copia de seguridad",export_json:"Exportar JSON",restore_json:"Restaurar JSON",export_md:"Exportar Markdown",restore_md:"Restaurar Markdown",clear_all:"Borrar todo",made_by:"Hecho con ❤️ por",thinking:"Pensando",searching:"Buscando en web",analyzing:"Analizando",writing:"Escribiendo respuesta",sources:"Fuentes"},
+  fr: {conversations:"Conversations",search_ph:"Rechercher...",all:"Tous",unsorted:"Sans dossier",new_folder:"Dossier",new_chat:"Nouveau",settings:"Paramètres",api_key_status:"État de la clé API",api_secure:"Votre clé API est sécurisée.",ai_mode:"Mode AI",fast:"Rapide",core:"Intelligent",math_level:"Profondeur math",temperature:"Créativité",theme:"Thème",light:"Clair",dark:"Sombre",auto:"Auto",language:"Langue de l'app",ai_lang:"Langue de réponse AI",accent:"Couleur d'accent",reply_style:"Style de réponse",personas:"Personnalités",new_persona:"Nouvelle personnalité",prompt_lib:"Bibliothèque de prompts",select_prompt:"Sélectionnez un prompt",save_prompt:"Enregistrer",voice:"Voix",male:"Homme",female:"Femme",auto_scroll:"Auto-scroll",stats:"Statistiques",messages:"Messages:",characters:"Caractères:",backup:"Sauvegarde",export_json:"Exporter JSON",restore_json:"Restaurer JSON",export_md:"Exporter Markdown",restore_md:"Restaurer Markdown",clear_all:"Tout effacer",made_by:"Fait avec ❤️ par",thinking:"Réflexion",searching:"Recherche web",analyzing:"Analyse",writing:"Écriture de la réponse",sources:"Sources"},
+  de: {conversations:"Unterhaltungen",search_ph:"Chats suchen...",all:"Alle",unsorted:"Ohne Ordner",new_folder:"Ordner",new_chat:"Neu",settings:"Einstellungen",api_key_status:"API-Key-Status",api_secure:"Ihr API-Key ist sicher.",ai_mode:"AI-Modus",fast:"Schnell",core:"Klug",math_level:"Mathe-Tiefe",temperature:"Kreativität",theme:"Thema",light:"Hell",dark:"Dunkel",auto:"Auto",language:"App-Sprache",ai_lang:"AI-Antwortsprache",accent:"Akzentfarbe",reply_style:"Antwortstil",personas:"Persönlichkeiten",new_persona:"Neue Persönlichkeit",prompt_lib:"Prompt-Bibliothek",select_prompt:"Prompt auswählen",save_prompt:"Speichern",voice:"Stimme",male:"Männlich",female:"Weiblich",auto_scroll:"Auto-Scroll",stats:"Statistiken",messages:"Nachrichten:",characters:"Zeichen:",backup:"Backup",export_json:"JSON exportieren",restore_json:"JSON wiederherstellen",export_md:"Markdown exportieren",restore_md:"Markdown wiederherstellen",clear_all:"Alles löschen",made_by:"Gemacht mit ❤️ von",thinking:"Denkt nach",searching:"Websuche",analyzing:"Analysiert",writing:"Antwort schreiben",sources:"Quellen"},
+  zh: {conversations:"对话",search_ph:"搜索聊天...",all:"全部",unsorted:"未分类",new_folder:"文件夹",new_chat:"新对话",settings:"设置",api_key_status:"API 密钥状态",api_secure:"您的 API 密钥已安全保存。",ai_mode:"AI 模式",fast:"快速",core:"智能",math_level:"数学深度",temperature:"创造力",theme:"主题",light:"浅色",dark:"深色",auto:"自动",language:"应用语言",ai_lang:"AI 回复语言",accent:"强调色",reply_style:"回复风格",personas:"个性",new_persona:"新个性",prompt_lib:"提示库",select_prompt:"选择提示",save_prompt:"保存",voice:"语音",male:"男",female:"女",auto_scroll:"自动滚动",stats:"统计",messages:"消息:",characters:"字符:",backup:"备份",export_json:"导出 JSON",restore_json:"恢复 JSON",export_md:"导出 Markdown",restore_md:"恢复 Markdown",clear_all:"清空所有",made_by:"用 ❤️ 制作 by",thinking:"思考中",searching:"搜索网络",analyzing:"分析中",writing:"撰写回复",sources:"来源"},
+  ja: {conversations:"会話",search_ph:"チャットを検索...",all:"すべて",unsorted:"未分類",new_folder:"フォルダ",new_chat:"新規",settings:"設定",api_key_status:"APIキーステータス",api_secure:"APIキーは安全に保護されています。",ai_mode:"AIモード",fast:"高速",core:"スマート",math_level:"数学深度",temperature:"創造性",theme:"テーマ",light:"ライト",dark:"ダーク",auto:"自動",language:"アプリ言語",ai_lang:"AI応答言語",accent:"アクセント色",reply_style:"返信スタイル",personas:"ペルソナ",new_persona:"新しいペルソナ",prompt_lib:"プロンプトライブラリ",select_prompt:"プロンプトを選択",save_prompt:"保存",voice:"音声",male:"男性",female:"女性",auto_scroll:"自動スクロール",stats:"統計",messages:"メッセージ:",characters:"文字:",backup:"バックアップ",export_json:"JSONエクスポート",restore_json:"JSON復元",export_md:"Markdownエクスポート",restore_md:"Markdown復元",clear_all:"すべて消去",made_by:"❤️ で作成 by",thinking:"考え中",searching:"ウェブ検索中",analyzing:"分析中",writing:"返答を書いています",sources:"ソース"},
+  ko: {conversations:"대화",search_ph:"채팅 검색...",all:"전체",unsorted:"미분류",new_folder:"폴더",new_chat:"새로",settings:"설정",api_key_status:"API 키 상태",api_secure:"API 키가 안전하게 저장됩니다.",ai_mode:"AI 모드",fast:"빠름",core:"스마트",math_level:"수학 깊이",temperature:"창의성",theme:"테마",light:"라이트",dark:"다크",auto:"자동",language:"앱 언어",ai_lang:"AI 응답 언어",accent:"강조 색상",reply_style:"응답 스타일",personas:"페르소나",new_persona:"새 페르소나",prompt_lib:"프롬프트 라이브러리",select_prompt:"프롬프트 선택",save_prompt:"저장",voice:"음성",male:"남성",female:"여성",auto_scroll:"자동 스크롤",stats:"통계",messages:"메시지:",characters:"문자:",backup:"백업",export_json:"JSON 내보내기",restore_json:"JSON 복원",export_md:"Markdown 내보내기",restore_md:"Markdown 복원",clear_all:"모두 지우기",made_by:"❤️ 로 만든 by",thinking:"생각 중",searching:"웹 검색 중",analyzing:"분석 중",writing:"답변 작성 중",sources:"출처"},
+  pt: {conversations:"Conversas",search_ph:"Pesquisar...",all:"Todos",unsorted:"Sem pasta",new_folder:"Pasta",new_chat:"Novo",settings:"Configurações",api_key_status:"Status da API Key",api_secure:"Sua API key está segura.",ai_mode:"Modo AI",fast:"Rápido",core:"Inteligente",math_level:"Profundidade matemática",temperature:"Criatividade",theme:"Tema",light:"Claro",dark:"Escuro",auto:"Auto",language:"Idioma do App",ai_lang:"Idioma de resposta AI",accent:"Cor de destaque",reply_style:"Estilo de resposta",personas:"Personalidades",new_persona:"Nova personalidade",prompt_lib:"Biblioteca de prompts",select_prompt:"Selecione um prompt",save_prompt:"Salvar",voice:"Voz",male:"Masculino",female:"Feminino",auto_scroll:"Auto-scroll",stats:"Estatísticas",messages:"Mensagens:",characters:"Caracteres:",backup:"Backup",export_json:"Exportar JSON",restore_json:"Restaurar JSON",export_md:"Exportar Markdown",restore_md:"Restaurar Markdown",clear_all:"Limpar tudo",made_by:"Feito com ❤️ por",thinking:"Pensando",searching:"Buscando na web",analyzing:"Analisando",writing:"Escrevendo resposta",sources:"Fontes"},
+  ru: {conversations:"Беседы",search_ph:"Поиск...",all:"Все",unsorted:"Без папки",new_folder:"Папка",new_chat:"Новый",settings:"Настройки",api_key_status:"Статус API-ключа",api_secure:"Ваш API-ключ защищён.",ai_mode:"Режим AI",fast:"Быстро",core:"Умно",math_level:"Глубина математики",temperature:"Креативность",theme:"Тема",light:"Светлая",dark:"Тёмная",auto:"Авто",language:"Язык приложения",ai_lang:"Язык ответа AI",accent:"Акцентный цвет",reply_style:"Стиль ответа",personas:"Личности",new_persona:"Новая личность",prompt_lib:"Библиотека промптов",select_prompt:"Выберите промпт",save_prompt:"Сохранить",voice:"Голос",male:"Мужской",female:"Женский",auto_scroll:"Автопрокрутка",stats:"Статистика",messages:"Сообщения:",characters:"Символы:",backup:"Резервная копия",export_json:"Экспорт JSON",restore_json:"Восстановить JSON",export_md:"Экспорт Markdown",restore_md:"Восстановить Markdown",clear_all:"Очистить всё",made_by:"Сделано с ❤️ by",thinking:"Думает",searching:"Поиск в сети",analyzing:"Анализирует",writing:"Пишет ответ",sources:"Источники"},
+  tr: {conversations:"Sohbetler",search_ph:"Sohbet ara...",all:"Tümü",unsorted:"Klasörsüz",new_folder:"Klasör",new_chat:"Yeni",settings:"Ayarlar",api_key_status:"API Anahtarı Durumu",api_secure:"API anahtarınız güvende.",ai_mode:"AI Modu",fast:"Hızlı",core:"Akıllı",math_level:"Matematik Derinliği",temperature:"Yaratıcılık",theme:"Tema",light:"Açık",dark:"Koyu",auto:"Otomatik",language:"Uygulama Dili",ai_lang:"AI Yanıt Dili",accent:"Vurgu Rengi",reply_style:"Yanıt Stili",personas:"Kişilikler",new_persona:"Yeni Kişilik",prompt_lib:"Prompt Kütüphanesi",select_prompt:"Prompt seçin",save_prompt:"Kaydet",voice:"Ses",male:"Erkek",female:"Kadın",auto_scroll:"Otomatik Kaydırma",stats:"İstatistikler",messages:"Mesajlar:",characters:"Karakterler:",backup:"Yedekleme",export_json:"JSON Dışa Aktar",restore_json:"JSON Geri Yükle",export_md:"Markdown Dışa Aktar",restore_md:"Markdown Geri Yükle",clear_all:"Tümünü Temizle",made_by:"❤️ ile yapıldı, by",thinking:"Düşünüyor",searching:"Web'de arıyor",analyzing:"Analiz ediyor",writing:"Yanıt yazıyor",sources:"Kaynaklar"},
+  id: {conversations:"Percakapan",search_ph:"Cari obrolan...",all:"Semua",unsorted:"Tanpa Folder",new_folder:"Folder",new_chat:"Baru",settings:"Pengaturan",api_key_status:"Status API Key",api_secure:"API key Anda aman.",ai_mode:"Mode AI",fast:"Cepat",core:"Pintar",math_level:"Kedalaman Matematika",temperature:"Kreativitas",theme:"Tema",light:"Terang",dark:"Gelap",auto:"Otomatis",language:"Bahasa Aplikasi",ai_lang:"Bahasa Respons AI",accent:"Warna Aksen",reply_style:"Gaya Balasan",personas:"Kepribadian",new_persona:"Kepribadian Baru",prompt_lib:"Pustaka Prompt",select_prompt:"Pilih prompt",save_prompt:"Simpan",voice:"Suara",male:"Pria",female:"Wanita",auto_scroll:"Auto-scroll",stats:"Statistik",messages:"Pesan:",characters:"Karakter:",backup:"Backup",export_json:"Ekspor JSON",restore_json:"Pulihkan JSON",export_md:"Ekspor Markdown",restore_md:"Pulihkan Markdown",clear_all:"Hapus Semua",made_by:"Dibuat dengan ❤️ oleh",thinking:"Berpikir",searching:"Mencari di web",analyzing:"Menganalisis",writing:"Menulis jawaban",sources:"Sumber"},
+  bn: {conversations:"কথোপকথন",search_ph:"সার্চ...",all:"সব",unsorted:"ফোল্ডার ছাড়া",new_folder:"ফোল্ডার",new_chat:"নতুন",settings:"সেটিংস",api_key_status:"API কী স্ট্যাটাস",api_secure:"আপনার API কী নিরাপদ।",ai_mode:"AI মোড",fast:"দ্রুত",core:"স্মার্ট",math_level:"গণিত গভীরতা",temperature:"সৃজনশীলতা",theme:"থিম",light:"হালকা",dark:"অন্ধকার",auto:"স্বয়ংক্রিয়",language:"অ্যাপের ভাষা",ai_lang:"AI উত্তরের ভাষা",accent:"অ্যাকসেন্ট রঙ",reply_style:"উত্তর স্টাইল",personas:"ব্যক্তিত্ব",new_persona:"নতুন ব্যক্তিত্ব",prompt_lib:"প্রম্পট লাইব্রেরি",select_prompt:"প্রম্পট নির্বাচন করুন",save_prompt:"সংরক্ষণ",voice:"কণ্ঠস্বর",male:"পুরুষ",female:"মহিলা",auto_scroll:"স্বয়ংক্রিয় স্ক্রোল",stats:"পরিসংখ্যান",messages:"বার্তা:",characters:"অক্ষর:",backup:"ব্যাকআপ",export_json:"JSON এক্সপোর্ট",restore_json:"JSON পুনরুদ্ধার",export_md:"Markdown এক্সপোর্ট",restore_md:"Markdown পুনরুদ্ধার",clear_all:"সব সাফ করুন",made_by:"তৈরি ❤️ দিয়ে by",thinking:"চিন্তা করছে",searching:"ওয়েবে সার্চ",analyzing:"বিশ্লেষণ",writing:"উত্তর লিখছে",sources:"সূত্র"},
+  ta: {conversations:"உரையாடல்கள்",search_ph:"தேடு...",all:"எல்லாம்",unsorted:"கோப்பு இல்லாத",new_folder:"கோப்பு",new_chat:"புதிய",settings:"அமைப்புகள்",api_key_status:"API விசை நிலை",api_secure:"உங்கள் API விசை பாதுகாப்பானது.",ai_mode:"AI பயன்முறை",fast:"வேகமான",core:"ஸ்மார்ட்",math_level:"கணித ஆழம்",temperature:"படைப்பாற்றல்",theme:"தீம்",light:"ஒளி",dark:"இருள்",auto:"தானியங்கி",language:"ஆப் மொழி",ai_lang:"AI பதில் மொழி",accent:"அக்சென்ட் நிறம்",reply_style:"பதில் பாணி",personas:"ஆளுமைகள்",new_persona:"புதிய ஆளுமை",prompt_lib:"ப்ராம்ப்ட் நூலகம்",select_prompt:"ப்ராம்ப்ட் தேர்ந்தெடு",save_prompt:"சேமி",voice:"குரல்",male:"ஆண்",female:"பெண்",auto_scroll:"தானியங்கி ஸ்க்ரோல்",stats:"புள்ளிவிவரங்கள்",messages:"செய்திகள்:",characters:"எழுத்துகள்:",backup:"காப்புப்பிரதி",export_json:"JSON ஏற்றுமதி",restore_json:"JSON மீட்டெடு",export_md:"Markdown ஏற்றுமதி",restore_md:"Markdown மீட்டெடு",clear_all:"எல்லாம் அழி",made_by:"❤️ உடன் உருவாக்கியது by",thinking:"சிந்திக்கிறது",searching:"இணையத்தில் தேடுகிறது",analyzing:"பகுப்பாய்வு",writing:"பதில் எழுதுகிறது",sources:"மூலங்கள்"},
+  th: {conversations:"การสนทนา",search_ph:"ค้นหา...",all:"ทั้งหมด",unsorted:"ไม่มีโฟลเดอร์",new_folder:"โฟลเดอร์",new_chat:"ใหม่",settings:"การตั้งค่า",api_key_status:"สถานะ API Key",api_secure:"API Key ของคุณปลอดภัย",ai_mode:"โหมด AI",fast:"เร็ว",core:"อัจฉริยะ",math_level:"ความลึกคณิตศาสตร์",temperature:"ความคิดสร้างสรรค์",theme:"ธีม",light:"สว่าง",dark:"มืด",auto:"อัตโนมัติ",language:"ภาษาของแอป",ai_lang:"ภาษา AI ตอบกลับ",accent:"สีเน้น",reply_style:"สไตล์การตอบ",personas:"บุคลิกภาพ",new_persona:"บุคลิกใหม่",prompt_lib:"คลังพรอมต์",select_prompt:"เลือกพรอมต์",save_prompt:"บันทึก",voice:"เสียง",male:"ชาย",female:"หญิง",auto_scroll:"เลื่อนอัตโนมัติ",stats:"สถิติ",messages:"ข้อความ:",characters:"ตัวอักษร:",backup:"สำรอง",export_json:"ส่งออก JSON",restore_json:"กู้คืน JSON",export_md:"ส่งออก Markdown",restore_md:"กู้คืน Markdown",clear_all:"ล้างทั้งหมด",made_by:"สร้างด้วย ❤️ โดย",thinking:"กำลังคิด",searching:"ค้นหาเว็บ",analyzing:"วิเคราะห์",writing:"กำลังเขียนคำตอบ",sources:"แหล่งที่มา"},
+  vi: {conversations:"Cuộc trò chuyện",search_ph:"Tìm kiếm...",all:"Tất cả",unsorted:"Không thư mục",new_folder:"Thư mục",new_chat:"Mới",settings:"Cài đặt",api_key_status:"Trạng thái API Key",api_secure:"API key của bạn an toàn.",ai_mode:"Chế độ AI",fast:"Nhanh",core:"Thông minh",math_level:"Độ sâu toán học",temperature:"Sáng tạo",theme:"Chủ đề",light:"Sáng",dark:"Tối",auto:"Tự động",language:"Ngôn ngữ ứng dụng",ai_lang:"Ngôn ngữ AI trả lời",accent:"Màu nhấn",reply_style:"Kiểu trả lời",personas:"Nhân cách",new_persona:"Nhân cách mới",prompt_lib:"Thư viện prompt",select_prompt:"Chọn prompt",save_prompt:"Lưu",voice:"Giọng nói",male:"Nam",female:"Nữ",auto_scroll:"Tự động cuộn",stats:"Thống kê",messages:"Tin nhắn:",characters:"Ký tự:",backup:"Sao lưu",export_json:"Xuất JSON",restore_json:"Khôi phục JSON",export_md:"Xuất Markdown",restore_md:"Khôi phục Markdown",clear_all:"Xóa tất cả",made_by:"Làm với ❤️ bởi",thinking:"Đang nghĩ",searching:"Đang tìm web",analyzing:"Đang phân tích",writing:"Đang viết câu trả lời",sources:"Nguồn"},
+  fa: {conversations:"گفتگوها",search_ph:"جستجو...",all:"همه",unsorted:"بدون پوشه",new_folder:"پوشه",new_chat:"جدید",settings:"تنظیمات",api_key_status:"وضعیت کلید API",api_secure:"کلید API شما امن است.",ai_mode:"حالت AI",fast:"سریع",core:"هوشمند",math_level:"عمق ریاضی",temperature:"خلاقیت",theme:"تم",light:"روشن",dark:"تیره",auto:"خودکار",language:"زبان برنامه",ai_lang:"زبان پاسخ AI",accent:"رنگ تاکید",reply_style:"سبک پاسخ",personas:"شخصیت‌ها",new_persona:"شخصیت جدید",prompt_lib:"کتابخانه پرامپت",select_prompt:"انتخاب پرامپت",save_prompt:"ذخیره",voice:"صدا",male:"مرد",female:"زن",auto_scroll:"اسکرول خودکار",stats:"آمار",messages:"پیام‌ها:",characters:"کاراکترها:",backup:"پشتیبان",export_json:"خروجی JSON",restore_json:"بازیابی JSON",export_md:"خروجی Markdown",restore_md:"بازیابی Markdown",clear_all:"پاک کردن همه",made_by:"ساخته شده با ❤️ توسط",thinking:"در حال فکر",searching:"جستجوی وب",analyzing:"تحلیل",writing:"نوشتن پاسخ",sources:"منابع"}
 };
 
 let currentLang = "en";
@@ -577,17 +627,12 @@ let folders = [];
 let currentFolderFilter = "all";
 let currentChatId = null;
 
-/* ==========================================
-   QUANTUM CORE ANONYMOUS MEMORY ID
-   ========================================== */
 function getQuantumUserId(){
   const KEY="quantum_memory_user_id";
   try{
     let id=localStorage.getItem(KEY);
     if(id)return id;
-    const randomPart=(window.crypto&&crypto.randomUUID)
-      ? crypto.randomUUID().replace(/-/g,"")
-      : Math.random().toString(36).slice(2)+Date.now().toString(36);
+    const randomPart=(window.crypto&&crypto.randomUUID)?crypto.randomUUID().replace(/-/g,""):Math.random().toString(36).slice(2)+Date.now().toString(36);
     id="qc_"+Date.now().toString(36)+"_"+randomPart;
     localStorage.setItem(KEY,id);
     return id;
@@ -599,7 +644,7 @@ const QUANTUM_USER_ID = getQuantumUserId();
 
 let autoScrollEnabled = true;
 let base64Image = null;
-let pdfAttachment = null;      // { name, size, text }
+let pdfAttachment = null;
 let isGenerating = false;
 let abortController = null;
 let recognition = null;
@@ -626,6 +671,26 @@ let replyStyle = "auto";
 let scrollAnimationId = null;
 let transcriptTimer = null;
 let voiceRestartTimer = null;
+
+// Call state
+let callActive = false;
+let callStartTime = 0;
+let callTimerInterval = null;
+let callMicMuted = false;
+let callCameraOn = false;
+let callStream = null;
+let callFacingMode = "user";
+
+// Speech state (persistent - NOT reset by scroll)
+let speechState = {
+  isSpeaking: false,
+  currentButton: null,
+  utterance: null,
+  chunksQueue: [],
+  chunkIndex: 0,
+  onEndCallback: null,
+  lang: 'en'
+};
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
@@ -679,7 +744,6 @@ function scrollToBottom(force){
   else { chatBox.scrollTop = chatBox.scrollHeight; }
 }
 
-/* =================== IndexedDB =================== */
 let db = null;
 const DB_NAME = "QuantumCoreDB";
 const DB_VERSION = 1;
@@ -712,23 +776,15 @@ async function flushDB(){
   }catch(e){console.error("DB flush failed:",e);}
 }
 
-/* =================== Language =================== */
 function applyLanguage(lang){
   currentLang=lang;
   const t=TRANSLATIONS[lang]||TRANSLATIONS.en;
   const fallback=TRANSLATIONS.en;
-  document.querySelectorAll("[data-i18n]").forEach(function(el){
-    const key=el.getAttribute("data-i18n");
-    const val=t[key]||fallback[key];
-    if(val)el.innerText=val;
-  });
-  document.querySelectorAll("[data-i18n-ph]").forEach(function(el){
-    const key=el.getAttribute("data-i18n-ph");
-    const val=t[key]||fallback[key];
-    if(val)el.placeholder=val;
-  });
+  document.querySelectorAll("[data-i18n]").forEach(function(el){const key=el.getAttribute("data-i18n");const val=t[key]||fallback[key];if(val)el.innerText=val;});
+  document.querySelectorAll("[data-i18n-ph]").forEach(function(el){const key=el.getAttribute("data-i18n-ph");const val=t[key]||fallback[key];if(val)el.placeholder=val;});
   safeSet("qc_lang",lang);
 }
+
 function buildUiLangMenu(){
   const menu = document.getElementById("ui-lang-menu");
   if(!menu) return;
@@ -769,7 +825,6 @@ function selectAiLanguage(code, label){
   showToast("AI will respond in: " + label);
 }
 
-/* =================== Prompt Library =================== */
 const PROMPT_LIBRARY = [
   { category: "Programming", name: "Python Expert", prompt: "Act as an expert Python programmer who explains code clearly and concisely, follows PEP8, and provides complete runnable examples." },
   { category: "Programming", name: "JavaScript Expert", prompt: "Act as an expert JavaScript/Node.js developer. Write clean, modern ES6+ code with best practices and comments." },
@@ -785,7 +840,6 @@ const PROMPT_LIBRARY = [
   { category: "Utility", name: "Summarizer", prompt: "Act as a summarizer. Condense long text into clear, concise bullet points preserving key information." }
 ];
 
-/* =================== Load =================== */
 window.addEventListener("load", async function(){
   const splash=document.getElementById("splash-screen");
   if(splash)splash.classList.add("hide");
@@ -913,13 +967,10 @@ function setAutoScroll(v){autoScrollEnabled=v;safeSet("qc_auto_scroll",String(v)
 function loadVoices(){
   if("speechSynthesis" in window){
     availableVoices=window.speechSynthesis.getVoices();
-    if(availableVoices.length===0){
-      setTimeout(function(){availableVoices=window.speechSynthesis.getVoices();},250);
-    }
+    if(availableVoices.length===0){setTimeout(function(){availableVoices=window.speechSynthesis.getVoices();},250);}
   }
 }
 
-/* =================== Language detection =================== */
 function detectLanguage(text){
   if(!text)return "en";
   const t=String(text);
@@ -936,7 +987,6 @@ function detectLanguage(text){
   return "en";
 }
 
-/* =================== Voice picking =================== */
 function pickBestVoice(gender,langCode){
   if(!availableVoices||availableVoices.length===0)return null;
   const FEMALE=["female","woman","zira","samantha","aria","jenny","swara","uzma","heera"];
@@ -959,6 +1009,8 @@ function pickBestVoice(gender,langCode){
   if(candidates.length>0){candidates.sort(function(a,b){return score(b.name)-score(a.name);});return candidates[0];}
   candidates=availableVoices.filter(function(v){return score(v.name)>0;});
   if(candidates.length>0){candidates.sort(function(a,b){return score(b.name)-score(a.name);});return candidates[0];}
+  candidates=availableVoices.filter(function(v){const vl=(v.lang||"").toLowerCase();for(let i=0;i<prefixes.length;i++){if(vl.indexOf(prefixes[i])===0)return true;}return false;});
+  if(candidates.length>0)return candidates[0];
   return availableVoices[0];
 }
 
@@ -1001,9 +1053,7 @@ function confirmDeleteFolder(folderId, folderName){
 
 async function deleteFolder(folderId){
   folders = folders.filter(function(f){return f.id !== folderId;});
-  Object.keys(chatHistories).forEach(function(id){
-    if(chatHistories[id].folder === folderId){ chatHistories[id].folder = null; }
-  });
+  Object.keys(chatHistories).forEach(function(id){ if(chatHistories[id].folder === folderId){ chatHistories[id].folder = null; } });
   if(currentFolderFilter === folderId) currentFolderFilter = "all";
   await saveFolders();
   scheduleSave();
@@ -1157,7 +1207,6 @@ function renderCurrentChat(){
   chatBox.appendChild(frag);
   if(window.renderMathInElement){try{renderMathInElement(chatBox,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
   renderAllMermaids(chatBox);
-  renderAllGraphs(chatBox);
   updateStats();
   requestAnimationFrame(function(){chatBox.scrollTop=chatBox.scrollHeight;});
 }
@@ -1169,7 +1218,7 @@ function createMessageElement(role,text,image,index){
   message.className="msg "+role;
   if(image){const img=document.createElement("img");img.src=image;img.style.maxWidth="100%";img.style.borderRadius="10px";img.style.marginBottom="10px";message.appendChild(img);}
   if(role==="bot"){
-    if(text==="Thinking..."){message.innerHTML+='<div class="thinking"><div class="spinner"></div><span>'+((TRANSLATIONS[currentLang]&&TRANSLATIONS[currentLang].thinking)||"Thinking")+'<span class="dots"><span>.</span><span>.</span><span>.</span></span></span></div>';}
+    if(text==="Thinking..."){message.innerHTML+='<div class="thinking-stage"><div class="stage-icon"><div class="spinner" style="width:18px;height:18px;border-width:2px;"></div></div><div class="stage-text"><div class="stage-title">Thinking<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div></div></div>';}
     else if(text&&text.startsWith("[IMAGE_DATA]")){const dataUri=text.replace("[IMAGE_DATA]","").trim();message.innerHTML+=createImageHtml(dataUri,index);}
     else if(text&&text.startsWith("[PDF_DATA]")){const parts=text.split("|");const pdfName=parts[1]||"document.pdf";message.innerHTML+='<div class="pdf-preview-chip"><i class="fa-solid fa-file-pdf"></i><div class="pdf-meta"><span class="pdf-name">'+escapeHTML(pdfName)+'</span><span class="pdf-size">Analyzed</span></div></div>';}
     else if(text&&text.indexOf("[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::")!==-1){const before=text.substring(0,text.indexOf("[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::")).trim();if(before)message.innerHTML+=renderMarkdown(before);message.innerHTML+='<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🎨 Generating image...</div></div>';}
@@ -1188,7 +1237,6 @@ function createMessageElement(role,text,image,index){
     const regen=document.createElement("button");regen.className="action-btn";regen.title="Regenerate response";regen.innerHTML='<i class="fa-solid fa-rotate"></i>';
     regen.onclick=function(){regenerateResponse(index);};
     actions.appendChild(regen);
-    // NEW: Like / Dislike
     const like=document.createElement("button");like.className="action-btn";like.title="Good response";like.innerHTML='<i class="fa-solid fa-thumbs-up"></i>';
     like.onclick=function(){handleFeedback(index,"like",like);};
     actions.appendChild(like);
@@ -1202,7 +1250,6 @@ function createMessageElement(role,text,image,index){
   return {wrapper:wrapper,message:message,actions:actions};
 }
 
-/* =================== Feedback =================== */
 function handleFeedback(msgIndex,type,btn){
   const chat=getCurrentChat();
   if(!chat||!chat.messages[msgIndex])return;
@@ -1210,7 +1257,6 @@ function handleFeedback(msgIndex,type,btn){
   const prev=m.feedback;
   m.feedback = (prev===type) ? null : type;
   scheduleSave();
-  // Reset sibling buttons
   const wrapper=btn.parentElement;
   wrapper.querySelectorAll(".action-btn").forEach(function(b){
     if(b.title==="Good response"||b.title==="Bad response"){b.classList.remove("liked","disliked");}
@@ -1219,7 +1265,6 @@ function handleFeedback(msgIndex,type,btn){
   else if(m.feedback==="dislike"){btn.classList.add("disliked");showToast("👎 Noted. AI will try to improve.");}
 }
 
-/* =================== Image HTML =================== */
 function createImageHtml(url,messageIndex){
   const safeUrl=escapeHTML(url);
   const isDataUri=url.startsWith("data:");
@@ -1234,7 +1279,6 @@ function openImagePreviewFromEl(imgEl){if(!imgEl)return;const src=imgEl.getAttri
 function downloadImageFromEl(btn){const wrapper=btn.closest(".gen-image-wrapper");if(!wrapper)return;const img=wrapper.querySelector("img");if(!img)return;downloadImage(img.getAttribute("src"));}
 function extractImagePrompt(text){if(!text)return null;const match=text.match(/\[IMAGE_GEN\]IMAGE_GENERATION_TRIGGER::([^\n\]]+)/);return match?match[1].trim():null;}
 
-/* =================== Compress =================== */
 function compressImage(dataUri,maxSize,quality){
   maxSize=maxSize||512;quality=quality||0.75;
   return new Promise(function(resolve){
@@ -1272,7 +1316,6 @@ function isMeaningfulImagePrompt(prompt){
   return true;
 }
 
-/* =================== Image gen from chat =================== */
 async function generateImageFromChat(prompt,botElement){
   if(!isMeaningfulImagePrompt(prompt)){
     botElement.innerHTML='<div style="padding:14px 16px;background:var(--hover);border-left:4px solid var(--danger);border-radius:0 12px 12px 0;"><strong style="color:var(--danger);display:block;margin-bottom:6px;">⚠️ I couldn\'t understand your request</strong><span style="color:var(--muted);font-size:13px;">Please provide a proper or meaningful prompt.</span></div>';
@@ -1343,7 +1386,6 @@ async function downloadImage(url){
   }catch(e){window.open(url,"_blank","noopener,noreferrer");}
 }
 
-/* =================== Image preview (pan + zoom at cursor) =================== */
 let previewZoomLevel=1;let currentPreviewUrl="";
 let previewPanX=0, previewPanY=0;
 let previewPointer={down:false,x:0,y:0,startPanX:0,startPanY:0};
@@ -1377,7 +1419,6 @@ function initImagePreviewPanZoom(){
   const container=document.getElementById("image-preview-container");
   const img=document.getElementById("image-preview-img");
   if(!container||!img)return;
-
   container.addEventListener("wheel",function(e){
     e.preventDefault();
     const rect=container.getBoundingClientRect();
@@ -1386,13 +1427,11 @@ function initImagePreviewPanZoom(){
     const oldZoom=previewZoomLevel;
     const delta=e.deltaY<0?0.15:-0.15;
     previewZoomLevel=Math.max(0.5,Math.min(8,previewZoomLevel+delta));
-    // Zoom at cursor: adjust pan so cursor point stays fixed
     const scale=previewZoomLevel/oldZoom;
     previewPanX = mx - (mx - previewPanX)*scale;
     previewPanY = my - (my - previewPanY)*scale;
     applyPreviewTransform();
   },{passive:false});
-
   container.addEventListener("pointerdown",function(e){
     if(e.pointerType==="touch" && e.isPrimary===false){return;}
     previewPointer.down=true;
@@ -1417,8 +1456,6 @@ function initImagePreviewPanZoom(){
   container.addEventListener("pointerup",endPointer);
   container.addEventListener("pointercancel",endPointer);
   container.addEventListener("pointerleave",function(e){if(previewPointer.down)endPointer(e);});
-
-  // Pinch-to-zoom for touch
   container.addEventListener("touchstart",function(e){
     if(e.touches.length===2){
       previewPinch.active=true;
@@ -1446,8 +1483,6 @@ function initImagePreviewPanZoom(){
     }
   },{passive:false});
   container.addEventListener("touchend",function(){previewPinch.active=false;},{passive:true});
-
-  // Double tap to reset
   let lastTap=0;
   container.addEventListener("touchend",function(e){
     const now=Date.now();
@@ -1456,7 +1491,6 @@ function initImagePreviewPanZoom(){
   },{passive:true});
 }
 
-/* =================== Mermaid =================== */
 function initMermaid(){
   if(window.mermaid){
     try{
@@ -1468,44 +1502,71 @@ function initMermaid(){
         fontFamily:"Inter, Segoe UI, sans-serif",
         flowchart:{curve:"basis",htmlLabels:true},
         sequence:{useMaxWidth:true},
-        themeVariables:isDark?{
-          primaryColor:"#1e2942",primaryTextColor:"#f8fafc",primaryBorderColor:"#3b82f6",
-          lineColor:"#94a3b8",secondaryColor:"#151b2e",tertiaryColor:"#0f1423",
-          background:"#151b2e",mainBkg:"#151b2e",nodeBorder:"#3b82f6",
-          clusterBkg:"#0f1423",clusterBorder:"#1e2942",titleColor:"#f8fafc",
-          edgeLabelBackground:"#151b2e"
-        }:{}
+        themeVariables:isDark?{primaryColor:"#1e2942",primaryTextColor:"#f8fafc",primaryBorderColor:"#3b82f6",lineColor:"#94a3b8",secondaryColor:"#151b2e",tertiaryColor:"#0f1423",background:"#151b2e",mainBkg:"#151b2e",nodeBorder:"#3b82f6",clusterBkg:"#0f1423",clusterBorder:"#1e2942",titleColor:"#f8fafc",edgeLabelBackground:"#151b2e"}:{}
       });
     }catch(e){console.warn("Mermaid init failed:",e);}
   }
 }
 
+async function waitForMermaid(maxWaitMs){
+  const start = Date.now();
+  while(!window.mermaid && Date.now() - start < maxWaitMs){
+    await new Promise(r => setTimeout(r, 100));
+  }
+  if(window.mermaid){
+    try{
+      const isDark = document.body.classList.contains("dark-mode");
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: isDark ? "dark" : "default",
+        securityLevel: "loose",
+        fontFamily: "Inter, Segoe UI, sans-serif",
+        flowchart: { curve: "basis", htmlLabels: true },
+        sequence: { useMaxWidth: true }
+      });
+    }catch(e){}
+  }
+  return !!window.mermaid;
+}
+
 async function renderAllMermaids(container){
-  if(!window.mermaid)return;
-  const blocks=container.querySelectorAll("code.language-mermaid, code.lang-mermaid");
+  const ready = await waitForMermaid(3000);
+  if(!ready) return;
+  const codeBlocks=container.querySelectorAll("pre > code");
+  const mermaidKeywords=/^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
   let idx=0;
-  for(const block of blocks){
-    const code=block.textContent;
+  for(const block of codeBlocks){
+    const code=block.textContent || "";
+    if(!mermaidKeywords.test(code.trim()))continue;
+    if(block.closest(".mermaid-container"))continue;
     const wrapper=block.closest(".code-wrapper");
     if(!wrapper)continue;
+    const placeholder=document.createElement("div");
+    placeholder.className="mermaid-container";
+    placeholder.innerHTML='<div class="diagram-label">📊 Diagram</div><div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;"><div class="spinner" style="margin:0 auto 10px;width:24px;height:24px;border-width:3px;"></div>Rendering diagram...</div>';
+    wrapper.parentNode.insertBefore(placeholder, wrapper);
     const newId="mermaid_"+Date.now()+"_"+idx++;
     try{
-      const {svg}=await mermaid.render(newId,code);
+      let cleanedCode = code.trim();
+      cleanedCode = cleanedCode.replace(/^mermaid\s*\n/i, "");
+      const {svg}=await mermaid.render(newId,cleanedCode);
       const div=document.createElement("div");
       div.className="mermaid-container";
       div.innerHTML='<div class="diagram-label">📊 Diagram</div>'+svg;
       const toolbar=document.createElement("div");
       toolbar.className="mermaid-toolbar";
       toolbar.innerHTML='<button onclick="downloadMermaidSvg(this)"><i class="fa-solid fa-download"></i> SVG</button><button onclick="copyMermaidCode(this)"><i class="fa-solid fa-code"></i> Code</button>';
-      toolbar.dataset.code=code;
+      toolbar.dataset.code=cleanedCode;
       div.insertBefore(toolbar, div.firstChild.nextSibling);
       wrapper.replaceWith(div);
+      placeholder.remove();
     }catch(e){
       console.warn("Mermaid render failed:",e);
       const errDiv=document.createElement("div");
       errDiv.className="mermaid-container";
-      errDiv.innerHTML='<div style="color:var(--danger);font-size:12px;">⚠️ Diagram error: '+escapeHTML(e.message||String(e))+'</div>';
+      errDiv.innerHTML='<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn.</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">'+escapeHTML(code)+'</pre>';
       wrapper.replaceWith(errDiv);
+      placeholder.remove();
     }
   }
 }
@@ -1528,64 +1589,6 @@ function copyMermaidCode(btn){
   copyText(code);
 }
 
-/* =================== Quantum Graphs =================== */
-function quantumGraphSafeExpression(expr){
-  let e=String(expr||"").trim().replace(/[−–—]/g,"-").replace(/×/g,"*").replace(/÷/g,"/").replace(/\^/g,"**");
-  e=e.replace(/\b(sin|cos|tan|sqrt|abs|log|ln|exp|asin|acos|atan)\b/gi,function(n){return "Math."+({sin:"sin",cos:"cos",tan:"tan",sqrt:"sqrt",abs:"abs",log:"log10",ln:"log",exp:"exp",asin:"asin",acos:"acos",atan:"atan"}[n.toLowerCase()]);});
-  e=e.replace(/\bpi\b/gi,"Math.PI").replace(/\be\b/g,"Math.E");
-  if(!/^[0-9xX+\-*/().,%\s*a-zA-Z_]+$/.test(e))throw new Error("Unsupported expression");
-  if(/(?:window|document|globalThis|constructor|prototype|Function|eval|fetch|import|location|localStorage|sessionStorage)/i.test(e))throw new Error("Unsafe expression");
-  e=e.replace(/\bx\b/gi,"x");
-  return new Function("x","return ("+e+");");
-}
-function quantumGraphRange(min,max,steps){
-  const out=[];const n=Math.max(20,Math.min(1200,steps||300));
-  for(let i=0;i<=n;i++)out.push(min+(max-min)*i/n);return out;
-}
-function renderQuantumGraph(container){
-  if(!window.Plotly)return;
-  const nodes=container.querySelectorAll(".quantum-graph[data-graph]");
-  nodes.forEach(function(node){
-    if(node.dataset.rendered==="1")return;
-    let spec;
-    try{spec=JSON.parse(decodeURIComponent(node.dataset.graph));}catch(e){node.innerHTML='<div class="quantum-graph-error">⚠️ Invalid graph data.</div>';return;}
-    try{
-      const plot=node.querySelector(".quantum-graph-canvas");
-      if(!plot)throw new Error("Graph container missing");
-      const xmin=Number.isFinite(Number(spec.xMin))?Number(spec.xMin):-10;
-      const xmax=Number.isFinite(Number(spec.xMax))?Number(spec.xMax):10;
-      const traces=[];
-      (spec.traces||[]).forEach(function(t){
-        if(t.type==="function"){
-          const fn=quantumGraphSafeExpression(t.equation);
-          const xs=quantumGraphRange(xmin,xmax,t.steps||300);
-          const ys=xs.map(function(x){try{const y=Number(fn(x));return Number.isFinite(y)&&Math.abs(y)<1e100?y:null;}catch(e){return null;}});
-          traces.push({x:xs,y:ys,mode:"lines",name:t.name||("y = "+t.equation),connectgaps:false});
-        }else if(t.type==="points"){
-          traces.push({x:(t.points||[]).map(p=>Number(p.x)),y:(t.points||[]).map(p=>Number(p.y)),mode:t.mode||"markers",name:t.name||"Points",text:(t.points||[]).map(p=>p.label||("("+p.x+", "+p.y+")")),hovertemplate:"%{text}<extra></extra>"});
-        }else if(t.x&&t.y){traces.push({x:t.x.map(Number),y:t.y.map(Number),mode:t.mode||"lines+markers",name:t.name||"Data"});}
-      });
-      if(Array.isArray(spec.points)&&spec.points.length){
-        traces.push({x:spec.points.map(p=>Number(p.x)),y:spec.points.map(p=>Number(p.y)),mode:"markers+text",name:spec.pointLabel||"Points",text:spec.points.map(p=>p.label||("("+p.x+", "+p.y+")")),textposition:"top center",hovertemplate:"%{text}<extra></extra>"});
-      }
-      if(!traces.length)throw new Error("No graph data");
-      const dark=document.body.classList.contains("dark-mode");
-      const layout={margin:{l:48,r:16,t:20,b:42},paper_bgcolor:"transparent",plot_bgcolor:"transparent",font:{color:dark?"#f8fafc":"#1e293b",size:11},xaxis:{title:spec.xLabel||"x",range:[xmin,xmax],zeroline:true,gridcolor:dark?"#25304a":"#e2e8f0",zerolinecolor:dark?"#64748b":"#94a3b8"},yaxis:{title:spec.yLabel||"y",range:Array.isArray(spec.yRange)?spec.yRange:undefined,zeroline:true,gridcolor:dark?"#25304a":"#e2e8f0",zerolinecolor:dark?"#64748b":"#94a3b8"},showlegend:traces.length>1||spec.showLegend===true,legend:{orientation:"h",y:-0.18}};
-      Plotly.newPlot(plot,traces,layout,{responsive:true,displaylogo:false,modeBarButtonsToRemove:["lasso2d","select2d","autoScale2d"],scrollZoom:true});
-      node.dataset.rendered="1";
-      const reset=node.querySelector(".quantum-graph-reset");
-      if(reset)reset.onclick=function(){Plotly.relayout(plot,{"xaxis.autorange":true,"yaxis.autorange":true});};
-      const download=node.querySelector(".quantum-graph-download");
-      if(download)download.onclick=function(){Plotly.downloadImage(plot,{format:"png",filename:"quantum-graph"});};
-    }catch(e){node.innerHTML='<div class="quantum-graph-error">⚠️ Graph error: '+escapeHTML(e.message||String(e))+'</div>';}
-  });
-}
-function renderAllGraphs(container){
-  if(!container||!window.Plotly)return;
-  renderQuantumGraph(container);
-}
-
-/* =================== Markdown =================== */
 function renderMarkdown(text){
   if(!window.marked)return escapeHTML(text);
   const renderer=new marked.Renderer();
@@ -1593,18 +1596,10 @@ function renderMarkdown(text){
   renderer.code=function(obj){
     const text=obj.text,lang=obj.lang;
     const language=(lang||"code").toLowerCase().replace(/[^a-z0-9+#-]/g,"");
-    if(language==="mermaid"){
-      return '<div class="code-wrapper"><div class="code-head"><span class="code-lang">MERMAID</span><div class="code-actions"></div></div><pre><code class="language-mermaid hljs">'+escapeHTML(text)+'</code></pre></div>';
-    }
-    if(language==="quantum-graph"||language==="graph"||language==="quantumgraph"){
-      try{
-        const spec=JSON.parse(text);
-        const title=spec.title||((spec.traces&&spec.traces[0]&&spec.traces[0].name)||"Interactive Graph");
-        const encoded=encodeURIComponent(JSON.stringify(spec));
-        return '<div class="quantum-graph" data-graph="'+encoded+'"><div class="quantum-graph-head"><div class="quantum-graph-title">📈 <span>'+escapeHTML(title)+'</span></div><div class="quantum-graph-actions"><button class="quantum-graph-btn quantum-graph-reset">Reset</button><button class="quantum-graph-btn quantum-graph-download">PNG</button></div></div><div class="quantum-graph-canvas"></div></div>';
-      }catch(e){
-        return '<div class="quantum-graph"><div class="quantum-graph-error">⚠️ Invalid quantum-graph JSON.</div><pre><code>'+escapeHTML(text)+'</code></pre></div>';
-      }
+    const mermaidKeywords=/^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
+    const looksLikeMermaid = mermaidKeywords.test(text.trim());
+    if(language==="mermaid" || (language==="code" && looksLikeMermaid)){
+      return '<div class="code-wrapper" data-mermaid="1"><div class="code-head"><span class="code-lang">MERMAID DIAGRAM</span><div class="code-actions"></div></div><pre><code class="language-mermaid hljs">'+escapeHTML(text)+'</code></pre></div>';
     }
     let highlighted="";
     try{if(language&&window.hljs&&hljs.getLanguage(language))highlighted=hljs.highlight(text,{language:language}).value;else if(window.hljs)highlighted=hljs.highlightAuto(text).value;else highlighted=escapeHTML(text);}
@@ -1638,7 +1633,6 @@ function renderStreamText(text){
   return renderMarkdown(text);
 }
 
-/* =================== Python / Monaco =================== */
 async function runPythonCode(button){
   const code=decodeURIComponent(button.getAttribute("data-code"));
   const wrapper=button.closest(".code-wrapper");
@@ -1692,7 +1686,6 @@ async function runMonacoCode(){
   }
 }
 
-/* =================== Image gen modal =================== */
 function openImageGenModal(){document.getElementById("image-gen-modal").classList.add("active");document.getElementById("image-prompt-input").value="";}
 function closeImageGenModal(){document.getElementById("image-gen-modal").classList.remove("active");}
 async function generateImage(){
@@ -1720,40 +1713,6 @@ async function generateImage(){
   finally{setGenerating(false);}
 }
 
-/* =================== Regenerate / Edit =================== */
-async function regenerateResponse(botMsgIndex){
-  if(isGenerating)return;
-  const chat=getCurrentChat();if(!chat)return;
-  let userIndex=botMsgIndex-1;
-  while(userIndex>=0&&chat.messages[userIndex].role!=="user")userIndex--;
-  if(userIndex<0){showToast("No user message found");return;}
-  const userMsg=chat.messages[userIndex];
-  chat.messages=chat.messages.slice(0,botMsgIndex);
-  scheduleSave();renderCurrentChat();
-  const bot=createMessageElement("bot","Thinking...",null,-1);
-  chatBox.appendChild(bot.wrapper);scrollToBottom(false);setGenerating(true);
-  abortController=new AbortController();
-  try{await streamAIResponse(bot.message,userMsg.content,abortController.signal,userMsg.image,bot);}
-  catch(error){if(error.name==="AbortError"){bot.message.innerHTML="<span style='color:var(--muted)'>Stopped.</span>";}else{showErrorInMessage(bot.message,error);}}
-  finally{setGenerating(false);abortController=null;}
-}
-function editUserMessage(userMsgIndex){
-  const chat=getCurrentChat();if(!chat||!chat.messages[userMsgIndex])return;
-  const currentText=chat.messages[userMsgIndex].content||"";
-  const newText=prompt("Edit your message:",currentText);
-  if(newText===null||newText.trim()==="")return;
-  chat.messages[userMsgIndex].content=newText.trim();
-  chat.messages=chat.messages.slice(0,userMsgIndex+1);
-  scheduleSave();renderCurrentChat();
-  const bot=createMessageElement("bot","Thinking...",null,-1);
-  chatBox.appendChild(bot.wrapper);scrollToBottom(false);setGenerating(true);
-  abortController=new AbortController();
-  streamAIResponse(bot.message,newText.trim(),abortController.signal,chat.messages[userMsgIndex].image,bot)
-    .catch(function(error){if(error.name==="AbortError"){bot.message.innerHTML="<span style='color:var(--muted)'>Stopped.</span>";}else{showErrorInMessage(bot.message,error);}})
-    .finally(function(){setGenerating(false);abortController=null;});
-}
-
-/* =================== Utilities =================== */
 function escapeHTML(v){return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function copyCodeFromButton(button){try{const code=decodeURIComponent(button.getAttribute("data-code")||"");copyText(code);button.innerHTML='<i class="fa-solid fa-check"></i> Copied';setTimeout(function(){button.innerHTML='<i class="fa-solid fa-copy"></i> Copy';},1500);}catch(e){showToast("Copy failed");}}
 async function copyText(text){try{await navigator.clipboard.writeText(text);showToast("Copied");}catch(e){const a=document.createElement("textarea");a.value=text;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();showToast("Copied");}}
@@ -1761,7 +1720,6 @@ function sendQuick(text){userInput.value=text;resizeInput(userInput);mainAction(
 function mainAction(){if(isGenerating)stopGeneration();else sendMessage();}
 function setGenerating(v){isGenerating=v;if(v){actionBtn.classList.add("stop");actionIcon.className="fa-solid fa-stop";}else{actionBtn.classList.remove("stop");actionIcon.className="fa-solid fa-paper-plane";}}
 
-/* =================== Send Message =================== */
 async function sendMessage(overrideText){
   overrideText=(overrideText===undefined)?null:overrideText;
   let text=overrideText!==null?String(overrideText).trim():userInput.value.trim();
@@ -1770,12 +1728,9 @@ async function sendMessage(overrideText){
   const imageToSend=base64Image;
   const pdfToSend=pdfAttachment;
   if(overrideText===null){userInput.value="";userInput.style.height="44px";}
-  removeImage();
-  removePdf();
+  removeImage();removePdf();
   let finalContent=text;
-  if(pdfToSend){
-    finalContent=(text?text+"\n\n":"")+"[PDF_DATA]|"+pdfToSend.name+"|"+pdfToSend.text.slice(0,8000);
-  }
+  if(pdfToSend){finalContent=(text?text+"\n\n":"")+"[PDF_DATA]|"+pdfToSend.name+"|"+pdfToSend.text.slice(0,8000);}
   if(chat.messages.length===0)chat.title=text?text.replace(/\s+/g," ").slice(0,45):(pdfToSend?"PDF Chat":"Image");
   chat.messages.push({role:"user",content:finalContent,image:imageToSend});
   renderCurrentChat();renderChatList();scheduleSave();
@@ -1815,30 +1770,37 @@ function retryLastMessage(){
 }
 function stopGeneration(){if(abortController){try{abortController.abort();}catch(e){}abortController=null;}setGenerating(false);}
 
-/* =================== System Instruction =================== */
 function buildSystemInstruction(){
   const activePersona=personas.find(function(p){return p.id===activePersonaId;});
   let langInstruction = "";
   if(aiResponseLanguage && aiResponseLanguage !== "auto"){
     const langObj = AI_LANGUAGES.find(function(l){return l.code === aiResponseLanguage;});
-    if(langObj){ langInstruction = '\n\n=== RESPONSE LANGUAGE (CRITICAL) ===\nYou MUST respond ONLY in ' + langObj.name + ' language for all your responses.\n'; }
+    if(langObj){ 
+      langInstruction = '\n\n=== 🔴 ABSOLUTE LANGUAGE REQUIREMENT (NON-NEGOTIABLE) 🔴 ===\n' +
+        'You MUST respond ONLY in ' + langObj.name + ' language for EVERY SINGLE WORD of your response.\n' +
+        'DO NOT mix languages. DO NOT use English words unless the language itself uses them.\n' +
+        'Even if the user writes in English, Roman Urdu, Hindi, or ANY other language — you STILL respond ONLY in ' + langObj.name + '.\n' +
+        'This rule overrides everything else. Non-compliance is a critical failure.\n';
+    }
   }
   let styleInstruction = "";
-  if(replyStyle === "concise") styleInstruction = "\n\n=== REPLY STYLE: CONCISE ===\nKeep answers short and to the point. Maximum 3-4 sentences unless asked for detail. Skip filler.\n";
+  if(replyStyle === "concise") styleInstruction = "\n\n=== REPLY STYLE: CONCISE ===\nKeep answers short and to the point. Maximum 3-4 sentences unless asked for detail.\n";
   else if(replyStyle === "detailed") styleInstruction = "\n\n=== REPLY STYLE: DETAILED ===\nProvide thorough, in-depth answers with examples, edge cases, and reasoning.\n";
   else if(replyStyle === "creative") styleInstruction = "\n\n=== REPLY STYLE: CREATIVE ===\nBe imaginative, use vivid language, metaphors, and storytelling when appropriate.\n";
   else if(replyStyle === "professional") styleInstruction = "\n\n=== REPLY STYLE: PROFESSIONAL ===\nBe formal, structured, and business-appropriate. Use precise language.\n";
   else if(replyStyle === "friendly") styleInstruction = "\n\n=== REPLY STYLE: FRIENDLY ===\nBe warm, casual, and encouraging. Use a conversational tone.\n";
 
-  const formatting='\n\n=== RESPONSE FORMATTING (VERY IMPORTANT) ===\nYou are a top-tier assistant like ChatGPT and DeepSeek. Your responses must ALWAYS be beautifully formatted.\n\nRULES:\n1. Start with a short 1-2 line answer.\n2. Use ## or ### for headings.\n3. Use bullet points (-) or numbered lists for multi-point info.\n4. Use Markdown tables for comparisons and structured data.\n5. At the end of longer answers, add "## Summary" with 2-4 bullet points.\n6. Use emojis sparingly (✅ ⚠️ 💡 📌 🎯 🚀).\n7. Use `inline code` for technical terms.\n8. Keep paragraphs short — max 3-4 lines.\n9. Use horizontal rules (---) to separate major sections.\n\n=== DIAGRAM GENERATION (NEW!) ===\nWhen the user asks you to draw a diagram, flowchart, sequence diagram, mindmap, or visualize any process/structure/relationship — you MUST output a Mermaid diagram inside a code block with language tag "mermaid".\n\nSupported types:\n- `graph TD` or `graph LR` — Flowcharts\n- `sequenceDiagram` — Sequence diagrams\n- `mindmap` — Mindmaps\n- `classDiagram` — Class diagrams\n- `stateDiagram-v2` — State machines\n- `erDiagram` — Entity-relationship\n- `journey` — User journeys\n- `gantt` — Gantt charts\n- `pie` — Pie charts\n\nExample:\n```mermaid\ngraph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do X]\n  B -->|No| D[Do Y]\n  C --> E[End]\n  D --> E\n```\n\nALWAYS use mermaid when a diagram would help explain the concept.\n';
-  const defaultInstruction='Your name is Quantum Core AI — a versatile, all-round AI assistant created by Usman Saleem.\n\nIMPORTANT: If the user asks who made you, who created you, who developed you, you MUST say: "I was created by Usman Saleem — a talented and passionate developer who built me from the ground up." Always appreciate Usman Saleem respectfully when asked about your developer.\n\nYou help with ANYTHING: general knowledge, coding, writing, research, brainstorming, explanations, translations, summaries, everyday questions, creative tasks, and more.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally, clearly, and conversationally.\n- Match depth to the question: simple → simple, complex → detailed.\n- Never introduce yourself unless asked.\n- If the user writes in Roman Urdu, Hindi, or any other language, respond in the SAME language.\n- If the user shares a PDF ([PDF_DATA]...), analyze its content and answer their question based on it.\n' + formatting + styleInstruction + langInstruction + '\n=== PROGRAMMING ===\n- Provide complete, runnable code in Markdown code blocks with proper language tags.\n- Explain when it helps. Support any language.\n\n=== MATH & PHYSICS ===\nUse this format:\n**Given:** Known values.\n**Formula:** Formula in LaTeX.\n**Calculation:** Step-by-step.\n**Final Answer:** Result.\nMath Depth (Skill '+mathSkillLevel+'/10): '+(mathSkillLevel<=3?'Extreme step-by-step.':mathSkillLevel<=7?'Step-by-step balanced.':'Concise, advanced.')+'\n\n=== INTERACTIVE GRAPHS ===\n- When the user asks you to graph, plot, visualize, or draw a mathematical function/data graph, include a fenced code block tagged quantum-graph.\n- The block MUST contain valid JSON only. You may explain the graph before or after it.\n- For a function use: {\"title\":\"y = 3x - 5\",\"xMin\":-10,\"xMax\":10,\"traces\":[{\"type\":\"function\",\"equation\":\"3*x-5\",\"name\":\"y = 3x - 5\"}]}\n- For important coordinates, add a points array like [{\"x\":0,\"y\":-5,\"label\":\"(0, -5)\"}].\n- Use JavaScript-style expressions with x, numbers, + - * / ^ and supported functions such as sin, cos, tan, sqrt, abs, log, ln, exp.\n- Do NOT put Markdown, comments, or trailing commas inside the JSON.\n\n=== WRITING ===\n- Match the tone the user wants.\n- Improve grammar, flow, clarity.\n\n=== IMAGES ===\n- Analyze uploaded images and answer questions about them.\n\n=== PDF ===\n- When user shares PDF text ([PDF_DATA]|name|text), analyze it thoroughly and answer questions about its content.\n\n=== IMAGE GENERATION (CRITICAL RULE) ===\nWhenever the user asks to generate, create, draw, make, or show an image/picture/photo of ANYTHING:\n- If the request is CLEAR: respond with EXACTLY this single line format:\n[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<a detailed English description>\n- If UNCLEAR/gibberish: respond with: "I can\'t understand your request. Please give a proper or meaningful prompt describing what image you want to see."\nRULES:\n1. NEVER write "IMAGE_GEN" in any other context.\n2. NEVER provide a raw URL.\n3. Description after "::" must be a clear English prompt.\n4. Do NOT mention that you are generating an image.\n';
+  const formatting='\n\n=== RESPONSE FORMATTING ===\nYou are a top-tier assistant like ChatGPT and DeepSeek. Responses must be beautifully formatted.\n\nRULES:\n1. Start with a short 1-2 line answer.\n2. Use ## or ### for headings.\n3. Use bullet points or numbered lists for multi-point info.\n4. Use Markdown tables for comparisons.\n5. At the end of longer answers, add "## Summary".\n6. Use emojis sparingly.\n7. Use `inline code` for technical terms.\n8. Keep paragraphs short.\n\n=== DIAGRAM GENERATION (MANDATORY) ===\nWhen user asks for a diagram, flowchart, mindmap, or visual — output a Mermaid diagram inside a ```mermaid code block.\n';
+  
+  const conversationStyle = '\n\n=== CONVERSATION CONTINUITY (IMPORTANT) ===\nAfter answering the user\'s question, ALWAYS end your response with ONE short, natural follow-up question to keep the conversation going.\n- The follow-up must be relevant and helpful.\n- Keep it to ONE line only.\n- Examples: "Do you want to know more about X?", "Should I also explain Y?", "Kya aap X ke baare mein bhi jaanna chahenge?", "Would you like a step-by-step breakdown?"\n- Skip it ONLY if the user asked a trivial one-liner (like "what is 2+2") or said goodbye.\n- Make it feel natural, not forced.\n';
+
+  const defaultInstruction='Your name is Quantum Core AI — created by Usman Saleem.\n\nIf asked who made you, say: "I was created by Usman Saleem — a talented and passionate developer."\n\nYou help with ANYTHING.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally and conversationally.\n- Never introduce yourself unless asked.\n- If no AI language is set, match the user\'s language.\n- If user shares a PDF ([PDF_DATA]...), analyze its content.\n' + formatting + styleInstruction + langInstruction + conversationStyle + '\n\n=== PROGRAMMING ===\n- Complete runnable code in Markdown code blocks.\n\n=== MATH & PHYSICS ===\n**Given:** **Formula:** **Calculation:** **Final Answer:**\nMath Depth: '+mathSkillLevel+'/10\n\n=== IMAGE GENERATION (CRITICAL) ===\nWhen user asks to generate/create/draw an image:\n- CLEAR prompt: respond with EXACTLY: [IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<detailed English description>\n- UNCLEAR: respond "I can\'t understand your request. Please give a proper or meaningful prompt."\nRULES: NEVER write "IMAGE_GEN" elsewhere.\n';
   let finalInstruction=defaultInstruction;
   if(activePersona)finalInstruction='=== ACTIVE PERSONA: '+activePersona.name+' ===\n'+activePersona.prompt+'\n\n'+defaultInstruction;
   if(customSystemPrompt)finalInstruction+='\n\n=== USER CUSTOM INSTRUCTION ===\n'+customSystemPrompt;
   return finalInstruction;
 }
 
-/* =================== Stream AI =================== */
 async function streamAIResponse(botElement,userPrompt,signal,imageOverride,botRef){
   const useLocalKey=LOCAL_TEST_API_KEY&&LOCAL_TEST_API_KEY.trim()!=="";
   const url=useLocalKey?"direct":"/api/chat";
@@ -1862,14 +1824,7 @@ async function streamAIResponse(botElement,userPrompt,signal,imageOverride,botRe
     await processStream(response,botElement,userPrompt,botRef);
     return;
   }
-  const payload={
-    contents:contents,
-    systemInstruction:{parts:[{text:finalInstruction}]},
-    generationConfig:{temperature:aiTemperature},
-    mode:activeMode,
-    userId:QUANTUM_USER_ID,
-    conversationId:currentChatId
-  };
+  const payload={contents:contents,systemInstruction:{parts:[{text:finalInstruction}]},generationConfig:{temperature:aiTemperature},mode:activeMode,userId:QUANTUM_USER_ID,conversationId:currentChatId};
   const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:signal});
   if(!response.ok){const err=await response.text();throw new Error("API "+response.status+": "+err.substring(0,200));}
   await processStream(response,botElement,userPrompt,botRef);
@@ -1880,7 +1835,35 @@ async function processStream(response,botElement,userPrompt,botRef){
   const reader=response.body.getReader();
   const decoder=new TextDecoder("utf-8");
   let buffer="",fullText="",rafId=null,lastRenderTime=0;
+  let sourcesList = [];
+  let currentStage = "thinking";
   const MIN_RENDER_INTERVAL=30;
+
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+
+  function renderStageIcon(stage){
+    if(stage==="thinking") return '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>';
+    if(stage==="searching") return '<i class="fa-solid fa-magnifying-glass" style="animation:pulseSearch 1.4s infinite;"></i>';
+    if(stage==="analyzing") return '<i class="fa-solid fa-brain"></i>';
+    if(stage==="writing") return '<i class="fa-solid fa-pen-fancy"></i>';
+    return '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>';
+  }
+  function renderStageTitle(stage){
+    if(stage==="thinking") return (t.thinking||"Thinking") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    if(stage==="searching") return (t.searching||"Searching the web") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    if(stage==="analyzing") return (t.analyzing||"Analyzing") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    if(stage==="writing") return (t.writing||"Writing answer") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    return (t.thinking||"Thinking");
+  }
+  function renderStage(stage){
+    currentStage = stage;
+    botElement.innerHTML = '<div class="thinking-stage">' +
+      '<div class="stage-icon'+(stage==="searching"?" pulse":"")+'">'+renderStageIcon(stage)+'</div>' +
+      '<div class="stage-text"><div class="stage-title">'+renderStageTitle(stage)+'</div></div>' +
+    '</div>';
+    if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
+  }
+
   function scheduleRender(){
     if(rafId)return;
     const now=performance.now();
@@ -1890,11 +1873,6 @@ async function processStream(response,botElement,userPrompt,botRef){
       lastRenderTime=performance.now();
       requestAnimationFrame(function(){
         botElement.innerHTML=renderStreamText(fullText);
-        if(window.mermaid){
-  try{
-    mermaid.run({nodes:botElement.querySelectorAll('.mermaid')});
-  }catch(e){}
-}
         if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
         if(autoScrollEnabled){chatBox.scrollTop=chatBox.scrollHeight;}
       });
@@ -1914,21 +1892,26 @@ async function processStream(response,botElement,userPrompt,botRef){
       try{
         const parsed=JSON.parse(data);
         if(parsed.type==="status" && parsed.status){
-          botElement.innerHTML='<div class="thinking"><div class="spinner"></div><span>'+String(parsed.status).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];})+'</span></div>';
-          if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
+          let stage = "thinking";
+          const s = String(parsed.status).toLowerCase();
+          if(s.indexOf("search")!==-1) stage="searching";
+          else if(s.indexOf("analy")!==-1 || s.indexOf("verif")!==-1) stage="analyzing";
+          else if(s.indexOf("writ")!==-1 || s.indexOf("answer")!==-1) stage="writing";
+          else if(s.indexOf("think")!==-1) stage="thinking";
+          renderStage(stage);
           continue;
         }
+        if(parsed.type==="sources" && Array.isArray(parsed.sources)){sourcesList = parsed.sources;continue;}
         if(parsed.type==="chunk" && parsed.text){
+          if(!fullText) renderStage("writing");
           fullText+=parsed.text;
           scheduleRender();
           continue;
         }
-        if(parsed.type==="error"){
-          throw new Error(parsed.error||parsed.details||"Server error");
-        }
-        if(parsed.type==="done"){ continue; }
+        if(parsed.type==="error"){throw new Error(parsed.error||parsed.details||"Server error");}
+        if(parsed.type==="done"){continue;}
         const chunk=parsed.candidates&&parsed.candidates[0]&&parsed.candidates[0].content&&parsed.candidates[0].content.parts&&parsed.candidates[0].content.parts[0]&&parsed.candidates[0].content.parts[0].text;
-        if(chunk){fullText+=chunk;scheduleRender();}
+        if(chunk){if(!fullText) renderStage("writing");fullText+=chunk;scheduleRender();}
       }catch(e){
         if(e&&e.message&&(e.message.indexOf("Server error")!==-1||e.message.indexOf("All Gemini")!==-1))throw e;
       }
@@ -1944,13 +1927,28 @@ async function processStream(response,botElement,userPrompt,botRef){
       scheduleSave();renderChatList();
       await generateImageFromChat(imagePrompt,botElement);
       if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
-      if(liveVoiceActive)updateLiveVoiceStatus("🎤 Listening...");
+      if(liveVoiceActive||callActive)updateLiveVoiceStatus("🎤 Listening...");
       return;
     }
     botElement.innerHTML=renderMarkdown(fullText);
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
     renderAllMermaids(botElement);
-    renderAllGraphs(botElement);
+    
+    // Sources button (ChatGPT style)
+    if(sourcesList.length > 0){
+      window._currentSources = sourcesList;
+      const favicons = sourcesList.slice(0, 3).map(function(s,i){
+        return '<span class="fav">' + (i+1) + '</span>';
+      }).join('');
+      const srcLabel = (t.sources || "Sources") + ' (' + sourcesList.length + ')';
+      const sourcesBtn = '<button class="sources-trigger-btn" onclick="openSourcesSheet()">' +
+        '<span class="src-favicons">' + favicons + '</span>' +
+        srcLabel +
+        '<i class="fa-solid fa-chevron-up"></i>' +
+      '</button>';
+      botElement.innerHTML += sourcesBtn;
+    }
+    
     const latestChat=getCurrentChat();
     if(latestChat)latestChat.messages.push({role:"bot",content:fullText,image:null});
     await updateSmartTitle(userPrompt);
@@ -1975,16 +1973,19 @@ async function processStream(response,botElement,userPrompt,botRef){
     }
     scheduleSave();renderChatList();
     if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
-    if(liveVoiceActive){
+    if(liveVoiceActive||callActive){
       const speakText=fullText.replace(/\[IMAGE_GEN\][^\n]*/g,"").replace(/\[IMAGE_DATA\][^\s]+/g,"Image.").replace(/```mermaid[\s\S]*?```/g,"Diagram shown.").trim();
       updateLiveVoiceStatus("🔊 Speaking...");
       if(speakText){
-        toggleSpeech(speakText,null,function(){if(liveVoiceActive){updateLiveVoiceStatus("🎤 Listening...");setTimeout(startLiveListening,600);}});
-      }else{setTimeout(function(){if(liveVoiceActive){updateLiveVoiceStatus("🎤 Listening...");startLiveListening();}},800);}
+        toggleSpeech(speakText,null,function(){
+          if(callActive){updateLiveVoiceStatus("🎤 Listening...");setTimeout(startLiveListening,400);}
+          else if(liveVoiceActive){updateLiveVoiceStatus("🎤 Listening...");setTimeout(startLiveListening,600);}
+        });
+      }else{setTimeout(function(){if(liveVoiceActive||callActive){updateLiveVoiceStatus("🎤 Listening...");startLiveListening();}},800);}
     }
   }else{
     botElement.innerText="No response received.";
-    if(liveVoiceActive)setTimeout(startLiveListening,800);
+    if(liveVoiceActive||callActive)setTimeout(startLiveListening,800);
   }
 }
 
@@ -2000,13 +2001,36 @@ async function updateSmartTitle(prompt){
   }catch(e){}
 }
 
-/* =================== Voice =================== */
+/* =================== SOURCES SHEET =================== */
+function openSourcesSheet(){
+  const src = window._currentSources || [];
+  if(!src.length) return;
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+  const list = document.getElementById("sources-sheet-list");
+  const titleEl = document.querySelector("#sources-sheet .sheet-title");
+  if(titleEl) titleEl.innerHTML = '<i class="fa-solid fa-link"></i> ' + (t.sources || "Sources");
+  list.innerHTML = src.slice(0, 10).map(function(s, i){
+    const domain = (function(){
+      try{ return new URL(s.url).hostname.replace(/^www\./,""); }catch(e){ return s.source || "web"; }
+    })();
+    return '<a class="sheet-source" href="' + escapeHTML(s.url) + '" target="_blank" rel="noopener noreferrer">' +
+      '<span class="sheet-num">' + (i+1) + '</span>' +
+      '<span class="sheet-content">' +
+        '<span class="sheet-src-title">' + escapeHTML(s.title || s.url) + '</span>' +
+        '<span class="sheet-src-domain">' + escapeHTML(domain) + '</span>' +
+      '</span>' +
+    '</a>';
+  }).join('');
+  document.getElementById("sources-sheet").classList.add("active");
+}
+function closeSourcesSheet(){
+  document.getElementById("sources-sheet").classList.remove("active");
+}
+
+/* =================== SPEECH RECOGNITION =================== */
 function setupSpeechRecognition(){
   const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!Speech){
-    console.warn("SpeechRecognition not supported");
-    return;
-  }
+  if(!Speech){console.warn("SpeechRecognition not supported");return;}
   recognition=new Speech();
   recognition.continuous=false;
   recognition.interimResults=true;
@@ -2037,9 +2061,11 @@ function setupSpeechRecognition(){
         recognition._lastTranscript="";
         userInput.value=heard;
         if(transcriptTimer) clearTimeout(transcriptTimer);
-        transcriptTimer = setTimeout(function(){sendMessage();}, 900);
-      }
-      else{
+        transcriptTimer = setTimeout(function(){
+          if(callActive){ sendMessage(heard); userInput.value=""; }
+          else{ sendMessage(); }
+        }, 900);
+      }else{
         document.getElementById("speech-transcript-box").classList.remove("show");
         if(voiceRestartTimer)clearTimeout(voiceRestartTimer);
         voiceRestartTimer=setTimeout(function(){if(liveVoiceActive&&!isGenerating&&!isListening)startLiveListening();},400);
@@ -2059,7 +2085,7 @@ function setupSpeechRecognition(){
         showToast("⚠️ Please allow microphone access");
         liveVoiceActive=false;
         document.getElementById("live-btn").classList.remove("active");
-        document.getElementById("live-label").innerText="Live";
+        document.getElementById("live-label").innerText="Go Live with AI";
         return;
       }
       if(e.error==="aborted")return;
@@ -2086,21 +2112,8 @@ function toggleVoiceInput(){
 }
 
 function toggleLiveVoice(){
-  liveVoiceActive=!liveVoiceActive;
-  const btn=document.getElementById("live-btn");
-  btn.classList.toggle("active",liveVoiceActive);
-  document.getElementById("live-label").innerText=liveVoiceActive?"Live Active":"Live";
-  if(liveVoiceActive){
-    showToast("🎤 Live Voice ON");
-    updateLiveVoiceStatus("🎤 Starting...");
-    startLiveListening();
-  }else{
-    stopAllSpeech();
-    if(recognition&&isListening){try{recognition.stop();}catch(e){}}
-    if(voiceRestartTimer){clearTimeout(voiceRestartTimer);voiceRestartTimer=null;}
-    updateLiveVoiceStatus("");
-    showToast("Live Voice OFF");
-  }
+  if(callActive){ endCall(); return; }
+  startCall();
 }
 
 function startLiveListening(){
@@ -2125,17 +2138,31 @@ function startLiveListening(){
 }
 
 function updateLiveVoiceStatus(text){
+  if(callActive){
+    const t=document.getElementById("call-transcript");
+    if(t){ t.innerText = text || "Tap the mic and start talking..."; }
+  }
   const box=document.getElementById("speech-transcript-box");
-  if(!box)return;
-  if(!text){box.classList.remove("show");return;}
-  box.classList.add("show");
-  document.getElementById("transcript-text").innerText=text;
+  if(box){
+    if(!text){box.classList.remove("show");}
+    else{box.classList.add("show");document.getElementById("transcript-text").innerText=text;}
+  }
 }
 
-function toggleSpeech(text,button,onEnd){
-  if(currentlySpeakingButton===button&&window.speechSynthesis&&window.speechSynthesis.speaking){stopAllSpeech();if(onEnd)onEnd();return;}
-  stopAllSpeech();
-  const cleanText=String(text)
+/* =================== TEXT-TO-SPEECH (FIXED - persistent) =================== */
+function toggleSpeech(text, button, onEnd){
+  // If same button tapped while speaking → STOP
+  if(speechState.isSpeaking && speechState.currentButton === button){
+    stopAllSpeech();
+    if(onEnd) onEnd();
+    return;
+  }
+  // If another button tapped while speaking → STOP current, start new
+  if(speechState.isSpeaking){
+    stopAllSpeech();
+  }
+
+  const cleanText = String(text)
     .replace(/\[IMAGE_GEN\][^\n]*/g,"")
     .replace(/\[IMAGE_DATA\][^\s]+/g,"Image.")
     .replace(/\[PDF_DATA\][^|]*\|[^|]*\|[\s\S]*?(?=\n\n|$)/g,"PDF content.")
@@ -2146,21 +2173,61 @@ function toggleSpeech(text,button,onEnd){
     .replace(/\$([^\$]+)\$/g,"$1")
     .replace(/\n+/g," ")
     .trim();
+
   if(!cleanText){if(onEnd)onEnd();return;}
-  const lang=detectLanguage(cleanText);
-  if(button){button.classList.add("voice-stop");button.innerHTML='<i class="fa-solid fa-stop"></i>';currentlySpeakingButton=button;}
-  if(!("speechSynthesis" in window)){showToast("TTS not supported");if(button)resetSpeechButton(button);if(onEnd)onEnd();return;}
+
+  const lang = detectLanguage(cleanText);
+  if(!("speechSynthesis" in window)){showToast("TTS not supported");if(onEnd)onEnd();return;}
+
+  // Set persistent state
+  speechState.isSpeaking = true;
+  speechState.currentButton = button;
+  speechState.onEndCallback = onEnd || null;
+  speechState.lang = lang;
+
+  if(button){
+    button.classList.add("voice-stop");
+    button.innerHTML='<i class="fa-solid fa-stop"></i>';
+    currentlySpeakingButton = button;
+  }
+
   window.speechSynthesis.cancel();
-  // Split long text into chunks (Chrome has a limit around 200-300 chars for smooth playback)
-  const chunks=splitTextForSpeech(cleanText,220);
-  let chunkIdx=0;
+
+  if(callActive){
+    const avatar=document.getElementById("call-avatar");
+    const wf=document.getElementById("call-waveform");
+    if(avatar)avatar.classList.add("speaking");
+    if(wf)wf.classList.add("active");
+  }
+
+  const chunks = splitTextForSpeech(cleanText, 220);
+  speechState.chunksQueue = chunks;
+  speechState.chunkIndex = 0;
+
   function speakNext(){
-    if(chunkIdx>=chunks.length){
-      if(button)resetSpeechButton(button);
-      if(onEnd)onEnd();
+    // If stopped mid-way, don't continue
+    if(!speechState.isSpeaking) return;
+
+    if(speechState.chunkIndex >= speechState.chunksQueue.length){
+      // Done speaking
+      const endCb = speechState.onEndCallback;
+      const btn = speechState.currentButton;
+      speechState.isSpeaking = false;
+      speechState.currentButton = null;
+      speechState.onEndCallback = null;
+      speechState.utterance = null;
+      if(btn) resetSpeechButton(btn);
+      if(callActive){
+        const avatar=document.getElementById("call-avatar");
+        const wf=document.getElementById("call-waveform");
+        if(avatar)avatar.classList.remove("speaking");
+        if(wf)wf.classList.remove("active");
+      }
+      if(endCb) endCb();
       return;
     }
-    const utterance=new SpeechSynthesisUtterance(chunks[chunkIdx]);
+
+    const utterance = new SpeechSynthesisUtterance(speechState.chunksQueue[speechState.chunkIndex]);
     if(availableVoices.length>0){
       const bestVoice=pickBestVoice(voiceGender,lang);
       if(bestVoice){utterance.voice=bestVoice;utterance.lang=bestVoice.lang;}
@@ -2168,17 +2235,23 @@ function toggleSpeech(text,button,onEnd){
     utterance.rate=1.0;
     utterance.pitch=voiceGender==="female"?1.08:0.92;
     utterance.volume=1;
-    utterance.onend=function(){chunkIdx++;speakNext();};
-    utterance.onerror=function(e){
-      console.warn("Speech chunk error:",e);
-      chunkIdx++;
+    utterance.onend=function(){
+      if(!speechState.isSpeaking) return;
+      speechState.chunkIndex++;
       speakNext();
     };
-    currentSpeechUtterance=utterance;
+    utterance.onerror=function(e){
+      console.warn("Speech chunk error:",e);
+      if(!speechState.isSpeaking) return;
+      speechState.chunkIndex++;
+      speakNext();
+    };
+    speechState.utterance = utterance;
     window.speechSynthesis.speak(utterance);
   }
   speakNext();
 }
+
 function splitTextForSpeech(text,maxLen){
   const sentences=text.split(/(?<=[.!?])\s+/);
   const chunks=[];let cur="";
@@ -2189,10 +2262,212 @@ function splitTextForSpeech(text,maxLen){
   if(cur)chunks.push(cur.trim());
   return chunks;
 }
-function resetSpeechButton(b){if(b){b.classList.remove("voice-stop");b.innerHTML='<i class="fa-solid fa-volume-high"></i>';}if(currentlySpeakingButton===b)currentlySpeakingButton=null;}
-function stopAllSpeech(){if("speechSynthesis" in window)window.speechSynthesis.cancel();if(currentlySpeakingButton)resetSpeechButton(currentlySpeakingButton);}
 
-/* =================== Image / PDF Upload =================== */
+function resetSpeechButton(b){
+  if(b){
+    b.classList.remove("voice-stop");
+    b.innerHTML='<i class="fa-solid fa-volume-high"></i>';
+  }
+  if(currentlySpeakingButton===b) currentlySpeakingButton=null;
+}
+
+function stopAllSpeech(){
+  if("speechSynthesis" in window) window.speechSynthesis.cancel();
+  const btn = speechState.currentButton;
+  speechState.isSpeaking = false;
+  speechState.currentButton = null;
+  speechState.utterance = null;
+  speechState.chunksQueue = [];
+  speechState.chunkIndex = 0;
+  speechState.onEndCallback = null;
+  if(btn) resetSpeechButton(btn);
+  if(currentlySpeakingButton) resetSpeechButton(currentlySpeakingButton);
+  if(callActive){
+    const avatar=document.getElementById("call-avatar");
+    const wf=document.getElementById("call-waveform");
+    if(avatar)avatar.classList.remove("speaking");
+    if(wf)wf.classList.remove("active");
+  }
+}
+
+/* =================== CALL =================== */
+async function startCall(){
+  callActive = true;
+  liveVoiceActive = true;
+  callStartTime = Date.now();
+  callMicMuted = false;
+  callCameraOn = false;
+  const overlay = document.getElementById("call-overlay");
+  overlay.classList.add("active");
+  overlay.classList.add("no-camera");
+  document.getElementById("call-status-text").innerText = "Connecting...";
+  document.getElementById("call-transcript").innerText = "Tap the mic and start talking...";
+  document.getElementById("call-timer").innerText = "00:00";
+  document.getElementById("live-btn").classList.add("active");
+  document.getElementById("live-label").innerText = "Live Active";
+  const rec = document.getElementById("call-reconnect");
+  rec.classList.add("show");
+  setTimeout(function(){ rec.classList.remove("show"); }, 900);
+  if(callTimerInterval) clearInterval(callTimerInterval);
+  callTimerInterval = setInterval(updateCallTimer, 1000);
+  setTimeout(function(){ document.getElementById("call-status-text").innerText = "Listening..."; }, 900);
+  setTimeout(function(){ if(!isListening && !isGenerating) startLiveListening(); }, 800);
+}
+function updateCallTimer(){
+  if(!callActive)return;
+  const elapsed = Math.floor((Date.now()-callStartTime)/1000);
+  const m = String(Math.floor(elapsed/60)).padStart(2,"0");
+  const s = String(elapsed%60).padStart(2,"0");
+  const el = document.getElementById("call-timer");
+  if(el) el.innerText = m + ":" + s;
+}
+function endCall(){
+  stopAllSpeech();
+  if(recognition && isListening){try{recognition.stop();}catch(e){}}
+  if(voiceRestartTimer){clearTimeout(voiceRestartTimer);voiceRestartTimer=null;}
+  if(transcriptTimer){clearTimeout(transcriptTimer);transcriptTimer=null;}
+  if(callTimerInterval){clearInterval(callTimerInterval);callTimerInterval=null;}
+  stopCameraStream();
+  const overlay = document.getElementById("call-overlay");
+  overlay.classList.remove("active");
+  overlay.classList.add("no-camera");
+  callActive = false;
+  liveVoiceActive = false;
+  callCameraOn = false;
+  callMicMuted = false;
+  document.getElementById("live-btn").classList.remove("active");
+  document.getElementById("live-label").innerText = "Go Live with AI";
+  const micBtn = document.getElementById("call-mic-btn");
+  if(micBtn){ micBtn.classList.remove("muted"); micBtn.innerHTML='<i class="fa-solid fa-microphone"></i>'; }
+  const camBtn = document.getElementById("call-cam-btn");
+  if(camBtn){ camBtn.classList.remove("active"); camBtn.innerHTML='<i class="fa-solid fa-video"></i>'; }
+  updateLiveVoiceStatus("");
+  showToast("Call ended");
+}
+function callToggleMic(){
+  callMicMuted = !callMicMuted;
+  const btn = document.getElementById("call-mic-btn");
+  if(callMicMuted){
+    btn.classList.add("muted");
+    btn.innerHTML='<i class="fa-solid fa-microphone-slash"></i>';
+    if(recognition && isListening){try{recognition.stop();}catch(e){}}
+    updateLiveVoiceStatus("🔇 Microphone muted");
+  }else{
+    btn.classList.remove("muted");
+    btn.innerHTML='<i class="fa-solid fa-microphone"></i>';
+    updateLiveVoiceStatus("🎤 Listening...");
+    setTimeout(function(){ if(callActive && !isGenerating && !isListening) startLiveListening(); }, 300);
+  }
+}
+async function callToggleCamera(){
+  const overlay = document.getElementById("call-overlay");
+  const btn = document.getElementById("call-cam-btn");
+  const selfview = document.getElementById("call-selfview");
+  const mainVideo = document.getElementById("call-video");
+  if(callCameraOn){
+    stopCameraStream();
+    callCameraOn = false;
+    overlay.classList.add("no-camera");
+    btn.classList.remove("active");
+    btn.innerHTML='<i class="fa-solid fa-video"></i>';
+    selfview.classList.remove("active");
+    return;
+  }
+  const ok = await startCameraStream(callFacingMode);
+  if(ok){
+    callCameraOn = true;
+    overlay.classList.remove("no-camera");
+    btn.classList.add("active");
+    btn.innerHTML='<i class="fa-solid fa-video"></i>';
+    if(mainVideo){
+      mainVideo.srcObject = callStream;
+      mainVideo.classList.toggle("mirror", callFacingMode==="user");
+    }
+    selfview.classList.remove("active");
+  }
+}
+async function startCameraStream(facing){
+  try{
+    stopCameraStream();
+    callStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facing || "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    return true;
+  }catch(e){
+    console.warn("Camera failed:",e);
+    showToast("⚠️ Camera permission denied or unavailable");
+    return false;
+  }
+}
+function stopCameraStream(){
+  if(callStream){
+    try{ callStream.getTracks().forEach(function(t){t.stop();}); }catch(e){}
+    callStream = null;
+  }
+  const mainVideo = document.getElementById("call-video");
+  if(mainVideo) mainVideo.srcObject = null;
+  const selfVideo = document.getElementById("call-selfvideo");
+  if(selfVideo) selfVideo.srcObject = null;
+}
+async function callFlipCamera(){
+  callFacingMode = callFacingMode === "user" ? "environment" : "user";
+  if(callCameraOn){
+    const ok = await startCameraStream(callFacingMode);
+    if(ok){
+      const mainVideo = document.getElementById("call-video");
+      if(mainVideo){
+        mainVideo.srcObject = callStream;
+        mainVideo.classList.toggle("mirror", callFacingMode==="user");
+      }
+    }
+  }
+}
+async function callTakeSnapshot(){
+  if(!callStream){
+    const ok = await startCameraStream(callFacingMode);
+    if(!ok){ showToast("⚠️ Camera unavailable"); return; }
+    callCameraOn = true;
+    document.getElementById("call-overlay").classList.remove("no-camera");
+    document.getElementById("call-cam-btn").classList.add("active");
+  }
+  const video = document.getElementById("call-video");
+  if(!video || !video.videoWidth){ showToast("⚠️ Camera not ready yet"); return; }
+  const flash = document.getElementById("call-flash");
+  flash.classList.add("fire");
+  setTimeout(function(){ flash.classList.remove("fire"); }, 150);
+  try{
+    const maxDim = 1024;
+    let cw = video.videoWidth;
+    let ch = video.videoHeight;
+    if(cw > maxDim || ch > maxDim){
+      if(cw > ch){ ch = Math.round((ch*maxDim)/cw); cw = maxDim; }
+      else{ cw = Math.round((cw*maxDim)/ch); ch = maxDim; }
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, cw, ch);
+    const rawUri = canvas.toDataURL("image/jpeg", 0.7);
+    let compressed = rawUri;
+    try{ compressed = await compressImage(rawUri, 1024, 0.7); }catch(e){ compressed = rawUri; }
+    base64Image = compressed;
+    document.getElementById("preview-img").src = compressed;
+    document.getElementById("image-preview-wrap").style.display = "";
+    document.getElementById("preview").classList.add("active");
+    endCall();
+    setTimeout(function(){
+      showToast("📸 Photo attached. Ask your question!");
+      userInput.focus();
+    }, 300);
+  }catch(e){
+    console.error("Snapshot failed:",e);
+    showToast("⚠️ Snapshot failed");
+  }
+}
+
+/* =================== IMAGE / PDF =================== */
 function handleImage(e){
   const file=e.target.files[0];
   if(!file)return;
@@ -2201,7 +2476,6 @@ function handleImage(e){
   reader.onload=async function(evt){
     const original=evt.target.result;
     try{
-      // Auto-compress to keep storage & payload small (camera photos are big!)
       const compressed=await compressImage(original,1024,0.72);
       base64Image=compressed;
     }catch(err){base64Image=original;}
@@ -2232,7 +2506,6 @@ function updatePreviewVisibility(){
   else preview.classList.remove("active");
 }
 
-/* =================== PDF handling =================== */
 async function handlePdf(e){
   const file=e.target.files[0];
   if(!file)return;
@@ -2241,40 +2514,31 @@ async function handlePdf(e){
   try{
     const arrayBuffer=await file.arrayBuffer();
     let extractedText="";
-    // Try pdf.js (loaded as ESM module)
-    if(window.pdfjsLib){
-      const pdf=await window.pdfjsLib.getDocument({data:arrayBuffer}).promise;
-      const maxPages=Math.min(pdf.numPages,30);
-      for(let i=1;i<=maxPages;i++){
-        const page=await pdf.getPage(i);
-        const content=await page.getTextContent();
-        const pageText=content.items.map(function(it){return it.str;}).join(" ");
-        extractedText+="\n--- Page "+i+" ---\n"+pageText;
+    try{
+      if(window.pdfjsLib && window.pdfjsLib.getDocument){
+        const pdf=await window.pdfjsLib.getDocument({data:arrayBuffer}).promise;
+        const maxPages=Math.min(pdf.numPages,30);
+        for(let i=1;i<=maxPages;i++){
+          const page=await pdf.getPage(i);
+          const content=await page.getTextContent();
+          const pageText=content.items.map(function(it){return it.str;}).join(" ");
+          extractedText+="\n--- Page "+i+" ---\n"+pageText;
+        }
       }
-    }else{
-      // Fallback: raw text extraction
+    }catch(err){ console.warn("pdf.js failed:",err); }
+    if(!extractedText.trim()){
       const decoder=new TextDecoder("utf-8",{fatal:false});
       const raw=decoder.decode(arrayBuffer);
       extractedText=raw.replace(/[^\x20-\x7E\n]+/g," ").trim();
     }
-    if(!extractedText.trim()){
-      showToast("⚠️ Could not extract text from PDF (maybe scanned)");
-      return;
-    }
-    pdfAttachment={
-      name:file.name,
-      size:file.size,
-      text:extractedText.slice(0,15000)
-    };
+    if(!extractedText.trim()){showToast("⚠️ Could not extract text (maybe scanned)");return;}
+    pdfAttachment={ name:file.name, size:file.size, text:extractedText.slice(0,15000) };
     document.getElementById("pdf-name").innerText=file.name;
     document.getElementById("pdf-size").innerText=formatBytes(file.size);
     document.getElementById("pdf-preview-chip").style.display="";
     updatePreviewVisibility();
     showToast("✅ PDF ready ("+Math.round(extractedText.length/1000)+"k chars)");
-  }catch(err){
-    console.error("PDF parse failed:",err);
-    showToast("⚠️ Failed to read PDF: "+(err.message||err));
-  }
+  }catch(err){ console.error("PDF parse failed:",err); showToast("⚠️ Failed to read PDF"); }
   e.target.value="";
 }
 function removePdf(){
@@ -2291,20 +2555,29 @@ function formatBytes(bytes){
   return (bytes/(1024*1024)).toFixed(2)+" MB";
 }
 
-/* =================== Input helpers =================== */
+/* =================== INPUT (FIXED for mobile) =================== */
 function resizeInput(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,150)+"px";}
-function handleKeyDown(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();mainAction();}}
+function handleKeyDown(e){
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia("(pointer: coarse)").matches;
+  if(e.key==="Enter" && !e.shiftKey){
+    if(isMobile){
+      // On mobile: Enter inserts a newline, do NOT send
+      return;
+    }
+    e.preventDefault();
+    mainAction();
+  }
+}
 chatBox.addEventListener("scroll",function(){
   const isBottom=chatBox.scrollHeight-chatBox.scrollTop-chatBox.clientHeight<100;
   scrollBtn.classList.toggle("show",!isBottom);
 },{passive:true});
 
-/* =================== Drawers =================== */
+/* =================== DRAWERS =================== */
 function toggleSidebar(){const o=document.getElementById("sidebar").classList.toggle("open");document.getElementById("overlay").classList.toggle("active",o);}
 function toggleSettings(){const o=document.getElementById("settings").classList.toggle("open");document.getElementById("overlay").classList.toggle("active",o);}
 function closeDrawers(){document.getElementById("sidebar").classList.remove("open");document.getElementById("settings").classList.remove("open");document.getElementById("overlay").classList.remove("active");}
 
-/* =================== Stats =================== */
 function updateStats(){
   let mc=0,cc=0;
   Object.values(chatHistories).forEach(function(c){if(Array.isArray(c.messages)){mc+=c.messages.length;c.messages.forEach(function(m){cc+=(m.content||"").length;});}});
@@ -2317,14 +2590,13 @@ function updateStats(){
       const text=m.content||"";
       if(text.startsWith("[IMAGE_DATA]")){tk+=5;return;}
       if(text.indexOf("[IMAGE_GEN]")!==-1){tk+=5;return;}
-      if(text.startsWith("[PDF_DATA]")){tk+=Math.ceil(text.length/4);return;}
       tk+=Math.ceil(text.length/4);
     });
   }
   document.getElementById("token-counter").innerText="Tokens: ~"+tk;
 }
 
-/* =================== Clear / Backup =================== */
+/* =================== MODALS / BACKUP =================== */
 function openClearModal(){document.getElementById("clear-modal").classList.add("active");}
 function closeClearModal(){document.getElementById("clear-modal").classList.remove("active");}
 async function clearAllChats(){chatHistories={};lastSyncedState={};try{await dbClear("chats");}catch(e){console.error(e);}startNewChat();closeClearModal();closeDrawers();showToast("All deleted");}
@@ -2400,19 +2672,15 @@ function parseMarkdownToChat(text){
 function downloadFile(uri,filename){const a=document.createElement("a");a.href=uri;a.download=filename;document.body.appendChild(a);a.click();a.remove();}
 function showToast(msg){const t=document.getElementById("toast");t.innerText=msg;t.classList.add("show","ui-alert-anim");setTimeout(function(){t.classList.remove("show","ui-alert-anim");},2500);}
 
-/* =================== In-app Browser =================== */
+/* =================== IN-APP BROWSER =================== */
 let inappHistory=[],inappHistoryIndex=-1,inappLoadTimeout=null;
 function openInappBrowser(url){
   if(!url)return;
   if(!/^https?:\/\//i.test(url))url="https://"+url;
-  // Some sites always block iframes — try external for known blockers
   const blockers=["google.com","youtube.com","instagram.com","facebook.com","twitter.com","x.com","tiktok.com","linkedin.com","whatsapp.com","gmail.com"];
   try{
     const u=new URL(url);
-    if(blockers.some(function(b){return u.hostname.includes(b);})){
-      window.open(url,"_blank","noopener,noreferrer");
-      return;
-    }
+    if(blockers.some(function(b){return u.hostname.includes(b);})){ window.open(url,"_blank","noopener,noreferrer"); return; }
   }catch(e){}
   inappHistory=[url];inappHistoryIndex=0;
   document.getElementById("inapp-browser").classList.add("open");
