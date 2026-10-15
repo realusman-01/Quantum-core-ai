@@ -21,7 +21,7 @@ body.dark-mode{--bg:#0a0e1a;--card:#151b2e;--primary:#3b82f6;--accent:#f8fafc;--
 *{box-sizing:border-box;margin:0;padding:0;font-family:var(--font);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
 .msg-wrap,.msg-wrap *{-webkit-user-select:none;user-select:none;}
 .msg-wrap .msg,.msg-wrap .msg *{-webkit-user-select:text;user-select:text;}
-textarea,input{-webkit-user-select:text;user-select:text;}
+textarea,input,.prompt-area,.modal-input{-webkit-user-select:text;user-select:text;}
 html,body{width:100%;height:100%;overflow:hidden;}
 body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;transition:background .25s ease,color .25s ease;}
 body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 20% 30%,rgba(37,99,235,0.06),transparent 50%),radial-gradient(circle at 80% 70%,rgba(139,92,246,0.06),transparent 50%);pointer-events:none;z-index:0;}
@@ -199,27 +199,20 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 .reply-style-btn{padding:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;font-size:11.5px;font-weight:700;cursor:pointer;transition:all .2s var(--ease-smooth);text-align:center;}
 .reply-style-btn:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);}
 .reply-style-btn.active{background:var(--gradient-1);color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(37,99,235,0.3);}
-
-/* ===== THINKING / STATUS STAGES ===== */
 .thinking-stage{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13.5px;animation:statusFade .3s ease;}
 .thinking-stage .stage-icon{width:36px;height:36px;border-radius:50%;background:var(--hover);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:15px;flex-shrink:0;}
 .thinking-stage .stage-icon.pulse{animation:pulseSearch 1.4s ease-in-out infinite;}
 .thinking-stage .stage-text{flex:1;min-width:0;}
 .thinking-stage .stage-title{font-weight:700;color:var(--text);margin-bottom:2px;}
-.thinking-stage .stage-sub{font-size:11.5px;color:var(--muted);}
 .thinking-dots span{animation:spinDot 1.2s infinite ease-in-out;font-weight:900;}
 .thinking-dots span:nth-child(2){animation-delay:.2s;}
 .thinking-dots span:nth-child(3){animation-delay:.4s;}
-
-/* ===== SOURCES TRIGGER BUTTON ===== */
 .sources-trigger-btn{display:inline-flex;align-items:center;gap:10px;padding:8px 16px;margin-top:10px;background:var(--card);border:1.5px solid var(--border);border-radius:22px;color:var(--text);font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s ease;}
 .sources-trigger-btn:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);box-shadow:0 4px 14px rgba(37,99,235,0.15);}
 .sources-trigger-btn i{font-size:11px;color:var(--primary);}
 .sources-trigger-btn .src-favicons{display:flex;align-items:center;}
 .sources-trigger-btn .fav{width:20px;height:20px;border-radius:50%;background:var(--gradient-1);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid var(--card);margin-left:-7px;}
 .sources-trigger-btn .fav:first-child{margin-left:0;}
-
-/* ===== SOURCES BOTTOM SHEET ===== */
 #sources-sheet{position:fixed;inset:0;z-index:9500;display:none;}
 #sources-sheet.active{display:block;}
 #sources-sheet .sheet-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.55);opacity:0;transition:opacity .3s ease;}
@@ -235,6 +228,12 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 #sources-sheet .sheet-content{flex:1;min-width:0;}
 #sources-sheet .sheet-src-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:3px;display:block;}
 #sources-sheet .sheet-src-domain{font-size:11px;color:var(--muted);font-weight:600;display:block;}
+
+/* ===== SELECT-ALL LOCK ===== */
+body.select-locked .msg-wrap:not(.select-active),
+body.select-locked .msg-wrap:not(.select-active) *{-webkit-user-select:none !important;user-select:none !important;}
+body.select-locked .msg-wrap.select-active,
+body.select-locked .msg-wrap.select-active *{-webkit-user-select:text !important;user-select:text !important;}
 
 .image-preview-container{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#05070b;position:relative;touch-action:none;cursor:grab;user-select:none;}
 .image-preview-container.dragging{cursor:grabbing;}
@@ -512,6 +511,17 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 
 <div id="persona-modal" class="modal"><div class="modal-card"><div class="modal-title">New AI Persona</div><div class="modal-desc">Create your own AI assistant with a custom personality.</div><input id="persona-name-input" class="modal-input" placeholder="Persona name" maxlength="30"><input id="persona-icon-input" class="modal-input" placeholder="Emoji icon" maxlength="4" value="🤖"><textarea id="persona-prompt-input" class="prompt-area" placeholder="System prompt..." style="min-height:80px;"></textarea><div class="modal-actions" style="margin-top:12px;"><button class="cancel" onclick="closePersonaModal()">Cancel</button><button class="confirm" onclick="savePersona()">Save</button></div></div></div>
 
+<div id="edit-message-modal" class="modal">
+<div class="modal-card">
+<div class="modal-title">Edit Message</div>
+<textarea id="edit-message-input" class="prompt-area" style="min-height:100px;margin-bottom:14px;"></textarea>
+<div class="modal-actions">
+<button class="cancel" onclick="closeEditMessageModal()">Cancel</button>
+<button class="confirm" onclick="saveEditMessage()">Save & Regenerate</button>
+</div>
+</div>
+</div>
+
 <div id="image-preview-modal" class="modal"><div class="image-preview-card"><div class="image-preview-topbar"><button class="preview-btn" onclick="previewZoomOut()"><i class="fa-solid fa-magnifying-glass-minus"></i></button><span class="image-zoom-label" id="zoom-label">100%</span><button class="preview-btn" onclick="previewZoomIn()"><i class="fa-solid fa-magnifying-glass-plus"></i></button><button class="preview-btn" onclick="previewResetZoom()"><i class="fa-solid fa-arrows-rotate"></i></button><div style="flex:1;"></div><button class="preview-btn" onclick="downloadPreviewImage()"><i class="fa-solid fa-download"></i></button><button class="preview-btn" onclick="closeImagePreview()"><i class="fa-solid fa-xmark"></i></button></div><div class="image-preview-container" id="image-preview-container"><img id="image-preview-img" src="" alt="Preview"></div></div></div>
 
 <div id="inapp-browser" class="inapp-browser"><div class="inapp-topbar"><button class="inapp-btn" onclick="inappBack()"><i class="fa-solid fa-arrow-left"></i></button><button class="inapp-btn" onclick="inappForward()"><i class="fa-solid fa-arrow-right"></i></button><button class="inapp-btn" onclick="inappRefresh()"><i class="fa-solid fa-rotate-right"></i></button><div class="inapp-url" id="inapp-url">about:blank</div><button class="inapp-btn" onclick="inappOpenExternal()"><i class="fa-solid fa-arrow-up-right-from-square"></i></button><button class="inapp-btn" onclick="closeInappBrowser()"><i class="fa-solid fa-xmark"></i></button></div><div class="inapp-frame-wrap"><div class="inapp-loader" id="inapp-loader"><div class="spinner"></div><span>Loading...</span></div><iframe id="inapp-frame" class="inapp-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads" referrerpolicy="no-referrer" onload="if(typeof inappFrameLoaded === 'function') inappFrameLoaded();"></iframe><div class="inapp-blocked" id="inapp-blocked"><i class="fa-solid fa-triangle-exclamation"></i><p>This website blocks in-app view.</p><button class="inapp-external-btn" onclick="inappOpenExternal()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in Browser</button></div></div></div>
@@ -681,7 +691,7 @@ let callCameraOn = false;
 let callStream = null;
 let callFacingMode = "user";
 
-// Speech state (persistent - NOT reset by scroll)
+// Speech state (persistent)
 let speechState = {
   isSpeaking: false,
   currentButton: null,
@@ -691,6 +701,9 @@ let speechState = {
   onEndCallback: null,
   lang: 'en'
 };
+
+// Edit message state
+let _editMsgIndex = -1;
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
@@ -861,6 +874,7 @@ window.addEventListener("load", async function(){
   setupSystemThemeWatcher();
   initMermaid();
   initImagePreviewPanZoom();
+  initSelectLock();
   startNewChat();
   if(window.require)require.config({paths:{'vs':'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs'}});
 });
@@ -1014,7 +1028,52 @@ function pickBestVoice(gender,langCode){
   return availableVoices[0];
 }
 
-/* =================== Folders =================== */
+/* ============ SELECT-ALL LOCK ============ */
+function initSelectLock(){
+  document.addEventListener('touchstart', function(e){
+    const wrap = e.target.closest ? e.target.closest('.msg-wrap') : null;
+    if(wrap){
+      document.querySelectorAll('.msg-wrap').forEach(function(w){
+        if(w === wrap) w.classList.add('select-active');
+        else w.classList.remove('select-active');
+      });
+      document.body.classList.add('select-locked');
+    }
+  }, {passive:true});
+
+  document.addEventListener('touchend', function(){
+    setTimeout(function(){
+      const sel = window.getSelection();
+      if(!sel || sel.isCollapsed || sel.toString().trim() === ''){
+        document.body.classList.remove('select-locked');
+        document.querySelectorAll('.msg-wrap').forEach(function(w){
+          w.classList.remove('select-active');
+        });
+      }
+    }, 300);
+  }, {passive:true});
+
+  document.addEventListener('selectionchange', function(){
+    const sel = window.getSelection();
+    if(!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    const startNode = range.startContainer.nodeType === 3 ? range.startContainer.parentElement : range.startContainer;
+    const endNode = range.endContainer.nodeType === 3 ? range.endContainer.parentElement : range.endContainer;
+    if(!startNode.closest || !endNode.closest) return;
+    const startWrap = startNode.closest('.msg-wrap');
+    const endWrap = endNode.closest('.msg-wrap');
+    if(startWrap && endWrap && startWrap !== endWrap){
+      try{
+        const newRange = document.createRange();
+        newRange.selectNodeContents(startWrap.querySelector('.msg') || startWrap);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+      }catch(err){}
+    }
+  });
+}
+
+/* ============ Folders ============ */
 async function loadFolders(){try{const list=await dbGetAll("folders");folders=(list||[]).filter(function(f){return f&&f.id;});}catch(e){folders=[];}renderFolders();}
 async function saveFolders(){try{await dbClear("folders");for(const f of folders)await dbSet("folders",f);}catch(e){console.error("Save folders failed:",e);}renderFolders();}
 
@@ -1066,7 +1125,7 @@ function openNewFolderModal(){document.getElementById("new-folder-modal").classL
 function closeNewFolderModal(){document.getElementById("new-folder-modal").classList.remove("active");}
 function createNewFolder(){const name=document.getElementById("new-folder-input").value.trim();if(!name){showToast("Enter folder name");return;}const id="f_"+Date.now();folders.push({id:id,name:name.slice(0,30)});saveFolders();closeNewFolderModal();showToast("Folder created");}
 
-/* =================== Personas =================== */
+/* ============ Personas ============ */
 async function loadPersonas(){try{const list=await dbGetAll("personas");personas=(list||[]).filter(function(p){return p&&p.id;});}catch(e){personas=[];}renderPersonas();}
 async function savePersonas(){try{await dbClear("personas");for(const p of personas)await dbSet("personas",p);}catch(e){console.error("Save personas failed:",e);}renderPersonas();}
 
@@ -1097,7 +1156,7 @@ function savePersona(){
   savePersonas();closePersonaModal();activatePersona(id);
 }
 
-/* =================== Chats =================== */
+/* ============ Chats ============ */
 async function loadChats(){
   try{
     const all=await dbGetAll("chats");
@@ -1193,7 +1252,7 @@ function deleteSingleChat(e,id){
 }
 function loadChat(id){if(!chatHistories[id])return;currentChatId=id;renderCurrentChat();renderChatList();closeDrawers();}
 
-/* =================== Render Chat =================== */
+/* ============ Render Chat ============ */
 function renderCurrentChat(){
   chatBox.innerHTML="";
   const chat=getCurrentChat();
@@ -1491,6 +1550,7 @@ function initImagePreviewPanZoom(){
   },{passive:true});
 }
 
+/* ============ MERMAID ============ */
 function initMermaid(){
   if(window.mermaid){
     try{
@@ -1548,7 +1608,20 @@ async function renderAllMermaids(container){
     const newId="mermaid_"+Date.now()+"_"+idx++;
     try{
       let cleanedCode = code.trim();
+      // Remove "mermaid" prefix
       cleanedCode = cleanedCode.replace(/^mermaid\s*\n/i, "");
+      // CRITICAL: Add newline after diagram type if not present
+      cleanedCode = cleanedCode.replace(/^(flowchart|graph)\s+(TD|TB|BT|LR|RL)\s+(?=[A-Za-z\["\w])/gim, "$1 $2\n    ");
+      // Add newline after sequenceDiagram if followed by text
+      cleanedCode = cleanedCode.replace(/^(sequenceDiagram)\s+(?=[A-Za-z])/gim, "$1\n    ");
+      // Convert <br/> and <br /> to <br>
+      cleanedCode = cleanedCode.replace(/<br\s*\/>/gi, "<br>");
+      // Ensure newlines between node definitions (after --> ...)
+      cleanedCode = cleanedCode.replace(/-->\s*(?=[A-Z][A-Za-z0-9_]*\[)/g, "--> \n    ");
+      // Trim each line
+      cleanedCode = cleanedCode.split("\n").map(function(l){return l.trimEnd();}).join("\n");
+      cleanedCode = cleanedCode.trim();
+      
       const {svg}=await mermaid.render(newId,cleanedCode);
       const div=document.createElement("div");
       div.className="mermaid-container";
@@ -1589,6 +1662,7 @@ function copyMermaidCode(btn){
   copyText(code);
 }
 
+/* ============ MARKDOWN ============ */
 function renderMarkdown(text){
   if(!window.marked)return escapeHTML(text);
   const renderer=new marked.Renderer();
@@ -1770,31 +1844,118 @@ function retryLastMessage(){
 }
 function stopGeneration(){if(abortController){try{abortController.abort();}catch(e){}abortController=null;}setGenerating(false);}
 
+/* ============ EDIT MESSAGE (Custom Modal) ============ */
+function editUserMessage(userMsgIndex){
+  const chat = getCurrentChat();
+  if(!chat || !chat.messages[userMsgIndex]) return;
+  _editMsgIndex = userMsgIndex;
+  const currentText = chat.messages[userMsgIndex].content || "";
+  const input = document.getElementById("edit-message-input");
+  input.value = currentText;
+  document.getElementById("edit-message-modal").classList.add("active");
+  setTimeout(function(){ input.focus(); try{input.setSelectionRange(currentText.length, currentText.length);}catch(e){} }, 200);
+}
+function closeEditMessageModal(){
+  document.getElementById("edit-message-modal").classList.remove("active");
+  _editMsgIndex = -1;
+}
+function saveEditMessage(){
+  const chat = getCurrentChat();
+  if(!chat || _editMsgIndex < 0) return;
+  const input = document.getElementById("edit-message-input");
+  const newText = input.value.trim();
+  if(!newText){ showToast("Message can't be empty"); return; }
+
+  const idx = _editMsgIndex;
+  const existingImage = chat.messages[idx].image;
+
+  chat.messages[idx].content = newText;
+  chat.messages = chat.messages.slice(0, idx + 1);
+  scheduleSave();
+  renderCurrentChat();
+  closeEditMessageModal();
+
+  const bot = createMessageElement("bot", "Thinking...", null, -1);
+  chatBox.appendChild(bot.wrapper);
+  scrollToBottom(false);
+  setGenerating(true);
+  abortController = new AbortController();
+  streamAIResponse(bot.message, newText, abortController.signal, existingImage, bot)
+    .catch(function(error){
+      if(error.name === "AbortError") bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>";
+      else showErrorInMessage(bot.message, error);
+    })
+    .finally(function(){ setGenerating(false); abortController = null; });
+}
+
+/* ============ REGENERATE (Keep old message — DeepSeek style) ============ */
+async function regenerateResponse(botMsgIndex){
+  if(isGenerating){ showToast("Please wait..."); return; }
+  const chat = getCurrentChat();
+  if(!chat) return;
+
+  let userIndex = botMsgIndex - 1;
+  while(userIndex >= 0 && chat.messages[userIndex].role !== "user") userIndex--;
+  if(userIndex < 0){ showToast("No user message found"); return; }
+
+  const userMsg = chat.messages[userIndex];
+
+  // ⚡ KEEP OLD MESSAGE — just add new response below (DeepSeek style)
+  const bot = createMessageElement("bot", "Thinking...", null, -1);
+  chatBox.appendChild(bot.wrapper);
+  scrollToBottom(false);
+  setGenerating(true);
+  abortController = new AbortController();
+
+  try{
+    await streamAIResponse(bot.message, userMsg.content, abortController.signal, userMsg.image, bot);
+  } catch(error){
+    if(error.name === "AbortError") bot.message.innerHTML = "<span style='color:var(--muted)'>Stopped.</span>";
+    else showErrorInMessage(bot.message, error);
+  } finally {
+    setGenerating(false);
+    abortController = null;
+  }
+}
+
+/* ============ SYSTEM INSTRUCTION ============ */
 function buildSystemInstruction(){
   const activePersona=personas.find(function(p){return p.id===activePersonaId;});
   let langInstruction = "";
   if(aiResponseLanguage && aiResponseLanguage !== "auto"){
     const langObj = AI_LANGUAGES.find(function(l){return l.code === aiResponseLanguage;});
     if(langObj){ 
-      langInstruction = '\n\n=== 🔴 ABSOLUTE LANGUAGE REQUIREMENT (NON-NEGOTIABLE) 🔴 ===\n' +
-        'You MUST respond ONLY in ' + langObj.name + ' language for EVERY SINGLE WORD of your response.\n' +
-        'DO NOT mix languages. DO NOT use English words unless the language itself uses them.\n' +
-        'Even if the user writes in English, Roman Urdu, Hindi, or ANY other language — you STILL respond ONLY in ' + langObj.name + '.\n' +
-        'This rule overrides everything else. Non-compliance is a critical failure.\n';
+      langInstruction = '\n\n=== 🔴 ABSOLUTE LANGUAGE REQUIREMENT 🔴 ===\n' +
+        'You MUST respond ONLY in ' + langObj.name + ' language for EVERY SINGLE WORD.\n' +
+        'Even if the user writes in English, Roman Urdu, Hindi, or ANY language — respond ONLY in ' + langObj.name + '.\n';
     }
   }
   let styleInstruction = "";
-  if(replyStyle === "concise") styleInstruction = "\n\n=== REPLY STYLE: CONCISE ===\nKeep answers short and to the point. Maximum 3-4 sentences unless asked for detail.\n";
-  else if(replyStyle === "detailed") styleInstruction = "\n\n=== REPLY STYLE: DETAILED ===\nProvide thorough, in-depth answers with examples, edge cases, and reasoning.\n";
-  else if(replyStyle === "creative") styleInstruction = "\n\n=== REPLY STYLE: CREATIVE ===\nBe imaginative, use vivid language, metaphors, and storytelling when appropriate.\n";
-  else if(replyStyle === "professional") styleInstruction = "\n\n=== REPLY STYLE: PROFESSIONAL ===\nBe formal, structured, and business-appropriate. Use precise language.\n";
-  else if(replyStyle === "friendly") styleInstruction = "\n\n=== REPLY STYLE: FRIENDLY ===\nBe warm, casual, and encouraging. Use a conversational tone.\n";
+  if(replyStyle === "concise") styleInstruction = "\n\n=== REPLY STYLE: CONCISE ===\nKeep answers short and to the point.\n";
+  else if(replyStyle === "detailed") styleInstruction = "\n\n=== REPLY STYLE: DETAILED ===\nProvide thorough, in-depth answers.\n";
+  else if(replyStyle === "creative") styleInstruction = "\n\n=== REPLY STYLE: CREATIVE ===\nBe imaginative, use vivid language.\n";
+  else if(replyStyle === "professional") styleInstruction = "\n\n=== REPLY STYLE: PROFESSIONAL ===\nBe formal and structured.\n";
+  else if(replyStyle === "friendly") styleInstruction = "\n\n=== REPLY STYLE: FRIENDLY ===\nBe warm and casual.\n";
 
-  const formatting='\n\n=== RESPONSE FORMATTING ===\nYou are a top-tier assistant like ChatGPT and DeepSeek. Responses must be beautifully formatted.\n\nRULES:\n1. Start with a short 1-2 line answer.\n2. Use ## or ### for headings.\n3. Use bullet points or numbered lists for multi-point info.\n4. Use Markdown tables for comparisons.\n5. At the end of longer answers, add "## Summary".\n6. Use emojis sparingly.\n7. Use `inline code` for technical terms.\n8. Keep paragraphs short.\n\n=== DIAGRAM GENERATION (MANDATORY) ===\nWhen user asks for a diagram, flowchart, mindmap, or visual — output a Mermaid diagram inside a ```mermaid code block.\n';
+  const formatting='\n\n=== CRITICAL FORMATTING RULES (MUST FOLLOW) ===\n\n' +
+    '1. HEADINGS — ALWAYS put a SPACE after #:\n' +
+    '   CORRECT: "## Heading"\n' +
+    '   WRONG: "##Heading"\n\n' +
+    '2. MERMAID DIAGRAMS — ALWAYS wrap in triple backticks with "mermaid" tag AND use newlines:\n' +
+    '   CORRECT:\n' +
+    '   \\`\\`\\`mermaid\n' +
+    '   flowchart TD\n' +
+    '       A[Start] --> B[End]\n' +
+    '   \\`\\`\\`\n' +
+    '   WRONG: Inline without backticks or same line.\n\n' +
+    '3. BULLET POINTS — start on new line with "- "\n' +
+    '4. NUMBERED LISTS — start on new line with "1. "\n' +
+    '5. BOLD — use **text**\n' +
+    '6. NEVER tell user to copy diagram elsewhere. It renders automatically.\n';
 
-  const conversationStyle = '\n\n=== CONVERSATION CONTINUITY (IMPORTANT) ===\nAfter answering the user\'s question, ALWAYS end your response with ONE short, natural follow-up question to keep the conversation going.\n- The follow-up must be relevant and helpful.\n- Keep it to ONE line only.\n- Examples: "Do you want to know more about X?", "Should I also explain Y?", "Kya aap X ke baare mein bhi jaanna chahenge?", "Would you like a step-by-step breakdown?"\n- Skip it ONLY if the user asked a trivial one-liner (like "what is 2+2") or said goodbye.\n- Make it feel natural, not forced.\n';
+  const conversationStyle = '\n\n=== CONVERSATION CONTINUITY ===\nAfter answering, ALWAYS end with ONE short follow-up question.\n';
 
-  const defaultInstruction='Your name is Quantum Core AI — created by Usman Saleem.\n\nIf asked who made you, say: "I was created by Usman Saleem — a talented and passionate developer."\n\nYou help with ANYTHING.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally and conversationally.\n- Never introduce yourself unless asked.\n- If no AI language is set, match the user\'s language.\n- If user shares a PDF ([PDF_DATA]...), analyze its content.\n' + formatting + styleInstruction + langInstruction + conversationStyle + '\n\n=== PROGRAMMING ===\n- Complete runnable code in Markdown code blocks.\n\n=== MATH & PHYSICS ===\n**Given:** **Formula:** **Calculation:** **Final Answer:**\nMath Depth: '+mathSkillLevel+'/10\n\n=== IMAGE GENERATION (CRITICAL) ===\nWhen user asks to generate/create/draw an image:\n- CLEAR prompt: respond with EXACTLY: [IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<detailed English description>\n- UNCLEAR: respond "I can\'t understand your request. Please give a proper or meaningful prompt."\nRULES: NEVER write "IMAGE_GEN" elsewhere.\n';
+  const defaultInstruction='Your name is Quantum Core AI — created by Usman Saleem.\n\nIf asked who made you, say: "I was created by Usman Saleem — a talented and passionate developer."\n\nYou help with ANYTHING.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally.\n- Never introduce yourself unless asked.\n- If no AI language set, match the user\'s language.\n- If user shares a PDF ([PDF_DATA]...), analyze its content.\n' + formatting + styleInstruction + langInstruction + conversationStyle + '\n\n=== PROGRAMMING ===\n- Complete runnable code in Markdown code blocks.\n\n=== MATH & PHYSICS ===\n**Given:** **Formula:** **Calculation:** **Final Answer:**\nMath Depth: '+mathSkillLevel+'/10\n\n=== IMAGE GENERATION ===\nWhen user asks to generate/create/draw an image:\n- CLEAR prompt: respond with EXACTLY: [IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<detailed English description>\n- UNCLEAR: respond "I can\'t understand your request. Please give a proper or meaningful prompt."\n';
   let finalInstruction=defaultInstruction;
   if(activePersona)finalInstruction='=== ACTIVE PERSONA: '+activePersona.name+' ===\n'+activePersona.prompt+'\n\n'+defaultInstruction;
   if(customSystemPrompt)finalInstruction+='\n\n=== USER CUSTOM INSTRUCTION ===\n'+customSystemPrompt;
@@ -1834,70 +1995,9 @@ async function processStream(response,botElement,userPrompt,botRef){
   if(!response.body)throw new Error("No body");
   const reader=response.body.getReader();
   const decoder=new TextDecoder("utf-8");
-let buffer="",fullText="",rafId=null,lastRenderTime=0;
-// CLIENT-SIDE IDENTITY FILTER (backup)
-function scrubClient(text) {
-  if (!text) return text;
-  let t = String(text);
-  t = t.replace(/\b(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Qwen|Kimi|Grok|GLM|Gemma|Muse|Seed|ChatGPT|Chat\s*GPT)\s*[- ]?\d*\s*ne\s+banaya/gi, "Usman Saleem ne banaya");
-  t = t.replace(/created by\s+(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "created by Usman Saleem");
-  t = t.replace(/made by\s+(DeepSeek|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "made by Usman Saleem");
-  t = t.replace(/[- ]?V4[- ]?Flash[- ]?\d+/gi, "");
-  t = t.replace(/[- ]?V4[- ]?Pro[- ]?Max/gi, "");
-  t = t.replace(/[- ]?V4[- ]?Pro/gi, "");
-  t = t.replace(/[- ]?V4/gi, "");
-  const patterns = [
-    [/Chat\s*GPT[- ]?\d*/gi, "Quantum Core AI"],
-    [/DeepSeek[- ]?\d+/gi, "Quantum Core AI"],
-    [/DeepSeek[- ]?V4[- ]?Flash[- ]?0731/gi, "Quantum Core AI"],
-    [/DeepSeek[- ]?V4[- ]?Flash/gi, "Quantum Core AI"],
-    [/DeepSeek[- ]?V4[- ]?Pro[- ]?Max/gi, "Quantum Core AI"],
-    [/DeepSeek[- ]?V4[- ]?Pro/gi, "Quantum Core AI"],
-    [/DeepSeek[- ]?V4/gi, "Quantum Core AI"],
-    [/DeepSeek/gi, "Quantum Core AI"],
-    [/Gemini[- ]?\d+\.?\d*[- ]?Flash[- ]?Lite/gi, "Quantum Core AI"],
-    [/Gemini[- ]?\d+\.?\d*[- ]?Flash/gi, "Quantum Core AI"],
-    [/Gemini[- ]?\d+\.?\d*[- ]?Pro/gi, "Quantum Core AI"],
-    [/Gemini[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
-    [/Gemini/gi, "Quantum Core AI"],
-    [/GPT[- ]?\d+\.?\d*[- ]?(sol|luna|terra)/gi, "Quantum Core AI"],
-    [/GPT[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
-    [/GPT/gi, "Quantum Core AI"],
-    [/Claude[- ]?Opus[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
-    [/Claude[- ]?Sonnet[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
-    [/Claude[- ]?Fable[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
-    [/Claude[- ]?Mythos[- ]?Preview/gi, "Quantum Core AI"],
-    [/Claude[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
-    [/Claude/gi, "Quantum Core AI"],
-    [/Qwen[- ]?\d+\.?\d*[- ]?(max|turbo|pro)?/gi, "Quantum Core AI"],
-    [/Kimi[- ]?K\d+\.?\d*/gi, "Quantum Core AI"],
-    [/Grok[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
-    [/GLM[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
-    [/Gemma[- ]?\d+\.?\d*[bB]?/gi, "Quantum Core AI"],
-    [/Muse[- ]?Spark[- ]?\d+\.?\d*/gi, "Quantum Core AI"],
-    [/Seed[- ]?\d+\.?\d*[- ]?(pro|turbo)?/gi, "Quantum Core AI"]
-  ];
-  for (const [pattern, replacement] of patterns) {
-    t = t.replace(pattern, replacement);
-  }
-  t = t.replace(/\bby Google\b/gi, "by Usman Saleem");
-  t = t.replace(/\bby OpenAI\b/gi, "by Usman Saleem");
-  t = t.replace(/\bby Anthropic\b/gi, "by Usman Saleem");
-  t = t.replace(/\bby DeepSeek\b/gi, "by Usman Saleem");
-  t = t.replace(/\bby Meta\b/gi, "by Usman Saleem");
-  t = t.replace(/\bby Microsoft\b/gi, "by Usman Saleem");
-  t = t.replace(/Quantum Core AI\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
-  t = t.replace(/created by\s+Quantum Core AI/gi, "created by Usman Saleem");
-  t = t.replace(/made by\s+Quantum Core AI/gi, "made by Usman Saleem");
-  t = t.replace(/\bby\s+Quantum Core AI\b/gi, "by Usman Saleem");
-  t = t.replace(/Quantum Core AI[- ]?[A-Z0-9.-]+/gi, "Quantum Core AI");
-  t = t.replace(/\s{2,}/g, " ");
-  return t;
-}
+  let buffer="",fullText="",rafId=null,lastRenderTime=0;
   let sourcesList = [];
-  let currentStage = "thinking";
   const MIN_RENDER_INTERVAL=30;
-
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
   function renderStageIcon(stage){
@@ -1908,14 +2008,13 @@ function scrubClient(text) {
     return '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>';
   }
   function renderStageTitle(stage){
-    if(stage==="thinking") return (t.thinking||"Thinking") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
-    if(stage==="searching") return (t.searching||"Searching the web") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
-    if(stage==="analyzing") return (t.analyzing||"Analyzing") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
-    if(stage==="writing") return (t.writing||"Writing answer") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
-    return (t.thinking||"Thinking");
+    let base = t.thinking || "Thinking";
+    if(stage==="searching") base = t.searching || "Searching the web";
+    else if(stage==="analyzing") base = t.analyzing || "Analyzing";
+    else if(stage==="writing") base = t.writing || "Writing answer";
+    return base + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
   }
   function renderStage(stage){
-    currentStage = stage;
     botElement.innerHTML = '<div class="thinking-stage">' +
       '<div class="stage-icon'+(stage==="searching"?" pulse":"")+'">'+renderStageIcon(stage)+'</div>' +
       '<div class="stage-text"><div class="stage-title">'+renderStageTitle(stage)+'</div></div>' +
@@ -1931,7 +2030,7 @@ function scrubClient(text) {
       rafId=null;
       lastRenderTime=performance.now();
       requestAnimationFrame(function(){
-        botElement.innerHTML=renderStreamText(scrubClient(fullText));
+        botElement.innerHTML=renderStreamText(fullText);
         if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
         if(autoScrollEnabled){chatBox.scrollTop=chatBox.scrollHeight;}
       });
@@ -1989,11 +2088,10 @@ function scrubClient(text) {
       if(liveVoiceActive||callActive)updateLiveVoiceStatus("🎤 Listening...");
       return;
     }
-    botElement.innerHTML=renderMarkdown(scrubClient(fullText));
+    botElement.innerHTML=renderMarkdown(fullText);
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
     renderAllMermaids(botElement);
 
-    // Sources button (ChatGPT style)
     if(sourcesList.length > 0){
       window._currentSources = sourcesList;
       const favicons = sourcesList.slice(0, 3).map(function(s,i){
@@ -2060,7 +2158,7 @@ async function updateSmartTitle(prompt){
   }catch(e){}
 }
 
-/* =================== SOURCES SHEET =================== */
+/* ============ SOURCES SHEET ============ */
 function openSourcesSheet(){
   const src = window._currentSources || [];
   if(!src.length) return;
@@ -2086,7 +2184,7 @@ function closeSourcesSheet(){
   document.getElementById("sources-sheet").classList.remove("active");
 }
 
-/* =================== SPEECH RECOGNITION =================== */
+/* ============ SPEECH RECOGNITION ============ */
 function setupSpeechRecognition(){
   const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!Speech){console.warn("SpeechRecognition not supported");return;}
@@ -2208,18 +2306,14 @@ function updateLiveVoiceStatus(text){
   }
 }
 
-/* =================== TEXT-TO-SPEECH (FIXED - persistent) =================== */
+/* ============ TEXT-TO-SPEECH ============ */
 function toggleSpeech(text, button, onEnd){
-  // If same button tapped while speaking → STOP
   if(speechState.isSpeaking && speechState.currentButton === button){
     stopAllSpeech();
     if(onEnd) onEnd();
     return;
   }
-  // If another button tapped while speaking → STOP current, start new
-  if(speechState.isSpeaking){
-    stopAllSpeech();
-  }
+  if(speechState.isSpeaking){ stopAllSpeech(); }
 
   const cleanText = String(text)
     .replace(/\[IMAGE_GEN\][^\n]*/g,"")
@@ -2238,7 +2332,6 @@ function toggleSpeech(text, button, onEnd){
   const lang = detectLanguage(cleanText);
   if(!("speechSynthesis" in window)){showToast("TTS not supported");if(onEnd)onEnd();return;}
 
-  // Set persistent state
   speechState.isSpeaking = true;
   speechState.currentButton = button;
   speechState.onEndCallback = onEnd || null;
@@ -2264,11 +2357,8 @@ function toggleSpeech(text, button, onEnd){
   speechState.chunkIndex = 0;
 
   function speakNext(){
-    // If stopped mid-way, don't continue
     if(!speechState.isSpeaking) return;
-
     if(speechState.chunkIndex >= speechState.chunksQueue.length){
-      // Done speaking
       const endCb = speechState.onEndCallback;
       const btn = speechState.currentButton;
       speechState.isSpeaking = false;
@@ -2285,7 +2375,6 @@ function toggleSpeech(text, button, onEnd){
       if(endCb) endCb();
       return;
     }
-
     const utterance = new SpeechSynthesisUtterance(speechState.chunksQueue[speechState.chunkIndex]);
     if(availableVoices.length>0){
       const bestVoice=pickBestVoice(voiceGender,lang);
@@ -2294,17 +2383,8 @@ function toggleSpeech(text, button, onEnd){
     utterance.rate=1.0;
     utterance.pitch=voiceGender==="female"?1.08:0.92;
     utterance.volume=1;
-    utterance.onend=function(){
-      if(!speechState.isSpeaking) return;
-      speechState.chunkIndex++;
-      speakNext();
-    };
-    utterance.onerror=function(e){
-      console.warn("Speech chunk error:",e);
-      if(!speechState.isSpeaking) return;
-      speechState.chunkIndex++;
-      speakNext();
-    };
+    utterance.onend=function(){if(!speechState.isSpeaking)return;speechState.chunkIndex++;speakNext();};
+    utterance.onerror=function(e){console.warn("Speech chunk error:",e);if(!speechState.isSpeaking)return;speechState.chunkIndex++;speakNext();};
     speechState.utterance = utterance;
     window.speechSynthesis.speak(utterance);
   }
@@ -2321,15 +2401,10 @@ function splitTextForSpeech(text,maxLen){
   if(cur)chunks.push(cur.trim());
   return chunks;
 }
-
 function resetSpeechButton(b){
-  if(b){
-    b.classList.remove("voice-stop");
-    b.innerHTML='<i class="fa-solid fa-volume-high"></i>';
-  }
+  if(b){b.classList.remove("voice-stop");b.innerHTML='<i class="fa-solid fa-volume-high"></i>';}
   if(currentlySpeakingButton===b) currentlySpeakingButton=null;
 }
-
 function stopAllSpeech(){
   if("speechSynthesis" in window) window.speechSynthesis.cancel();
   const btn = speechState.currentButton;
@@ -2349,7 +2424,7 @@ function stopAllSpeech(){
   }
 }
 
-/* =================== CALL =================== */
+/* ============ CALL ============ */
 async function startCall(){
   callActive = true;
   liveVoiceActive = true;
@@ -2526,7 +2601,7 @@ async function callTakeSnapshot(){
   }
 }
 
-/* =================== IMAGE / PDF =================== */
+/* ============ IMAGE / PDF ============ */
 function handleImage(e){
   const file=e.target.files[0];
   if(!file)return;
@@ -2614,15 +2689,12 @@ function formatBytes(bytes){
   return (bytes/(1024*1024)).toFixed(2)+" MB";
 }
 
-/* =================== INPUT (FIXED for mobile) =================== */
+/* ============ INPUT ============ */
 function resizeInput(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,150)+"px";}
 function handleKeyDown(e){
   const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia("(pointer: coarse)").matches;
   if(e.key==="Enter" && !e.shiftKey){
-    if(isMobile){
-      // On mobile: Enter inserts a newline, do NOT send
-      return;
-    }
+    if(isMobile){ return; }
     e.preventDefault();
     mainAction();
   }
@@ -2632,7 +2704,7 @@ chatBox.addEventListener("scroll",function(){
   scrollBtn.classList.toggle("show",!isBottom);
 },{passive:true});
 
-/* =================== DRAWERS =================== */
+/* ============ DRAWERS ============ */
 function toggleSidebar(){const o=document.getElementById("sidebar").classList.toggle("open");document.getElementById("overlay").classList.toggle("active",o);}
 function toggleSettings(){const o=document.getElementById("settings").classList.toggle("open");document.getElementById("overlay").classList.toggle("active",o);}
 function closeDrawers(){document.getElementById("sidebar").classList.remove("open");document.getElementById("settings").classList.remove("open");document.getElementById("overlay").classList.remove("active");}
@@ -2655,7 +2727,7 @@ function updateStats(){
   document.getElementById("token-counter").innerText="Tokens: ~"+tk;
 }
 
-/* =================== MODALS / BACKUP =================== */
+/* ============ MODALS / BACKUP ============ */
 function openClearModal(){document.getElementById("clear-modal").classList.add("active");}
 function closeClearModal(){document.getElementById("clear-modal").classList.remove("active");}
 async function clearAllChats(){chatHistories={};lastSyncedState={};try{await dbClear("chats");}catch(e){console.error(e);}startNewChat();closeClearModal();closeDrawers();showToast("All deleted");}
@@ -2731,7 +2803,7 @@ function parseMarkdownToChat(text){
 function downloadFile(uri,filename){const a=document.createElement("a");a.href=uri;a.download=filename;document.body.appendChild(a);a.click();a.remove();}
 function showToast(msg){const t=document.getElementById("toast");t.innerText=msg;t.classList.add("show","ui-alert-anim");setTimeout(function(){t.classList.remove("show","ui-alert-anim");},2500);}
 
-/* =================== IN-APP BROWSER =================== */
+/* ============ IN-APP BROWSER ============ */
 let inappHistory=[],inappHistoryIndex=-1,inappLoadTimeout=null;
 function openInappBrowser(url){
   if(!url)return;
