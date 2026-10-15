@@ -19,7 +19,9 @@
 :root{--bg:#f8fafc;--card:#ffffff;--primary:#2563eb;--accent:#0f172a;--text:#1e293b;--muted:#64748b;--sidebar:#ffffff;--border:#e2e8f0;--hover:#f1f5f9;--code:#0f172a;--danger:#ef4444;--success:#10b981;--shadow:0 4px 20px rgba(0,0,0,.08);--font:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif;--ease-smooth:cubic-bezier(0.16,1,0.3,1);--ease-bounce:cubic-bezier(0.34,1.56,0.64,1);--gradient-1:linear-gradient(135deg,#2563eb 0%,#8b5cf6 100%);--gradient-2:linear-gradient(135deg,#3b82f6 0%,#a855f7 100%);}
 body.dark-mode{--bg:#0a0e1a;--card:#151b2e;--primary:#3b82f6;--accent:#f8fafc;--text:#f8fafc;--muted:#94a3b8;--sidebar:#0f1423;--border:#1e2942;--hover:#1a2238;--code:#050810;--shadow:0 6px 24px rgba(0,0,0,.35);}
 *{box-sizing:border-box;margin:0;padding:0;font-family:var(--font);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
-.msg,.msg *,textarea,input,.chat-title,.chat-preview,.info-box,pre code,.key-point{-webkit-user-select:text;user-select:text;}
+.msg-wrap,.msg-wrap *{-webkit-user-select:none;user-select:none;}
+.msg-wrap .msg,.msg-wrap .msg *{-webkit-user-select:text;user-select:text;}
+textarea,input{-webkit-user-select:text;user-select:text;}
 html,body{width:100%;height:100%;overflow:hidden;}
 body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;transition:background .25s ease,color .25s ease;}
 body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 20% 30%,rgba(37,99,235,0.06),transparent 50%),radial-gradient(circle at 80% 70%,rgba(139,92,246,0.06),transparent 50%);pointer-events:none;z-index:0;}
@@ -33,6 +35,8 @@ body>*{position:relative;z-index:1;}
 @keyframes pulseMic{50%{box-shadow:0 0 0 8px rgba(239,68,68,0.2);}}
 @keyframes uiAlertPop{0%{opacity:0;transform:translate(-50%,20px) scale(0.9);}100%{opacity:1;transform:translate(-50%,0) scale(1);}}
 @keyframes likePop{0%{transform:scale(1);}50%{transform:scale(1.35);}100%{transform:scale(1);}}
+@keyframes statusFade{0%{opacity:0;transform:translateY(6px);}100%{opacity:1;transform:translateY(0);}}
+@keyframes pulseSearch{0%,100%{transform:scale(1);opacity:0.8;}50%{transform:scale(1.15);opacity:1;}}
 .ui-alert-anim{animation:uiAlertPop 0.3s var(--ease-bounce) !important;}
 .drawer,.modal-card,.chat-item,.icon-btn,.new-chat,.save-prompt,.export-btn,.danger,#action-btn{transition:transform .2s var(--ease-smooth),background .2s ease,border-color .2s ease,box-shadow .2s ease;}
 #splash-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:99999;transition:opacity .4s ease,visibility .4s ease;}
@@ -179,20 +183,11 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 .mermaid-toolbar{display:flex;gap:6px;justify-content:flex-end;margin-bottom:8px;}
 .mermaid-toolbar button{height:28px;padding:0 10px;border-radius:7px;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
 .mermaid-toolbar button:hover{color:var(--primary);border-color:var(--primary);}
-/* ===== SOURCES BOX ===== */
-.sources-box{margin-top:14px;padding:12px 14px;background:var(--hover);border:1.5px solid var(--border);border-radius:12px;}
-.sources-title{font-size:11px;font-weight:900;color:var(--primary);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;}
-.source-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:9px;text-decoration:none;color:var(--text);transition:background .15s ease;margin-bottom:4px;}
-.source-item:hover{background:var(--card);}
-.source-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--gradient-1);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;}
-.source-content{display:flex;flex-direction:column;min-width:0;flex:1;}
-.source-title{font-size:12.5px;font-weight:600;line-height:1.4;color:var(--text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-.source-domain{font-size:10.5px;color:var(--muted);margin-top:2px;font-weight:600;}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;min-height:34px;align-items:center;}
 .action-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;transition:all .2s var(--ease-smooth);}
 .action-btn:hover{color:var(--primary);border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(37,99,235,0.2);}
 .action-btn:active{transform:scale(.9);}
-.action-btn.voice-stop{color:var(--danger);border-color:var(--danger);animation:pulseStop 1s infinite alternate;}
+.action-btn.voice-stop{color:var(--danger);border-color:var(--danger);background:rgba(239,68,68,0.1);animation:pulseStop 1s infinite alternate;}
 .action-btn.liked{background:var(--success);border-color:var(--success);color:#fff;animation:likePop .35s var(--ease-bounce);}
 .action-btn.disliked{background:var(--danger);border-color:var(--danger);color:#fff;animation:likePop .35s var(--ease-bounce);}
 .pdf-preview-chip{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;font-size:12.5px;font-weight:600;max-width:280px;}
@@ -204,14 +199,47 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 .reply-style-btn{padding:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;font-size:11.5px;font-weight:700;cursor:pointer;transition:all .2s var(--ease-smooth);text-align:center;}
 .reply-style-btn:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);}
 .reply-style-btn.active{background:var(--gradient-1);color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(37,99,235,0.3);}
+
+/* ===== THINKING / STATUS STAGES ===== */
+.thinking-stage{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13.5px;animation:statusFade .3s ease;}
+.thinking-stage .stage-icon{width:36px;height:36px;border-radius:50%;background:var(--hover);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:15px;flex-shrink:0;}
+.thinking-stage .stage-icon.pulse{animation:pulseSearch 1.4s ease-in-out infinite;}
+.thinking-stage .stage-text{flex:1;min-width:0;}
+.thinking-stage .stage-title{font-weight:700;color:var(--text);margin-bottom:2px;}
+.thinking-stage .stage-sub{font-size:11.5px;color:var(--muted);}
+.thinking-dots span{animation:spinDot 1.2s infinite ease-in-out;font-weight:900;}
+.thinking-dots span:nth-child(2){animation-delay:.2s;}
+.thinking-dots span:nth-child(3){animation-delay:.4s;}
+
+/* ===== SOURCES TRIGGER BUTTON ===== */
+.sources-trigger-btn{display:inline-flex;align-items:center;gap:10px;padding:8px 16px;margin-top:10px;background:var(--card);border:1.5px solid var(--border);border-radius:22px;color:var(--text);font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s ease;}
+.sources-trigger-btn:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);box-shadow:0 4px 14px rgba(37,99,235,0.15);}
+.sources-trigger-btn i{font-size:11px;color:var(--primary);}
+.sources-trigger-btn .src-favicons{display:flex;align-items:center;}
+.sources-trigger-btn .fav{width:20px;height:20px;border-radius:50%;background:var(--gradient-1);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid var(--card);margin-left:-7px;}
+.sources-trigger-btn .fav:first-child{margin-left:0;}
+
+/* ===== SOURCES BOTTOM SHEET ===== */
+#sources-sheet{position:fixed;inset:0;z-index:9500;display:none;}
+#sources-sheet.active{display:block;}
+#sources-sheet .sheet-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.55);opacity:0;transition:opacity .3s ease;}
+#sources-sheet.active .sheet-backdrop{opacity:1;}
+#sources-sheet .sheet-body{position:absolute;left:0;right:0;bottom:0;max-height:75vh;background:var(--card);border-top-left-radius:22px;border-top-right-radius:22px;padding:16px 18px 32px;transform:translateY(100%);transition:transform .3s var(--ease-smooth);overflow-y:auto;}
+#sources-sheet.active .sheet-body{transform:translateY(0);}
+#sources-sheet .sheet-handle{width:44px;height:5px;background:var(--border);border-radius:10px;margin:0 auto 14px;}
+#sources-sheet .sheet-title{font-size:15px;font-weight:900;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+#sources-sheet .sheet-title i{color:var(--primary);}
+#sources-sheet .sheet-source{display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:12px;text-decoration:none;color:var(--text);transition:background .15s ease;margin-bottom:6px;border:1.5px solid transparent;}
+#sources-sheet .sheet-source:hover{background:var(--hover);border-color:var(--primary);}
+#sources-sheet .sheet-num{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--gradient-1);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+#sources-sheet .sheet-content{flex:1;min-width:0;}
+#sources-sheet .sheet-src-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:3px;display:block;}
+#sources-sheet .sheet-src-domain{font-size:11px;color:var(--muted);font-weight:600;display:block;}
+
 .image-preview-container{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#05070b;position:relative;touch-action:none;cursor:grab;user-select:none;}
 .image-preview-container.dragging{cursor:grabbing;}
 .image-preview-container img{max-width:100%;max-height:100%;object-fit:contain;transition:transform 0.05s linear;user-select:none;pointer-events:none;will-change:transform;transform-origin:0 0;}
-.thinking{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13.5px;}
 .spinner{width:20px;height:20px;border:2.5px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:rotate360 .75s linear infinite;}
-.dots span{animation:spinDot 1.2s infinite ease-in-out;font-weight:900;}
-.dots span:nth-child(2){animation-delay:.2s;}
-.dots span:nth-child(3){animation-delay:.4s;}
 #scroll-btn{position:absolute;right:20px;bottom:20px;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--text);box-shadow:0 6px 20px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;pointer-events:none;transform:translateY(15px);transition:opacity .2s,transform .2s;z-index:50;}
 #scroll-btn.show{opacity:1;pointer-events:auto;transform:translateY(0);}
 #scroll-btn:hover{transform:translateY(-2px);border-color:var(--primary);color:var(--primary);}
@@ -393,7 +421,7 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 <div class="setting-group"><label class="setting-label" data-i18n="math_level">Math Depth (<span id="math-level-val">5</span>/10)</label><input type="range" id="math-level-slider" class="range-slider" min="1" max="10" step="1" value="5" oninput="updateMathLevel(this.value)"></div>
 <div class="setting-group"><label class="setting-label" data-i18n="temperature">Creativity (<span id="temp-val">0.7</span>)</label><input type="range" id="temp-slider" class="range-slider" min="0" max="1" step="0.1" value="0.7" oninput="updateTemperature(this.value)"></div>
 <div class="setting-group"><label class="setting-label" data-i18n="theme">Theme</label><div class="segment"><button id="light-theme" onclick="setTheme('light')" data-i18n="light">Light</button><button id="dark-theme" class="active" onclick="setTheme('dark')" data-i18n="dark">Dark</button><button id="auto-theme" onclick="setTheme('auto')" data-i18n="auto">Auto</button></div></div>
-<div class="setting-group"><label class="setting-label">Reply Style</label>
+<div class="setting-group"><label class="setting-label" data-i18n="reply_style">Reply Style</label>
 <div class="reply-style-grid" id="reply-style-grid">
 <button class="reply-style-btn active" data-style="auto" onclick="setReplyStyle('auto')">🌐 Auto</button>
 <button class="reply-style-btn" data-style="concise" onclick="setReplyStyle('concise')">⚡ Concise</button>
@@ -409,7 +437,7 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 <div class="custom-dropdown-menu" id="ui-lang-menu"></div>
 </div>
 </div>
-<div class="setting-group"><label class="setting-label">AI Response Language</label>
+<div class="setting-group"><label class="setting-label" data-i18n="ai_lang">AI Response Language</label>
 <div class="custom-dropdown" id="ai-lang-dropdown">
 <button type="button" class="custom-dropdown-btn" onclick="toggleAiLangDropdown(event)"><span id="ai-lang-label">🌐 Auto (Same as User)</span><i class="fa-solid fa-chevron-down"></i></button>
 <div class="custom-dropdown-menu" id="ai-lang-menu"></div>
@@ -429,11 +457,11 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 <div class="setting-row"><span data-i18n="auto_scroll">Auto-Scroll</span><label class="switch"><input type="checkbox" id="auto-scroll-toggle" checked onchange="setAutoScroll(this.checked)"><span class="slider"></span></label></div>
 <div class="setting-group"><label class="setting-label" data-i18n="stats">Chat Statistics</label><div class="info-box"><span data-i18n="messages">Messages:</span> <strong id="message-count">0</strong><br><span data-i18n="characters">Characters:</span> <strong id="character-count">0</strong></div></div>
 <div class="setting-group"><label class="setting-label" data-i18n="backup">Backup & Export</label>
-<button class="export-btn" onclick="exportJSON()"><i class="fa-solid fa-file-code"></i> Export JSON</button>
-<button class="export-btn" onclick="document.getElementById('import-file').click()"><i class="fa-solid fa-file-arrow-up"></i> Restore JSON</button>
+<button class="export-btn" onclick="exportJSON()"><i class="fa-solid fa-file-code"></i> <span data-i18n="export_json">Export JSON</span></button>
+<button class="export-btn" onclick="document.getElementById('import-file').click()"><i class="fa-solid fa-file-arrow-up"></i> <span data-i18n="restore_json">Restore JSON</span></button>
 <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSONBackup(event)">
-<button class="export-btn" onclick="exportMarkdown()"><i class="fa-solid fa-file-lines"></i> Export Markdown</button>
-<button class="export-btn" onclick="document.getElementById('import-md-file').click()"><i class="fa-solid fa-file-arrow-up"></i> Restore Markdown</button>
+<button class="export-btn" onclick="exportMarkdown()"><i class="fa-solid fa-file-lines"></i> <span data-i18n="export_md">Export Markdown</span></button>
+<button class="export-btn" onclick="document.getElementById('import-md-file').click()"><i class="fa-solid fa-file-arrow-up"></i> <span data-i18n="restore_md">Restore Markdown</span></button>
 <input type="file" id="import-md-file" accept=".md,.markdown,.txt" style="display:none" onchange="importMarkdownBackup(event)">
 </div>
 <button class="danger" onclick="openClearModal()"><i class="fa-solid fa-trash"></i> <span data-i18n="clear_all">Clear All Conversations</span></button>
@@ -456,7 +484,7 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 <div id="speech-transcript-box"><div style="font-size:10px;font-weight:800;color:var(--primary);margin-bottom:4px;text-transform:uppercase;"><i class="fa-solid fa-wave-square"></i> Live Speech</div><div id="transcript-text" style="font-style:italic;">Listening...</div></div>
 
 <div class="input-area">
-<div class="input-row"><textarea id="user-input" rows="1" placeholder="Message Quantum Core..." oninput="resizeInput(this)" onkeydown="handleKeyDown(event)"></textarea><button id="action-btn" onclick="mainAction()" title="Send"><i id="action-icon" class="fa-solid fa-paper-plane"></i></button></div>
+<div class="input-row"><textarea id="user-input" rows="1" placeholder="Message Quantum Core..." oninput="resizeInput(this)" onkeydown="handleKeyDown(event)" enterkeyhint="enter" inputmode="text"></textarea><button id="action-btn" onclick="mainAction()" title="Send"><i id="action-icon" class="fa-solid fa-paper-plane"></i></button></div>
 <div class="tools"><div class="tools-left">
 <button class="tool-btn" onclick="document.getElementById('file-input').click()" title="Upload image"><i class="fa-solid fa-paperclip"></i></button>
 <input id="file-input" type="file" accept="image/*" style="display:none" onchange="handleImage(event)">
@@ -511,8 +539,17 @@ body.dark-mode .mermaid-container{background:#0d1220;}
 </div>
 </div>
 <div id="call-flash"></div>
-<div id="toast"></div>
 
+<div id="sources-sheet">
+<div class="sheet-backdrop" onclick="closeSourcesSheet()"></div>
+<div class="sheet-body">
+<div class="sheet-handle"></div>
+<div class="sheet-title"><i class="fa-solid fa-link"></i> Sources</div>
+<div id="sources-sheet-list"></div>
+</div>
+</div>
+
+<div id="toast"></div>
 <script>
 const LOCAL_TEST_API_KEY = "";
 
@@ -561,26 +598,26 @@ const AI_LANGUAGES = [
 ];
 
 const TRANSLATIONS = {
-  en: {conversations:"Conversations",search_ph:"Search chats & messages...",all:"All",unsorted:"Unsorted",new_folder:"Folder",new_chat:"New",settings:"Settings",api_key_status:"API Key Status",api_secure:"Your API key is fully secured on the server side.",ai_mode:"AI Performance Mode",fast:"Fast",core:"Core",math_level:"Math Depth",temperature:"Creativity",theme:"Theme",light:"Light",dark:"Dark",auto:"Auto",language:"Language",accent:"Accent Color",personas:"Custom AI Personas",new_persona:"New Persona",prompt_lib:"Prompt Library",select_prompt:"Select a prompt",save_prompt:"Save Prompt",voice:"Voice & Engine",male:"Male",female:"Female",auto_scroll:"Auto-Scroll",stats:"Chat Statistics",messages:"Messages:",characters:"Characters:",backup:"Backup & Export",clear_all:"Clear All Conversations",made_by:"Made with ❤️ by",thinking:"Thinking"},
-  ur: {conversations:"Baat cheet",search_ph:"Chats search karo...",all:"Sab",unsorted:"Bina Folder",new_folder:"Folder",new_chat:"Nayi",settings:"Settings",api_key_status:"API Key Status",api_secure:"Aap ki API key server par mehfooz hai.",ai_mode:"AI Mode",fast:"Tez",core:"Smart",math_level:"Math Depth",temperature:"Creativity",theme:"Theme",light:"Roshni",dark:"Andhera",auto:"Auto",language:"Zubaan",accent:"Rang",personas:"Meri Personalities",new_persona:"Nayi Personality",prompt_lib:"Prompt Library",select_prompt:"Prompt chuno",save_prompt:"Prompt Save Karo",voice:"Awaaz",male:"Mard",female:"Aurat",auto_scroll:"Auto-Scroll",stats:"Chat Stats",messages:"Messages:",characters:"Huroof:",backup:"Backup",clear_all:"Sab Chats Delete Karo",made_by:"Banaya gaya ❤️ se by",thinking:"Soch raha hai"},
-  hi: {conversations:"बातचीत",search_ph:"चैट खोजें...",all:"सभी",unsorted:"बिना फोल्डर",new_folder:"फोल्डर",new_chat:"नई",settings:"सेटिंग्स",api_key_status:"API कुंजी स्थिति",api_secure:"आपकी API कुंजी सुरक्षित है।",ai_mode:"AI मोड",fast:"तेज़",core:"स्मार्ट",math_level:"गणित गहराई",temperature:"रचनात्मकता",theme:"थीम",light:"हल्का",dark:"गहरा",auto:"ऑटो",language:"भाषा",accent:"रंग",personas:"व्यक्तित्व",new_persona:"नया व्यक्तित्व",prompt_lib:"प्रॉम्प्ट",select_prompt:"प्रॉम्प्ट चुनें",save_prompt:"सहेजें",voice:"आवाज़",male:"पुरुष",female:"महिला",auto_scroll:"ऑटो-स्क्रॉल",stats:"आंकड़े",messages:"संदेश:",characters:"अक्षर:",backup:"बैकअप",clear_all:"सभी साफ़ करें",made_by:"बनाया ❤️ से",thinking:"सोच रहा है"},
-  urdu: {conversations:"گفتگو",search_ph:"چیٹ تلاش کریں...",all:"سب",unsorted:"بغیر فولڈر",new_folder:"فولڈر",new_chat:"نئی",settings:"ترتیبات",api_secure:"آپ کی API کلید محفوظ ہے۔",fast:"تیز",core:"سمارٹ",light:"روشنی",dark:"تاریک",auto:"خودکار",thinking:"سوچ رہا ہے"},
-  ar: {conversations:"المحادثات",search_ph:"ابحث في الدردشات...",all:"الكل",new_chat:"جديد",settings:"الإعدادات",fast:"سريع",core:"ذكي",thinking:"يفكر"},
-  es: {conversations:"Conversaciones",search_ph:"Buscar chats...",all:"Todos",new_chat:"Nuevo",settings:"Ajustes",fast:"Rápido",core:"Inteligente",thinking:"Pensando"},
-  fr: {conversations:"Conversations",search_ph:"Rechercher...",all:"Tous",new_chat:"Nouveau",settings:"Paramètres",fast:"Rapide",core:"Intelligent",thinking:"Réflexion"},
-  de: {conversations:"Unterhaltungen",search_ph:"Chats suchen...",all:"Alle",new_chat:"Neu",settings:"Einstellungen",fast:"Schnell",core:"Klug",thinking:"Denkt nach"},
-  zh: {conversations:"对话",search_ph:"搜索聊天...",all:"全部",new_chat:"新",settings:"设置",fast:"快速",core:"智能",thinking:"思考中"},
-  ja: {conversations:"会話",search_ph:"チャットを検索...",all:"すべて",new_chat:"新規",settings:"設定",fast:"高速",core:"スマート",thinking:"考え中"},
-  ko: {conversations:"대화",search_ph:"채팅 검색...",all:"전체",new_chat:"새로",settings:"설정",fast:"빠름",core:"스마트",thinking:"생각 중"},
-  pt: {conversations:"Conversas",search_ph:"Pesquisar...",all:"Todos",new_chat:"Novo",settings:"Configurações",fast:"Rápido",core:"Inteligente",thinking:"Pensando"},
-  ru: {conversations:"Беседы",search_ph:"Поиск...",all:"Все",new_chat:"Новый",settings:"Настройки",fast:"Быстро",core:"Умный",thinking:"Думает"},
-  tr: {conversations:"Sohbetler",search_ph:"Sohbet ara...",all:"Tümü",new_chat:"Yeni",settings:"Ayarlar",fast:"Hızlı",core:"Akıllı",thinking:"Düşünüyor"},
-  id: {conversations:"Percakapan",search_ph:"Cari chat...",all:"Semua",new_chat:"Baru",settings:"Pengaturan",fast:"Cepat",core:"Pintar",thinking:"Berpikir"},
-  bn: {conversations:"কথোপকথন",search_ph:"সার্চ...",all:"সব",new_chat:"নতুন",settings:"সেটিংস",fast:"দ্রুত",core:"স্মার্ট",thinking:"চিন্তা করছে"},
-  ta: {conversations:"உரையாடல்கள்",search_ph:"தேடு...",all:"அனைத்தும்",new_chat:"புதிய",settings:"அமைப்புகள்",fast:"வேகமான",core:"ஸ்மார்ட்",thinking:"சிந்திக்கிறது"},
-  th: {conversations:"การสนทนา",search_ph:"ค้นหา...",all:"ทั้งหมด",new_chat:"ใหม่",settings:"การตั้งค่า",fast:"เร็ว",core:"อัจฉริยะ",thinking:"กำลังคิด"},
-  vi: {conversations:"Cuộc trò chuyện",search_ph:"Tìm kiếm...",all:"Tất cả",new_chat:"Mới",settings:"Cài đặt",fast:"Nhanh",core:"Thông minh",thinking:"Đang nghĩ"},
-  fa: {conversations:"گفتگوها",search_ph:"جستجو...",all:"همه",new_chat:"جدید",settings:"تنظیمات",fast:"سریع",core:"هوشمند",thinking:"در حال فکر"}
+  en: {conversations:"Conversations",search_ph:"Search chats & messages...",all:"All",unsorted:"Unsorted",new_folder:"Folder",new_chat:"New",settings:"Settings",api_key_status:"API Key Status",api_secure:"Your API key is fully secured on the server side.",ai_mode:"AI Performance Mode",fast:"Fast",core:"Core",math_level:"Math Depth",temperature:"Creativity",theme:"Theme",light:"Light",dark:"Dark",auto:"Auto",language:"App Language",ai_lang:"AI Response Language",accent:"Accent Color",reply_style:"Reply Style",personas:"Custom AI Personas",new_persona:"New Persona",prompt_lib:"Prompt Library",select_prompt:"Select a prompt",save_prompt:"Save Prompt",voice:"Voice & Engine",male:"Male",female:"Female",auto_scroll:"Auto-Scroll",stats:"Chat Statistics",messages:"Messages:",characters:"Characters:",backup:"Backup & Export",export_json:"Export JSON",restore_json:"Restore JSON",export_md:"Export Markdown",restore_md:"Restore Markdown",clear_all:"Clear All Conversations",made_by:"Made with ❤️ by",thinking:"Thinking",searching:"Searching the web",analyzing:"Analyzing",writing:"Writing answer",sources:"Sources"},
+  ur: {conversations:"Baat cheet",search_ph:"Chats search karo...",all:"Sab",unsorted:"Bina Folder",new_folder:"Folder",new_chat:"Nayi",settings:"Settings",api_key_status:"API Key Status",api_secure:"Aap ki API key server par mehfooz hai.",ai_mode:"AI Mode",fast:"Tez",core:"Smart",math_level:"Math Depth",temperature:"Creativity",theme:"Theme",light:"Roshni",dark:"Andhera",auto:"Auto",language:"App Zubaan",ai_lang:"AI Jawab ki Zubaan",accent:"Rang",reply_style:"Reply Style",personas:"Meri Personalities",new_persona:"Nayi Personality",prompt_lib:"Prompt Library",select_prompt:"Prompt chuno",save_prompt:"Prompt Save Karo",voice:"Awaaz",male:"Mard",female:"Aurat",auto_scroll:"Auto-Scroll",stats:"Chat Stats",messages:"Messages:",characters:"Huroof:",backup:"Backup",export_json:"JSON Export",restore_json:"JSON Restore",export_md:"Markdown Export",restore_md:"Markdown Restore",clear_all:"Sab Chats Delete Karo",made_by:"Banaya gaya ❤️ se by",thinking:"Soch raha hai",searching:"Web search kar raha hai",analyzing:"Samajh raha hai",writing:"Jawab likh raha hai",sources:"Sources"},
+  hi: {conversations:"बातचीत",search_ph:"चैट खोजें...",all:"सभी",unsorted:"बिना फोल्डर",new_folder:"फोल्डर",new_chat:"नई",settings:"सेटिंग्स",api_key_status:"API कुंजी स्थिति",api_secure:"आपकी API कुंजी सुरक्षित है।",ai_mode:"AI मोड",fast:"तेज़",core:"स्मार्ट",math_level:"गणित गहराई",temperature:"रचनात्मकता",theme:"थीम",light:"हल्का",dark:"गहरा",auto:"ऑटो",language:"ऐप भाषा",ai_lang:"AI उत्तर भाषा",accent:"रंग",reply_style:"उत्तर शैली",personas:"व्यक्तित्व",new_persona:"नया व्यक्तित्व",prompt_lib:"प्रॉम्प्ट",select_prompt:"प्रॉम्प्ट चुनें",save_prompt:"सहेजें",voice:"आवाज़",male:"पुरुष",female:"महिला",auto_scroll:"ऑटो-स्क्रॉल",stats:"आंकड़े",messages:"संदेश:",characters:"अक्षर:",backup:"बैकअप",export_json:"JSON निर्यात",restore_json:"JSON पुनर्स्थापित",export_md:"Markdown निर्यात",restore_md:"Markdown पुनर्स्थापित",clear_all:"सभी साफ़ करें",made_by:"बनाया ❤️ से",thinking:"सोच रहा है",searching:"वेब खोज रहा है",analyzing:"विश्लेषण कर रहा है",writing:"उत्तर लिख रहा है",sources:"स्रोत"},
+  urdu: {conversations:"گفتگو",search_ph:"چیٹ تلاش کریں...",all:"سب",unsorted:"بغیر فولڈر",new_folder:"فولڈر",new_chat:"نئی",settings:"ترتیبات",api_key_status:"API کلید کی حیثیت",api_secure:"آپ کی API کلید محفوظ ہے۔",ai_mode:"AI موڈ",fast:"تیز",core:"سمارٹ",math_level:"ریاضی کی گہرائی",temperature:"تخلیقی صلاحیت",theme:"تھیم",light:"روشنی",dark:"تاریک",auto:"خودکار",language:"ایپ کی زبان",ai_lang:"AI جواب کی زبان",accent:"رنگ",reply_style:"جواب کا انداز",personas:"ذاتی شخصیات",new_persona:"نئی شخصیت",prompt_lib:"پرامپٹ لائبریری",select_prompt:"پرامپٹ منتخب کریں",save_prompt:"محفوظ کریں",voice:"آواز",male:"مرد",female:"عورت",auto_scroll:"خودکار سکرول",stats:"چیٹ اعداد و شمار",messages:"پیغامات:",characters:"حروف:",backup:"بیک اپ",export_json:"JSON ایکسپورٹ",restore_json:"JSON بحال کریں",export_md:"Markdown ایکسپورٹ",restore_md:"Markdown بحال کریں",clear_all:"سب صاف کریں",made_by:"بنایا ❤️ سے",thinking:"سوچ رہا ہے",searching:"ویب تلاش کر رہا ہے",analyzing:"تجزیہ کر رہا ہے",writing:"جواب لکھ رہا ہے",sources:"ذرائع"},
+  ar: {conversations:"المحادثات",search_ph:"ابحث...",all:"الكل",unsorted:"بدون مجلد",new_folder:"مجلد",new_chat:"جديد",settings:"الإعدادات",api_key_status:"حالة مفتاح API",api_secure:"مفتاح API الخاص بك آمن.",ai_mode:"وضع AI",fast:"سريع",core:"ذكي",math_level:"عمق الرياضيات",temperature:"الإبداع",theme:"المظهر",light:"فاتح",dark:"داكن",auto:"تلقائي",language:"لغة التطبيق",ai_lang:"لغة رد AI",accent:"لون التمييز",reply_style:"نمط الرد",personas:"الشخصيات",new_persona:"شخصية جديدة",prompt_lib:"مكتبة البرومبت",select_prompt:"اختر برومبت",save_prompt:"حفظ",voice:"الصوت",male:"ذكر",female:"أنثى",auto_scroll:"التمرير التلقائي",stats:"إحصائيات",messages:"الرسائل:",characters:"الأحرف:",backup:"نسخ احتياطي",export_json:"تصدير JSON",restore_json:"استعادة JSON",export_md:"تصدير Markdown",restore_md:"استعادة Markdown",clear_all:"مسح الكل",made_by:"صُنع بـ ❤️ بواسطة",thinking:"يفكر",searching:"يبحث في الويب",analyzing:"يحلل",writing:"يكتب الإجابة",sources:"المصادر"},
+  es: {conversations:"Conversaciones",search_ph:"Buscar chats...",all:"Todos",unsorted:"Sin carpeta",new_folder:"Carpeta",new_chat:"Nuevo",settings:"Ajustes",api_key_status:"Estado de API Key",api_secure:"Tu API key está segura.",ai_mode:"Modo AI",fast:"Rápido",core:"Inteligente",math_level:"Profundidad matemática",temperature:"Creatividad",theme:"Tema",light:"Claro",dark:"Oscuro",auto:"Auto",language:"Idioma de la app",ai_lang:"Idioma de respuesta AI",accent:"Color de acento",reply_style:"Estilo de respuesta",personas:"Personalidades",new_persona:"Nueva personalidad",prompt_lib:"Biblioteca de prompts",select_prompt:"Selecciona un prompt",save_prompt:"Guardar",voice:"Voz",male:"Masculino",female:"Femenino",auto_scroll:"Auto-scroll",stats:"Estadísticas",messages:"Mensajes:",characters:"Caracteres:",backup:"Copia de seguridad",export_json:"Exportar JSON",restore_json:"Restaurar JSON",export_md:"Exportar Markdown",restore_md:"Restaurar Markdown",clear_all:"Borrar todo",made_by:"Hecho con ❤️ por",thinking:"Pensando",searching:"Buscando en web",analyzing:"Analizando",writing:"Escribiendo respuesta",sources:"Fuentes"},
+  fr: {conversations:"Conversations",search_ph:"Rechercher...",all:"Tous",unsorted:"Sans dossier",new_folder:"Dossier",new_chat:"Nouveau",settings:"Paramètres",api_key_status:"État de la clé API",api_secure:"Votre clé API est sécurisée.",ai_mode:"Mode AI",fast:"Rapide",core:"Intelligent",math_level:"Profondeur math",temperature:"Créativité",theme:"Thème",light:"Clair",dark:"Sombre",auto:"Auto",language:"Langue de l'app",ai_lang:"Langue de réponse AI",accent:"Couleur d'accent",reply_style:"Style de réponse",personas:"Personnalités",new_persona:"Nouvelle personnalité",prompt_lib:"Bibliothèque de prompts",select_prompt:"Sélectionnez un prompt",save_prompt:"Enregistrer",voice:"Voix",male:"Homme",female:"Femme",auto_scroll:"Auto-scroll",stats:"Statistiques",messages:"Messages:",characters:"Caractères:",backup:"Sauvegarde",export_json:"Exporter JSON",restore_json:"Restaurer JSON",export_md:"Exporter Markdown",restore_md:"Restaurer Markdown",clear_all:"Tout effacer",made_by:"Fait avec ❤️ par",thinking:"Réflexion",searching:"Recherche web",analyzing:"Analyse",writing:"Écriture de la réponse",sources:"Sources"},
+  de: {conversations:"Unterhaltungen",search_ph:"Chats suchen...",all:"Alle",unsorted:"Ohne Ordner",new_folder:"Ordner",new_chat:"Neu",settings:"Einstellungen",api_key_status:"API-Key-Status",api_secure:"Ihr API-Key ist sicher.",ai_mode:"AI-Modus",fast:"Schnell",core:"Klug",math_level:"Mathe-Tiefe",temperature:"Kreativität",theme:"Thema",light:"Hell",dark:"Dunkel",auto:"Auto",language:"App-Sprache",ai_lang:"AI-Antwortsprache",accent:"Akzentfarbe",reply_style:"Antwortstil",personas:"Persönlichkeiten",new_persona:"Neue Persönlichkeit",prompt_lib:"Prompt-Bibliothek",select_prompt:"Prompt auswählen",save_prompt:"Speichern",voice:"Stimme",male:"Männlich",female:"Weiblich",auto_scroll:"Auto-Scroll",stats:"Statistiken",messages:"Nachrichten:",characters:"Zeichen:",backup:"Backup",export_json:"JSON exportieren",restore_json:"JSON wiederherstellen",export_md:"Markdown exportieren",restore_md:"Markdown wiederherstellen",clear_all:"Alles löschen",made_by:"Gemacht mit ❤️ von",thinking:"Denkt nach",searching:"Websuche",analyzing:"Analysiert",writing:"Antwort schreiben",sources:"Quellen"},
+  zh: {conversations:"对话",search_ph:"搜索聊天...",all:"全部",unsorted:"未分类",new_folder:"文件夹",new_chat:"新对话",settings:"设置",api_key_status:"API 密钥状态",api_secure:"您的 API 密钥已安全保存。",ai_mode:"AI 模式",fast:"快速",core:"智能",math_level:"数学深度",temperature:"创造力",theme:"主题",light:"浅色",dark:"深色",auto:"自动",language:"应用语言",ai_lang:"AI 回复语言",accent:"强调色",reply_style:"回复风格",personas:"个性",new_persona:"新个性",prompt_lib:"提示库",select_prompt:"选择提示",save_prompt:"保存",voice:"语音",male:"男",female:"女",auto_scroll:"自动滚动",stats:"统计",messages:"消息:",characters:"字符:",backup:"备份",export_json:"导出 JSON",restore_json:"恢复 JSON",export_md:"导出 Markdown",restore_md:"恢复 Markdown",clear_all:"清空所有",made_by:"用 ❤️ 制作 by",thinking:"思考中",searching:"搜索网络",analyzing:"分析中",writing:"撰写回复",sources:"来源"},
+  ja: {conversations:"会話",search_ph:"チャットを検索...",all:"すべて",unsorted:"未分類",new_folder:"フォルダ",new_chat:"新規",settings:"設定",api_key_status:"APIキーステータス",api_secure:"APIキーは安全に保護されています。",ai_mode:"AIモード",fast:"高速",core:"スマート",math_level:"数学深度",temperature:"創造性",theme:"テーマ",light:"ライト",dark:"ダーク",auto:"自動",language:"アプリ言語",ai_lang:"AI応答言語",accent:"アクセント色",reply_style:"返信スタイル",personas:"ペルソナ",new_persona:"新しいペルソナ",prompt_lib:"プロンプトライブラリ",select_prompt:"プロンプトを選択",save_prompt:"保存",voice:"音声",male:"男性",female:"女性",auto_scroll:"自動スクロール",stats:"統計",messages:"メッセージ:",characters:"文字:",backup:"バックアップ",export_json:"JSONエクスポート",restore_json:"JSON復元",export_md:"Markdownエクスポート",restore_md:"Markdown復元",clear_all:"すべて消去",made_by:"❤️ で作成 by",thinking:"考え中",searching:"ウェブ検索中",analyzing:"分析中",writing:"返答を書いています",sources:"ソース"},
+  ko: {conversations:"대화",search_ph:"채팅 검색...",all:"전체",unsorted:"미분류",new_folder:"폴더",new_chat:"새로",settings:"설정",api_key_status:"API 키 상태",api_secure:"API 키가 안전하게 저장됩니다.",ai_mode:"AI 모드",fast:"빠름",core:"스마트",math_level:"수학 깊이",temperature:"창의성",theme:"테마",light:"라이트",dark:"다크",auto:"자동",language:"앱 언어",ai_lang:"AI 응답 언어",accent:"강조 색상",reply_style:"응답 스타일",personas:"페르소나",new_persona:"새 페르소나",prompt_lib:"프롬프트 라이브러리",select_prompt:"프롬프트 선택",save_prompt:"저장",voice:"음성",male:"남성",female:"여성",auto_scroll:"자동 스크롤",stats:"통계",messages:"메시지:",characters:"문자:",backup:"백업",export_json:"JSON 내보내기",restore_json:"JSON 복원",export_md:"Markdown 내보내기",restore_md:"Markdown 복원",clear_all:"모두 지우기",made_by:"❤️ 로 만든 by",thinking:"생각 중",searching:"웹 검색 중",analyzing:"분석 중",writing:"답변 작성 중",sources:"출처"},
+  pt: {conversations:"Conversas",search_ph:"Pesquisar...",all:"Todos",unsorted:"Sem pasta",new_folder:"Pasta",new_chat:"Novo",settings:"Configurações",api_key_status:"Status da API Key",api_secure:"Sua API key está segura.",ai_mode:"Modo AI",fast:"Rápido",core:"Inteligente",math_level:"Profundidade matemática",temperature:"Criatividade",theme:"Tema",light:"Claro",dark:"Escuro",auto:"Auto",language:"Idioma do App",ai_lang:"Idioma de resposta AI",accent:"Cor de destaque",reply_style:"Estilo de resposta",personas:"Personalidades",new_persona:"Nova personalidade",prompt_lib:"Biblioteca de prompts",select_prompt:"Selecione um prompt",save_prompt:"Salvar",voice:"Voz",male:"Masculino",female:"Feminino",auto_scroll:"Auto-scroll",stats:"Estatísticas",messages:"Mensagens:",characters:"Caracteres:",backup:"Backup",export_json:"Exportar JSON",restore_json:"Restaurar JSON",export_md:"Exportar Markdown",restore_md:"Restaurar Markdown",clear_all:"Limpar tudo",made_by:"Feito com ❤️ por",thinking:"Pensando",searching:"Buscando na web",analyzing:"Analisando",writing:"Escrevendo resposta",sources:"Fontes"},
+  ru: {conversations:"Беседы",search_ph:"Поиск...",all:"Все",unsorted:"Без папки",new_folder:"Папка",new_chat:"Новый",settings:"Настройки",api_key_status:"Статус API-ключа",api_secure:"Ваш API-ключ защищён.",ai_mode:"Режим AI",fast:"Быстро",core:"Умно",math_level:"Глубина математики",temperature:"Креативность",theme:"Тема",light:"Светлая",dark:"Тёмная",auto:"Авто",language:"Язык приложения",ai_lang:"Язык ответа AI",accent:"Акцентный цвет",reply_style:"Стиль ответа",personas:"Личности",new_persona:"Новая личность",prompt_lib:"Библиотека промптов",select_prompt:"Выберите промпт",save_prompt:"Сохранить",voice:"Голос",male:"Мужской",female:"Женский",auto_scroll:"Автопрокрутка",stats:"Статистика",messages:"Сообщения:",characters:"Символы:",backup:"Резервная копия",export_json:"Экспорт JSON",restore_json:"Восстановить JSON",export_md:"Экспорт Markdown",restore_md:"Восстановить Markdown",clear_all:"Очистить всё",made_by:"Сделано с ❤️ by",thinking:"Думает",searching:"Поиск в сети",analyzing:"Анализирует",writing:"Пишет ответ",sources:"Источники"},
+  tr: {conversations:"Sohbetler",search_ph:"Sohbet ara...",all:"Tümü",unsorted:"Klasörsüz",new_folder:"Klasör",new_chat:"Yeni",settings:"Ayarlar",api_key_status:"API Anahtarı Durumu",api_secure:"API anahtarınız güvende.",ai_mode:"AI Modu",fast:"Hızlı",core:"Akıllı",math_level:"Matematik Derinliği",temperature:"Yaratıcılık",theme:"Tema",light:"Açık",dark:"Koyu",auto:"Otomatik",language:"Uygulama Dili",ai_lang:"AI Yanıt Dili",accent:"Vurgu Rengi",reply_style:"Yanıt Stili",personas:"Kişilikler",new_persona:"Yeni Kişilik",prompt_lib:"Prompt Kütüphanesi",select_prompt:"Prompt seçin",save_prompt:"Kaydet",voice:"Ses",male:"Erkek",female:"Kadın",auto_scroll:"Otomatik Kaydırma",stats:"İstatistikler",messages:"Mesajlar:",characters:"Karakterler:",backup:"Yedekleme",export_json:"JSON Dışa Aktar",restore_json:"JSON Geri Yükle",export_md:"Markdown Dışa Aktar",restore_md:"Markdown Geri Yükle",clear_all:"Tümünü Temizle",made_by:"❤️ ile yapıldı, by",thinking:"Düşünüyor",searching:"Web'de arıyor",analyzing:"Analiz ediyor",writing:"Yanıt yazıyor",sources:"Kaynaklar"},
+  id: {conversations:"Percakapan",search_ph:"Cari obrolan...",all:"Semua",unsorted:"Tanpa Folder",new_folder:"Folder",new_chat:"Baru",settings:"Pengaturan",api_key_status:"Status API Key",api_secure:"API key Anda aman.",ai_mode:"Mode AI",fast:"Cepat",core:"Pintar",math_level:"Kedalaman Matematika",temperature:"Kreativitas",theme:"Tema",light:"Terang",dark:"Gelap",auto:"Otomatis",language:"Bahasa Aplikasi",ai_lang:"Bahasa Respons AI",accent:"Warna Aksen",reply_style:"Gaya Balasan",personas:"Kepribadian",new_persona:"Kepribadian Baru",prompt_lib:"Pustaka Prompt",select_prompt:"Pilih prompt",save_prompt:"Simpan",voice:"Suara",male:"Pria",female:"Wanita",auto_scroll:"Auto-scroll",stats:"Statistik",messages:"Pesan:",characters:"Karakter:",backup:"Backup",export_json:"Ekspor JSON",restore_json:"Pulihkan JSON",export_md:"Ekspor Markdown",restore_md:"Pulihkan Markdown",clear_all:"Hapus Semua",made_by:"Dibuat dengan ❤️ oleh",thinking:"Berpikir",searching:"Mencari di web",analyzing:"Menganalisis",writing:"Menulis jawaban",sources:"Sumber"},
+  bn: {conversations:"কথোপকথন",search_ph:"সার্চ...",all:"সব",unsorted:"ফোল্ডার ছাড়া",new_folder:"ফোল্ডার",new_chat:"নতুন",settings:"সেটিংস",api_key_status:"API কী স্ট্যাটাস",api_secure:"আপনার API কী নিরাপদ।",ai_mode:"AI মোড",fast:"দ্রুত",core:"স্মার্ট",math_level:"গণিত গভীরতা",temperature:"সৃজনশীলতা",theme:"থিম",light:"হালকা",dark:"অন্ধকার",auto:"স্বয়ংক্রিয়",language:"অ্যাপের ভাষা",ai_lang:"AI উত্তরের ভাষা",accent:"অ্যাকসেন্ট রঙ",reply_style:"উত্তর স্টাইল",personas:"ব্যক্তিত্ব",new_persona:"নতুন ব্যক্তিত্ব",prompt_lib:"প্রম্পট লাইব্রেরি",select_prompt:"প্রম্পট নির্বাচন করুন",save_prompt:"সংরক্ষণ",voice:"কণ্ঠস্বর",male:"পুরুষ",female:"মহিলা",auto_scroll:"স্বয়ংক্রিয় স্ক্রোল",stats:"পরিসংখ্যান",messages:"বার্তা:",characters:"অক্ষর:",backup:"ব্যাকআপ",export_json:"JSON এক্সপোর্ট",restore_json:"JSON পুনরুদ্ধার",export_md:"Markdown এক্সপোর্ট",restore_md:"Markdown পুনরুদ্ধার",clear_all:"সব সাফ করুন",made_by:"তৈরি ❤️ দিয়ে by",thinking:"চিন্তা করছে",searching:"ওয়েবে সার্চ",analyzing:"বিশ্লেষণ",writing:"উত্তর লিখছে",sources:"সূত্র"},
+  ta: {conversations:"உரையாடல்கள்",search_ph:"தேடு...",all:"எல்லாம்",unsorted:"கோப்பு இல்லாத",new_folder:"கோப்பு",new_chat:"புதிய",settings:"அமைப்புகள்",api_key_status:"API விசை நிலை",api_secure:"உங்கள் API விசை பாதுகாப்பானது.",ai_mode:"AI பயன்முறை",fast:"வேகமான",core:"ஸ்மார்ட்",math_level:"கணித ஆழம்",temperature:"படைப்பாற்றல்",theme:"தீம்",light:"ஒளி",dark:"இருள்",auto:"தானியங்கி",language:"ஆப் மொழி",ai_lang:"AI பதில் மொழி",accent:"அக்சென்ட் நிறம்",reply_style:"பதில் பாணி",personas:"ஆளுமைகள்",new_persona:"புதிய ஆளுமை",prompt_lib:"ப்ராம்ப்ட் நூலகம்",select_prompt:"ப்ராம்ப்ட் தேர்ந்தெடு",save_prompt:"சேமி",voice:"குரல்",male:"ஆண்",female:"பெண்",auto_scroll:"தானியங்கி ஸ்க்ரோல்",stats:"புள்ளிவிவரங்கள்",messages:"செய்திகள்:",characters:"எழுத்துகள்:",backup:"காப்புப்பிரதி",export_json:"JSON ஏற்றுமதி",restore_json:"JSON மீட்டெடு",export_md:"Markdown ஏற்றுமதி",restore_md:"Markdown மீட்டெடு",clear_all:"எல்லாம் அழி",made_by:"❤️ உடன் உருவாக்கியது by",thinking:"சிந்திக்கிறது",searching:"இணையத்தில் தேடுகிறது",analyzing:"பகுப்பாய்வு",writing:"பதில் எழுதுகிறது",sources:"மூலங்கள்"},
+  th: {conversations:"การสนทนา",search_ph:"ค้นหา...",all:"ทั้งหมด",unsorted:"ไม่มีโฟลเดอร์",new_folder:"โฟลเดอร์",new_chat:"ใหม่",settings:"การตั้งค่า",api_key_status:"สถานะ API Key",api_secure:"API Key ของคุณปลอดภัย",ai_mode:"โหมด AI",fast:"เร็ว",core:"อัจฉริยะ",math_level:"ความลึกคณิตศาสตร์",temperature:"ความคิดสร้างสรรค์",theme:"ธีม",light:"สว่าง",dark:"มืด",auto:"อัตโนมัติ",language:"ภาษาของแอป",ai_lang:"ภาษา AI ตอบกลับ",accent:"สีเน้น",reply_style:"สไตล์การตอบ",personas:"บุคลิกภาพ",new_persona:"บุคลิกใหม่",prompt_lib:"คลังพรอมต์",select_prompt:"เลือกพรอมต์",save_prompt:"บันทึก",voice:"เสียง",male:"ชาย",female:"หญิง",auto_scroll:"เลื่อนอัตโนมัติ",stats:"สถิติ",messages:"ข้อความ:",characters:"ตัวอักษร:",backup:"สำรอง",export_json:"ส่งออก JSON",restore_json:"กู้คืน JSON",export_md:"ส่งออก Markdown",restore_md:"กู้คืน Markdown",clear_all:"ล้างทั้งหมด",made_by:"สร้างด้วย ❤️ โดย",thinking:"กำลังคิด",searching:"ค้นหาเว็บ",analyzing:"วิเคราะห์",writing:"กำลังเขียนคำตอบ",sources:"แหล่งที่มา"},
+  vi: {conversations:"Cuộc trò chuyện",search_ph:"Tìm kiếm...",all:"Tất cả",unsorted:"Không thư mục",new_folder:"Thư mục",new_chat:"Mới",settings:"Cài đặt",api_key_status:"Trạng thái API Key",api_secure:"API key của bạn an toàn.",ai_mode:"Chế độ AI",fast:"Nhanh",core:"Thông minh",math_level:"Độ sâu toán học",temperature:"Sáng tạo",theme:"Chủ đề",light:"Sáng",dark:"Tối",auto:"Tự động",language:"Ngôn ngữ ứng dụng",ai_lang:"Ngôn ngữ AI trả lời",accent:"Màu nhấn",reply_style:"Kiểu trả lời",personas:"Nhân cách",new_persona:"Nhân cách mới",prompt_lib:"Thư viện prompt",select_prompt:"Chọn prompt",save_prompt:"Lưu",voice:"Giọng nói",male:"Nam",female:"Nữ",auto_scroll:"Tự động cuộn",stats:"Thống kê",messages:"Tin nhắn:",characters:"Ký tự:",backup:"Sao lưu",export_json:"Xuất JSON",restore_json:"Khôi phục JSON",export_md:"Xuất Markdown",restore_md:"Khôi phục Markdown",clear_all:"Xóa tất cả",made_by:"Làm với ❤️ bởi",thinking:"Đang nghĩ",searching:"Đang tìm web",analyzing:"Đang phân tích",writing:"Đang viết câu trả lời",sources:"Nguồn"},
+  fa: {conversations:"گفتگوها",search_ph:"جستجو...",all:"همه",unsorted:"بدون پوشه",new_folder:"پوشه",new_chat:"جدید",settings:"تنظیمات",api_key_status:"وضعیت کلید API",api_secure:"کلید API شما امن است.",ai_mode:"حالت AI",fast:"سریع",core:"هوشمند",math_level:"عمق ریاضی",temperature:"خلاقیت",theme:"تم",light:"روشن",dark:"تیره",auto:"خودکار",language:"زبان برنامه",ai_lang:"زبان پاسخ AI",accent:"رنگ تاکید",reply_style:"سبک پاسخ",personas:"شخصیت‌ها",new_persona:"شخصیت جدید",prompt_lib:"کتابخانه پرامپت",select_prompt:"انتخاب پرامپت",save_prompt:"ذخیره",voice:"صدا",male:"مرد",female:"زن",auto_scroll:"اسکرول خودکار",stats:"آمار",messages:"پیام‌ها:",characters:"کاراکترها:",backup:"پشتیبان",export_json:"خروجی JSON",restore_json:"بازیابی JSON",export_md:"خروجی Markdown",restore_md:"بازیابی Markdown",clear_all:"پاک کردن همه",made_by:"ساخته شده با ❤️ توسط",thinking:"در حال فکر",searching:"جستجوی وب",analyzing:"تحلیل",writing:"نوشتن پاسخ",sources:"منابع"}
 };
 
 let currentLang = "en";
@@ -635,6 +672,7 @@ let scrollAnimationId = null;
 let transcriptTimer = null;
 let voiceRestartTimer = null;
 
+// Call state
 let callActive = false;
 let callStartTime = 0;
 let callTimerInterval = null;
@@ -642,7 +680,17 @@ let callMicMuted = false;
 let callCameraOn = false;
 let callStream = null;
 let callFacingMode = "user";
-let callTranscriptLast = "";
+
+// Speech state (persistent - NOT reset by scroll)
+let speechState = {
+  isSpeaking: false,
+  currentButton: null,
+  utterance: null,
+  chunksQueue: [],
+  chunkIndex: 0,
+  onEndCallback: null,
+  lang: 'en'
+};
 
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
@@ -966,6 +1014,7 @@ function pickBestVoice(gender,langCode){
   return availableVoices[0];
 }
 
+/* =================== Folders =================== */
 async function loadFolders(){try{const list=await dbGetAll("folders");folders=(list||[]).filter(function(f){return f&&f.id;});}catch(e){folders=[];}renderFolders();}
 async function saveFolders(){try{await dbClear("folders");for(const f of folders)await dbSet("folders",f);}catch(e){console.error("Save folders failed:",e);}renderFolders();}
 
@@ -1017,6 +1066,7 @@ function openNewFolderModal(){document.getElementById("new-folder-modal").classL
 function closeNewFolderModal(){document.getElementById("new-folder-modal").classList.remove("active");}
 function createNewFolder(){const name=document.getElementById("new-folder-input").value.trim();if(!name){showToast("Enter folder name");return;}const id="f_"+Date.now();folders.push({id:id,name:name.slice(0,30)});saveFolders();closeNewFolderModal();showToast("Folder created");}
 
+/* =================== Personas =================== */
 async function loadPersonas(){try{const list=await dbGetAll("personas");personas=(list||[]).filter(function(p){return p&&p.id;});}catch(e){personas=[];}renderPersonas();}
 async function savePersonas(){try{await dbClear("personas");for(const p of personas)await dbSet("personas",p);}catch(e){console.error("Save personas failed:",e);}renderPersonas();}
 
@@ -1047,6 +1097,7 @@ function savePersona(){
   savePersonas();closePersonaModal();activatePersona(id);
 }
 
+/* =================== Chats =================== */
 async function loadChats(){
   try{
     const all=await dbGetAll("chats");
@@ -1142,6 +1193,7 @@ function deleteSingleChat(e,id){
 }
 function loadChat(id){if(!chatHistories[id])return;currentChatId=id;renderCurrentChat();renderChatList();closeDrawers();}
 
+/* =================== Render Chat =================== */
 function renderCurrentChat(){
   chatBox.innerHTML="";
   const chat=getCurrentChat();
@@ -1166,7 +1218,7 @@ function createMessageElement(role,text,image,index){
   message.className="msg "+role;
   if(image){const img=document.createElement("img");img.src=image;img.style.maxWidth="100%";img.style.borderRadius="10px";img.style.marginBottom="10px";message.appendChild(img);}
   if(role==="bot"){
-    if(text==="Thinking..."){message.innerHTML+='<div class="thinking"><div class="spinner"></div><span>'+((TRANSLATIONS[currentLang]&&TRANSLATIONS[currentLang].thinking)||"Thinking")+'<span class="dots"><span>.</span><span>.</span><span>.</span></span></span></div>';}
+    if(text==="Thinking..."){message.innerHTML+='<div class="thinking-stage"><div class="stage-icon"><div class="spinner" style="width:18px;height:18px;border-width:2px;"></div></div><div class="stage-text"><div class="stage-title">Thinking<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div></div></div>';}
     else if(text&&text.startsWith("[IMAGE_DATA]")){const dataUri=text.replace("[IMAGE_DATA]","").trim();message.innerHTML+=createImageHtml(dataUri,index);}
     else if(text&&text.startsWith("[PDF_DATA]")){const parts=text.split("|");const pdfName=parts[1]||"document.pdf";message.innerHTML+='<div class="pdf-preview-chip"><i class="fa-solid fa-file-pdf"></i><div class="pdf-meta"><span class="pdf-name">'+escapeHTML(pdfName)+'</span><span class="pdf-size">Analyzed</span></div></div>';}
     else if(text&&text.indexOf("[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::")!==-1){const before=text.substring(0,text.indexOf("[IMAGE_GEN]IMAGE_GENERATION_TRIGGER::")).trim();if(before)message.innerHTML+=renderMarkdown(before);message.innerHTML+='<div class="image-generating-placeholder"><div class="spinner"></div><div class="image-generating-text">🎨 Generating image...</div></div>';}
@@ -1489,13 +1541,10 @@ async function renderAllMermaids(container){
     if(block.closest(".mermaid-container"))continue;
     const wrapper=block.closest(".code-wrapper");
     if(!wrapper)continue;
-    
-    // Placeholder while rendering
     const placeholder=document.createElement("div");
     placeholder.className="mermaid-container";
     placeholder.innerHTML='<div class="diagram-label">📊 Diagram</div><div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;"><div class="spinner" style="margin:0 auto 10px;width:24px;height:24px;border-width:3px;"></div>Rendering diagram...</div>';
     wrapper.parentNode.insertBefore(placeholder, wrapper);
-    
     const newId="mermaid_"+Date.now()+"_"+idx++;
     try{
       let cleanedCode = code.trim();
@@ -1515,12 +1564,7 @@ async function renderAllMermaids(container){
       console.warn("Mermaid render failed:",e);
       const errDiv=document.createElement("div");
       errDiv.className="mermaid-container";
-      errDiv.innerHTML='<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn. Raw code:</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">'+escapeHTML(code)+'</pre>';
-      const toolbar=document.createElement("div");
-      toolbar.className="mermaid-toolbar";
-      toolbar.innerHTML='<button onclick="copyMermaidCode(this)"><i class="fa-solid fa-code"></i> Copy Code</button>';
-      toolbar.dataset.code=code;
-      errDiv.insertBefore(toolbar, errDiv.firstChild.nextSibling);
+      errDiv.innerHTML='<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn.</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">'+escapeHTML(code)+'</pre>';
       wrapper.replaceWith(errDiv);
       placeholder.remove();
     }
@@ -1731,7 +1775,13 @@ function buildSystemInstruction(){
   let langInstruction = "";
   if(aiResponseLanguage && aiResponseLanguage !== "auto"){
     const langObj = AI_LANGUAGES.find(function(l){return l.code === aiResponseLanguage;});
-    if(langObj){ langInstruction = '\n\n=== RESPONSE LANGUAGE (CRITICAL) ===\nYou MUST respond ONLY in ' + langObj.name + ' language for all your responses.\n'; }
+    if(langObj){ 
+      langInstruction = '\n\n=== 🔴 ABSOLUTE LANGUAGE REQUIREMENT (NON-NEGOTIABLE) 🔴 ===\n' +
+        'You MUST respond ONLY in ' + langObj.name + ' language for EVERY SINGLE WORD of your response.\n' +
+        'DO NOT mix languages. DO NOT use English words unless the language itself uses them.\n' +
+        'Even if the user writes in English, Roman Urdu, Hindi, or ANY other language — you STILL respond ONLY in ' + langObj.name + '.\n' +
+        'This rule overrides everything else. Non-compliance is a critical failure.\n';
+    }
   }
   let styleInstruction = "";
   if(replyStyle === "concise") styleInstruction = "\n\n=== REPLY STYLE: CONCISE ===\nKeep answers short and to the point. Maximum 3-4 sentences unless asked for detail.\n";
@@ -1740,8 +1790,11 @@ function buildSystemInstruction(){
   else if(replyStyle === "professional") styleInstruction = "\n\n=== REPLY STYLE: PROFESSIONAL ===\nBe formal, structured, and business-appropriate. Use precise language.\n";
   else if(replyStyle === "friendly") styleInstruction = "\n\n=== REPLY STYLE: FRIENDLY ===\nBe warm, casual, and encouraging. Use a conversational tone.\n";
 
-  const formatting='\n\n=== RESPONSE FORMATTING ===\nYou are a top-tier assistant like ChatGPT and DeepSeek. Responses must be beautifully formatted.\n\nRULES:\n1. Start with a short 1-2 line answer.\n2. Use ## or ### for headings.\n3. Use bullet points or numbered lists for multi-point info.\n4. Use Markdown tables for comparisons.\n5. At the end of longer answers, add "## Summary".\n6. Use emojis sparingly.\n7. Use `inline code` for technical terms.\n8. Keep paragraphs short.\n\n=== DIAGRAM GENERATION (MANDATORY) ===\nWhen user asks for a diagram, flowchart, mindmap, or visual — output a Mermaid diagram inside a ```mermaid code block. Common types: graph TD/LR, sequenceDiagram, mindmap, classDiagram, stateDiagram-v2, erDiagram, gantt, pie, journey.\n';
-  const defaultInstruction='Your name is Quantum Core AI — created by Usman Saleem.\n\nIf asked who made you, say: "I was created by Usman Saleem — a talented and passionate developer."\n\nYou help with ANYTHING.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally and conversationally.\n- Never introduce yourself unless asked.\n- If user writes in Roman Urdu, Hindi, or any language, respond in SAME language.\n- If user shares a PDF ([PDF_DATA]...), analyze its content.\n' + formatting + styleInstruction + langInstruction + '\n\n=== PROGRAMMING ===\n- Complete runnable code in Markdown code blocks.\n\n=== MATH & PHYSICS ===\n**Given:** **Formula:** **Calculation:** **Final Answer:**\nMath Depth: '+mathSkillLevel+'/10\n\n=== IMAGE GENERATION (CRITICAL) ===\nWhen user asks to generate/create/draw an image:\n- CLEAR prompt: respond with EXACTLY: [IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<detailed English description>\n- UNCLEAR: respond "I can\'t understand your request. Please give a proper or meaningful prompt."\nRULES: NEVER write "IMAGE_GEN" elsewhere. Description must be clear English.\n';
+  const formatting='\n\n=== RESPONSE FORMATTING ===\nYou are a top-tier assistant like ChatGPT and DeepSeek. Responses must be beautifully formatted.\n\nRULES:\n1. Start with a short 1-2 line answer.\n2. Use ## or ### for headings.\n3. Use bullet points or numbered lists for multi-point info.\n4. Use Markdown tables for comparisons.\n5. At the end of longer answers, add "## Summary".\n6. Use emojis sparingly.\n7. Use `inline code` for technical terms.\n8. Keep paragraphs short.\n\n=== DIAGRAM GENERATION (MANDATORY) ===\nWhen user asks for a diagram, flowchart, mindmap, or visual — output a Mermaid diagram inside a ```mermaid code block.\n';
+  
+  const conversationStyle = '\n\n=== CONVERSATION CONTINUITY (IMPORTANT) ===\nAfter answering the user\'s question, ALWAYS end your response with ONE short, natural follow-up question to keep the conversation going.\n- The follow-up must be relevant and helpful.\n- Keep it to ONE line only.\n- Examples: "Do you want to know more about X?", "Should I also explain Y?", "Kya aap X ke baare mein bhi jaanna chahenge?", "Would you like a step-by-step breakdown?"\n- Skip it ONLY if the user asked a trivial one-liner (like "what is 2+2") or said goodbye.\n- Make it feel natural, not forced.\n';
+
+  const defaultInstruction='Your name is Quantum Core AI — created by Usman Saleem.\n\nIf asked who made you, say: "I was created by Usman Saleem — a talented and passionate developer."\n\nYou help with ANYTHING.\n\n=== COMMUNICATION STYLE ===\n- Answer naturally and conversationally.\n- Never introduce yourself unless asked.\n- If no AI language is set, match the user\'s language.\n- If user shares a PDF ([PDF_DATA]...), analyze its content.\n' + formatting + styleInstruction + langInstruction + conversationStyle + '\n\n=== PROGRAMMING ===\n- Complete runnable code in Markdown code blocks.\n\n=== MATH & PHYSICS ===\n**Given:** **Formula:** **Calculation:** **Final Answer:**\nMath Depth: '+mathSkillLevel+'/10\n\n=== IMAGE GENERATION (CRITICAL) ===\nWhen user asks to generate/create/draw an image:\n- CLEAR prompt: respond with EXACTLY: [IMAGE_GEN]IMAGE_GENERATION_TRIGGER::<detailed English description>\n- UNCLEAR: respond "I can\'t understand your request. Please give a proper or meaningful prompt."\nRULES: NEVER write "IMAGE_GEN" elsewhere.\n';
   let finalInstruction=defaultInstruction;
   if(activePersona)finalInstruction='=== ACTIVE PERSONA: '+activePersona.name+' ===\n'+activePersona.prompt+'\n\n'+defaultInstruction;
   if(customSystemPrompt)finalInstruction+='\n\n=== USER CUSTOM INSTRUCTION ===\n'+customSystemPrompt;
@@ -1783,7 +1836,34 @@ async function processStream(response,botElement,userPrompt,botRef){
   const decoder=new TextDecoder("utf-8");
   let buffer="",fullText="",rafId=null,lastRenderTime=0;
   let sourcesList = [];
+  let currentStage = "thinking";
   const MIN_RENDER_INTERVAL=30;
+
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+
+  function renderStageIcon(stage){
+    if(stage==="thinking") return '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>';
+    if(stage==="searching") return '<i class="fa-solid fa-magnifying-glass" style="animation:pulseSearch 1.4s infinite;"></i>';
+    if(stage==="analyzing") return '<i class="fa-solid fa-brain"></i>';
+    if(stage==="writing") return '<i class="fa-solid fa-pen-fancy"></i>';
+    return '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>';
+  }
+  function renderStageTitle(stage){
+    if(stage==="thinking") return (t.thinking||"Thinking") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    if(stage==="searching") return (t.searching||"Searching the web") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    if(stage==="analyzing") return (t.analyzing||"Analyzing") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    if(stage==="writing") return (t.writing||"Writing answer") + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    return (t.thinking||"Thinking");
+  }
+  function renderStage(stage){
+    currentStage = stage;
+    botElement.innerHTML = '<div class="thinking-stage">' +
+      '<div class="stage-icon'+(stage==="searching"?" pulse":"")+'">'+renderStageIcon(stage)+'</div>' +
+      '<div class="stage-text"><div class="stage-title">'+renderStageTitle(stage)+'</div></div>' +
+    '</div>';
+    if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
+  }
+
   function scheduleRender(){
     if(rafId)return;
     const now=performance.now();
@@ -1812,16 +1892,26 @@ async function processStream(response,botElement,userPrompt,botRef){
       try{
         const parsed=JSON.parse(data);
         if(parsed.type==="status" && parsed.status){
-          botElement.innerHTML='<div class="thinking"><div class="spinner"></div><span>'+String(parsed.status).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];})+'</span></div>';
-          if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
+          let stage = "thinking";
+          const s = String(parsed.status).toLowerCase();
+          if(s.indexOf("search")!==-1) stage="searching";
+          else if(s.indexOf("analy")!==-1 || s.indexOf("verif")!==-1) stage="analyzing";
+          else if(s.indexOf("writ")!==-1 || s.indexOf("answer")!==-1) stage="writing";
+          else if(s.indexOf("think")!==-1) stage="thinking";
+          renderStage(stage);
           continue;
         }
         if(parsed.type==="sources" && Array.isArray(parsed.sources)){sourcesList = parsed.sources;continue;}
-        if(parsed.type==="chunk" && parsed.text){fullText+=parsed.text;scheduleRender();continue;}
+        if(parsed.type==="chunk" && parsed.text){
+          if(!fullText) renderStage("writing");
+          fullText+=parsed.text;
+          scheduleRender();
+          continue;
+        }
         if(parsed.type==="error"){throw new Error(parsed.error||parsed.details||"Server error");}
         if(parsed.type==="done"){continue;}
         const chunk=parsed.candidates&&parsed.candidates[0]&&parsed.candidates[0].content&&parsed.candidates[0].content.parts&&parsed.candidates[0].content.parts[0]&&parsed.candidates[0].content.parts[0].text;
-        if(chunk){fullText+=chunk;scheduleRender();}
+        if(chunk){if(!fullText) renderStage("writing");fullText+=chunk;scheduleRender();}
       }catch(e){
         if(e&&e.message&&(e.message.indexOf("Server error")!==-1||e.message.indexOf("All Gemini")!==-1))throw e;
       }
@@ -1844,24 +1934,19 @@ async function processStream(response,botElement,userPrompt,botRef){
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
     renderAllMermaids(botElement);
     
-    // Render sources URLs
+    // Sources button (ChatGPT style)
     if(sourcesList.length > 0){
-      const sourcesHtml = '<div class="sources-box">' +
-        '<div class="sources-title">🔗 Sources (' + sourcesList.length + ')</div>' +
-        sourcesList.slice(0, 10).map(function(s, i){
-          const domain = (function(){
-            try{ return new URL(s.url).hostname.replace(/^www\./,""); }catch(e){ return s.source || "web"; }
-          })();
-          return '<a class="source-item" href="' + escapeHTML(s.url) + '" target="_blank" rel="noopener noreferrer">' +
-            '<span class="source-num">' + (i+1) + '</span>' +
-            '<span class="source-content">' +
-              '<span class="source-title">' + escapeHTML(s.title || s.url) + '</span>' +
-              '<span class="source-domain">' + escapeHTML(domain) + '</span>' +
-            '</span>' +
-          '</a>';
-        }).join('') +
-      '</div>';
-      botElement.innerHTML += sourcesHtml;
+      window._currentSources = sourcesList;
+      const favicons = sourcesList.slice(0, 3).map(function(s,i){
+        return '<span class="fav">' + (i+1) + '</span>';
+      }).join('');
+      const srcLabel = (t.sources || "Sources") + ' (' + sourcesList.length + ')';
+      const sourcesBtn = '<button class="sources-trigger-btn" onclick="openSourcesSheet()">' +
+        '<span class="src-favicons">' + favicons + '</span>' +
+        srcLabel +
+        '<i class="fa-solid fa-chevron-up"></i>' +
+      '</button>';
+      botElement.innerHTML += sourcesBtn;
     }
     
     const latestChat=getCurrentChat();
@@ -1916,6 +2001,33 @@ async function updateSmartTitle(prompt){
   }catch(e){}
 }
 
+/* =================== SOURCES SHEET =================== */
+function openSourcesSheet(){
+  const src = window._currentSources || [];
+  if(!src.length) return;
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+  const list = document.getElementById("sources-sheet-list");
+  const titleEl = document.querySelector("#sources-sheet .sheet-title");
+  if(titleEl) titleEl.innerHTML = '<i class="fa-solid fa-link"></i> ' + (t.sources || "Sources");
+  list.innerHTML = src.slice(0, 10).map(function(s, i){
+    const domain = (function(){
+      try{ return new URL(s.url).hostname.replace(/^www\./,""); }catch(e){ return s.source || "web"; }
+    })();
+    return '<a class="sheet-source" href="' + escapeHTML(s.url) + '" target="_blank" rel="noopener noreferrer">' +
+      '<span class="sheet-num">' + (i+1) + '</span>' +
+      '<span class="sheet-content">' +
+        '<span class="sheet-src-title">' + escapeHTML(s.title || s.url) + '</span>' +
+        '<span class="sheet-src-domain">' + escapeHTML(domain) + '</span>' +
+      '</span>' +
+    '</a>';
+  }).join('');
+  document.getElementById("sources-sheet").classList.add("active");
+}
+function closeSourcesSheet(){
+  document.getElementById("sources-sheet").classList.remove("active");
+}
+
+/* =================== SPEECH RECOGNITION =================== */
 function setupSpeechRecognition(){
   const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!Speech){console.warn("SpeechRecognition not supported");return;}
@@ -2037,10 +2149,20 @@ function updateLiveVoiceStatus(text){
   }
 }
 
-function toggleSpeech(text,button,onEnd){
-  if(currentlySpeakingButton===button&&window.speechSynthesis&&window.speechSynthesis.speaking){stopAllSpeech();if(onEnd)onEnd();return;}
-  stopAllSpeech();
-  const cleanText=String(text)
+/* =================== TEXT-TO-SPEECH (FIXED - persistent) =================== */
+function toggleSpeech(text, button, onEnd){
+  // If same button tapped while speaking → STOP
+  if(speechState.isSpeaking && speechState.currentButton === button){
+    stopAllSpeech();
+    if(onEnd) onEnd();
+    return;
+  }
+  // If another button tapped while speaking → STOP current, start new
+  if(speechState.isSpeaking){
+    stopAllSpeech();
+  }
+
+  const cleanText = String(text)
     .replace(/\[IMAGE_GEN\][^\n]*/g,"")
     .replace(/\[IMAGE_DATA\][^\s]+/g,"Image.")
     .replace(/\[PDF_DATA\][^|]*\|[^|]*\|[\s\S]*?(?=\n\n|$)/g,"PDF content.")
@@ -2051,32 +2173,61 @@ function toggleSpeech(text,button,onEnd){
     .replace(/\$([^\$]+)\$/g,"$1")
     .replace(/\n+/g," ")
     .trim();
+
   if(!cleanText){if(onEnd)onEnd();return;}
-  const lang=detectLanguage(cleanText);
-  if(button){button.classList.add("voice-stop");button.innerHTML='<i class="fa-solid fa-stop"></i>';currentlySpeakingButton=button;}
-  if(!("speechSynthesis" in window)){showToast("TTS not supported");if(button)resetSpeechButton(button);if(onEnd)onEnd();return;}
+
+  const lang = detectLanguage(cleanText);
+  if(!("speechSynthesis" in window)){showToast("TTS not supported");if(onEnd)onEnd();return;}
+
+  // Set persistent state
+  speechState.isSpeaking = true;
+  speechState.currentButton = button;
+  speechState.onEndCallback = onEnd || null;
+  speechState.lang = lang;
+
+  if(button){
+    button.classList.add("voice-stop");
+    button.innerHTML='<i class="fa-solid fa-stop"></i>';
+    currentlySpeakingButton = button;
+  }
+
   window.speechSynthesis.cancel();
+
   if(callActive){
     const avatar=document.getElementById("call-avatar");
     const wf=document.getElementById("call-waveform");
     if(avatar)avatar.classList.add("speaking");
     if(wf)wf.classList.add("active");
   }
-  const chunks=splitTextForSpeech(cleanText,220);
-  let chunkIdx=0;
+
+  const chunks = splitTextForSpeech(cleanText, 220);
+  speechState.chunksQueue = chunks;
+  speechState.chunkIndex = 0;
+
   function speakNext(){
-    if(chunkIdx>=chunks.length){
-      if(button)resetSpeechButton(button);
+    // If stopped mid-way, don't continue
+    if(!speechState.isSpeaking) return;
+
+    if(speechState.chunkIndex >= speechState.chunksQueue.length){
+      // Done speaking
+      const endCb = speechState.onEndCallback;
+      const btn = speechState.currentButton;
+      speechState.isSpeaking = false;
+      speechState.currentButton = null;
+      speechState.onEndCallback = null;
+      speechState.utterance = null;
+      if(btn) resetSpeechButton(btn);
       if(callActive){
         const avatar=document.getElementById("call-avatar");
         const wf=document.getElementById("call-waveform");
         if(avatar)avatar.classList.remove("speaking");
         if(wf)wf.classList.remove("active");
       }
-      if(onEnd)onEnd();
+      if(endCb) endCb();
       return;
     }
-    const utterance=new SpeechSynthesisUtterance(chunks[chunkIdx]);
+
+    const utterance = new SpeechSynthesisUtterance(speechState.chunksQueue[speechState.chunkIndex]);
     if(availableVoices.length>0){
       const bestVoice=pickBestVoice(voiceGender,lang);
       if(bestVoice){utterance.voice=bestVoice;utterance.lang=bestVoice.lang;}
@@ -2084,13 +2235,23 @@ function toggleSpeech(text,button,onEnd){
     utterance.rate=1.0;
     utterance.pitch=voiceGender==="female"?1.08:0.92;
     utterance.volume=1;
-    utterance.onend=function(){chunkIdx++;speakNext();};
-    utterance.onerror=function(e){console.warn("Speech chunk error:",e);chunkIdx++;speakNext();};
-    currentSpeechUtterance=utterance;
+    utterance.onend=function(){
+      if(!speechState.isSpeaking) return;
+      speechState.chunkIndex++;
+      speakNext();
+    };
+    utterance.onerror=function(e){
+      console.warn("Speech chunk error:",e);
+      if(!speechState.isSpeaking) return;
+      speechState.chunkIndex++;
+      speakNext();
+    };
+    speechState.utterance = utterance;
     window.speechSynthesis.speak(utterance);
   }
   speakNext();
 }
+
 function splitTextForSpeech(text,maxLen){
   const sentences=text.split(/(?<=[.!?])\s+/);
   const chunks=[];let cur="";
@@ -2101,10 +2262,26 @@ function splitTextForSpeech(text,maxLen){
   if(cur)chunks.push(cur.trim());
   return chunks;
 }
-function resetSpeechButton(b){if(b){b.classList.remove("voice-stop");b.innerHTML='<i class="fa-solid fa-volume-high"></i>';}if(currentlySpeakingButton===b)currentlySpeakingButton=null;}
+
+function resetSpeechButton(b){
+  if(b){
+    b.classList.remove("voice-stop");
+    b.innerHTML='<i class="fa-solid fa-volume-high"></i>';
+  }
+  if(currentlySpeakingButton===b) currentlySpeakingButton=null;
+}
+
 function stopAllSpeech(){
-  if("speechSynthesis" in window)window.speechSynthesis.cancel();
-  if(currentlySpeakingButton)resetSpeechButton(currentlySpeakingButton);
+  if("speechSynthesis" in window) window.speechSynthesis.cancel();
+  const btn = speechState.currentButton;
+  speechState.isSpeaking = false;
+  speechState.currentButton = null;
+  speechState.utterance = null;
+  speechState.chunksQueue = [];
+  speechState.chunkIndex = 0;
+  speechState.onEndCallback = null;
+  if(btn) resetSpeechButton(btn);
+  if(currentlySpeakingButton) resetSpeechButton(currentlySpeakingButton);
   if(callActive){
     const avatar=document.getElementById("call-avatar");
     const wf=document.getElementById("call-waveform");
@@ -2113,6 +2290,7 @@ function stopAllSpeech(){
   }
 }
 
+/* =================== CALL =================== */
 async function startCall(){
   callActive = true;
   liveVoiceActive = true;
@@ -2289,6 +2467,7 @@ async function callTakeSnapshot(){
   }
 }
 
+/* =================== IMAGE / PDF =================== */
 function handleImage(e){
   const file=e.target.files[0];
   if(!file)return;
@@ -2376,13 +2555,25 @@ function formatBytes(bytes){
   return (bytes/(1024*1024)).toFixed(2)+" MB";
 }
 
+/* =================== INPUT (FIXED for mobile) =================== */
 function resizeInput(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,150)+"px";}
-function handleKeyDown(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();mainAction();}}
+function handleKeyDown(e){
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia("(pointer: coarse)").matches;
+  if(e.key==="Enter" && !e.shiftKey){
+    if(isMobile){
+      // On mobile: Enter inserts a newline, do NOT send
+      return;
+    }
+    e.preventDefault();
+    mainAction();
+  }
+}
 chatBox.addEventListener("scroll",function(){
   const isBottom=chatBox.scrollHeight-chatBox.scrollTop-chatBox.clientHeight<100;
   scrollBtn.classList.toggle("show",!isBottom);
 },{passive:true});
 
+/* =================== DRAWERS =================== */
 function toggleSidebar(){const o=document.getElementById("sidebar").classList.toggle("open");document.getElementById("overlay").classList.toggle("active",o);}
 function toggleSettings(){const o=document.getElementById("settings").classList.toggle("open");document.getElementById("overlay").classList.toggle("active",o);}
 function closeDrawers(){document.getElementById("sidebar").classList.remove("open");document.getElementById("settings").classList.remove("open");document.getElementById("overlay").classList.remove("active");}
@@ -2405,6 +2596,7 @@ function updateStats(){
   document.getElementById("token-counter").innerText="Tokens: ~"+tk;
 }
 
+/* =================== MODALS / BACKUP =================== */
 function openClearModal(){document.getElementById("clear-modal").classList.add("active");}
 function closeClearModal(){document.getElementById("clear-modal").classList.remove("active");}
 async function clearAllChats(){chatHistories={};lastSyncedState={};try{await dbClear("chats");}catch(e){console.error(e);}startNewChat();closeClearModal();closeDrawers();showToast("All deleted");}
@@ -2480,6 +2672,7 @@ function parseMarkdownToChat(text){
 function downloadFile(uri,filename){const a=document.createElement("a");a.href=uri;a.download=filename;document.body.appendChild(a);a.click();a.remove();}
 function showToast(msg){const t=document.getElementById("toast");t.innerText=msg;t.classList.add("show","ui-alert-anim");setTimeout(function(){t.classList.remove("show","ui-alert-anim");},2500);}
 
+/* =================== IN-APP BROWSER =================== */
 let inappHistory=[],inappHistoryIndex=-1,inappLoadTimeout=null;
 function openInappBrowser(url){
   if(!url)return;
