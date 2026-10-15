@@ -174,7 +174,7 @@ function makeScrubber(send) {
 async function fetchMemories(userId, userText) {
   if (!userId || !process.env.SUPABASE_URL) return [];
   try {
-    const url = `${process.env.SUPABASE_URL}/rest/v1/memories?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=50`;
+    const url = `${process.env.SUPABASE_URL}/rest/v1/memories?user_id=eq.${encodeURIComponent(userId)}&select=*&order=importance.desc&limit=100`;
     const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers: {
@@ -184,18 +184,42 @@ async function fetchMemories(userId, userText) {
     }, 6000);
     if (!response.ok) return [];
     const memories = await response.json();
-    if (!Array.isArray(memories)) return [];
+    if (!Array.isArray(memories) || !memories.length) return [];
+
+    // 🔥 PART A: Top important memories — HAMESHA bhejo
+    const importantOnes = memories
+      .filter(m => Number(m.importance) >= 0.7)
+      .slice(0, 6);
+
+    // 🔥 PART B: Keyword-matched memories
     const text = String(userText || '').toLowerCase();
     const words = text.split(/\s+/).filter(w => w.length >= 4);
     const scored = memories.map(memory => {
-      const searchable = [memory.key, memory.value, memory.category, memory.content, memory.type]
+      const searchable = [memory.memory_key, memory.memory_type, memory.content]
         .filter(Boolean).join(' ').toLowerCase();
       let score = 0;
       for (const w of words) if (searchable.includes(w)) score++;
+      // importance bonus
+      score += Number(memory.importance || 0) * 0.5;
       return { memory, score };
     });
     scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, 12).map(i => i.memory);
+    const matched = scored
+      .filter(s => s.score > 0.5)
+      .slice(0, 10)
+      .map(i => i.memory);
+
+    // 🔥 PART C: Merge without duplicates
+    const seen = new Set();
+    const merged = [];
+    for (const m of [...importantOnes, ...matched]) {
+      if (m && m.id && !seen.has(m.id)) {
+        seen.add(m.id);
+        merged.push(m);
+      }
+    }
+
+    return merged.slice(0, 15);
   } catch (e) {
     console.error('Memory error:', e?.message || e);
     return [];
@@ -205,11 +229,13 @@ async function fetchMemories(userId, userText) {
 function buildMemoryContext(memories) {
   if (!memories.length) return '';
   const lines = memories.map(m => {
-    const cat = m.category || m.type || 'memory';
-    const key = m.key || m.name || '';
-    const val = m.value ?? m.content ?? '';
+    const cat = m.memory_type || 'memory';
+    const key = m.memory_key || '';
+    const val = m.content || '';
+    if (!val) return null;
     return `- [${cat}] ${key}: ${val}`;
-  });
+  }).filter(Boolean);
+  if (!lines.length) return '';
   return `\n\nRELEVANT USER MEMORY:\n${lines.join('\n')}\n\nUse these memories naturally when relevant. Do not mention the memory system.`;
 }
 
