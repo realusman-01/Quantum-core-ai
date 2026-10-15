@@ -2,10 +2,6 @@ export const config = {
   runtime: 'edge'
 };
 
-/* =========================================================
-   RADOX AI (Primary) + GEMINI (Fallback)
-   ========================================================= */
-
 const RADOX_API = 'https://radoxai.com/v1/chat/completions';
 
 const RADOX_MODELS = {
@@ -27,10 +23,6 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 };
 
-/* =========================================================
-   BASIC HELPERS
-   ========================================================= */
-
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -51,10 +43,6 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
     clearTimeout(timer);
   }
 }
-
-/* =========================================================
-   EXTRACT USER TEXT + MEMORY
-   ========================================================= */
 
 function getLatestUserText(contents) {
   if (!Array.isArray(contents)) return '';
@@ -82,10 +70,8 @@ async function fetchMemories(userId, userText) {
     if (!response.ok) return [];
     const memories = await response.json();
     if (!Array.isArray(memories)) return [];
-
     const text = String(userText || '').toLowerCase();
     const words = text.split(/\s+/).filter(w => w.length >= 4);
-
     const scored = memories.map(memory => {
       const searchable = [memory.key, memory.value, memory.category, memory.content, memory.type]
         .filter(Boolean).join(' ').toLowerCase();
@@ -109,36 +95,21 @@ function buildMemoryContext(memories) {
     const val = m.value ?? m.content ?? '';
     return `- [${cat}] ${key}: ${val}`;
   });
-  return `\n\nRELEVANT USER MEMORY:\n${lines.join('\n')}\n\nUse these memories naturally when relevant. Do not mention the memory system. Do not invent memories.`;
+  return `\n\nRELEVANT USER MEMORY:\n${lines.join('\n')}\n\nUse these memories naturally when relevant. Do not mention the memory system.`;
 }
-
-/* =========================================================
-   SEARCH DETECTION
-   ========================================================= */
 
 function looksLikeFreshInfoQuestion(text) {
   const t = String(text || '').toLowerCase();
-  const patterns = [
-    'latest','today',"today's",'right now','currently','current','this week','this month',
-    'recent','recently','newest','news','update','updates','2026','2025','price today',
-    'weather','score','scores','result','results','release date','released','available now',
-    'who won','current president','current prime minister','aaj','abhi','kab','kab release','kya hua'
-  ];
+  const patterns = ['latest','today',"today's",'right now','currently','current','this week','this month','recent','recently','newest','news','update','updates','2026','2025','price today','weather','score','scores','result','results','release date','released','available now','who won','current president','current prime minister','aaj','abhi','kab','kab release','kya hua'];
   return patterns.some(p => t.includes(p));
 }
 
 function definitelyDoesNotNeedSearch(text) {
   const t = String(text || '').trim().toLowerCase();
   if (!t) return true;
-  const patterns = ['solve','calculate','simplify','factorize','factorise','equation','homework',
-    'physics numerical','chemistry equation','translate','rewrite','rephrase','proofread',
-    'debug this code','explain this code'];
+  const patterns = ['solve','calculate','simplify','factorize','factorise','equation','homework','physics numerical','chemistry equation','translate','rewrite','rephrase','proofread','debug this code','explain this code'];
   return patterns.some(p => t.startsWith(p) || t.includes(p));
 }
-
-/* =========================================================
-   GEMINI TEXT EXTRACTION
-   ========================================================= */
 
 function extractModelText(data) {
   if (!data) return '';
@@ -154,18 +125,12 @@ function extractModelText(data) {
   return '';
 }
 
-/* =========================================================
-   SEARCH DECISION (via Radox fast model)
-   ========================================================= */
-
 async function askSearchDecision(userText) {
   if (!userText) return false;
   if (looksLikeFreshInfoQuestion(userText)) return true;
   if (definitelyDoesNotNeedSearch(userText)) return false;
-
   const key = process.env.RADOX_API_KEY;
   if (!key) return false;
-
   try {
     const res = await fetchWithTimeout(RADOX_API, {
       method: 'POST',
@@ -176,28 +141,22 @@ async function askSearchDecision(userText) {
       body: JSON.stringify({
         model: RADOX_DECISION_MODEL,
         messages: [
-          { role: 'system', content: 'You decide if a user question needs a live web search. Reply ONLY "YES" or "NO".' },
-          { role: 'user', content: `Question: ${userText}\n\nDoes this need current/live web information? Reply YES or NO only.` }
+          { role: 'system', content: 'Reply ONLY "YES" or "NO".' },
+          { role: 'user', content: `Does this need current/live web info? "${userText}"` }
         ],
         temperature: 0,
         max_tokens: 5,
         stream: false
       })
     }, 6000);
-
     if (!res.ok) return false;
     const data = await res.json();
     const answer = (data?.choices?.[0]?.message?.content || '').trim().toUpperCase();
     return answer.startsWith('YES');
   } catch (e) {
-    console.error('Search decision error:', e?.message || e);
     return false;
   }
 }
-
-/* =========================================================
-   QUANTUM SEARCH — Multi-Source Aggregator
-   ========================================================= */
 
 async function quantumSearch(query) {
   if (!query) return [];
@@ -324,12 +283,8 @@ function buildSearchContext(results) {
   if (!results || !results.length) return '';
   return `\n\nWEB SEARCH RESULTS:\n${results.map((r, i) =>
     `\n[${i + 1}] [${r.source || 'Web'}]\nTitle: ${r.title || ''}\nURL: ${r.url || ''}\nContent: ${r.content || ''}\n`
-  ).join('\n')}\n\nUse the web results when relevant. Cite sources as [1], [2], etc. Do not invent facts contradicted by search results.`;
+  ).join('\n')}\n\nUse the web results when relevant. Cite sources as [1], [2], etc.`;
 }
-
-/* =========================================================
-   MERMAID SAFETY INSTRUCTION
-   ========================================================= */
 
 const diagramInstruction = `
 
@@ -337,19 +292,14 @@ DIAGRAM SAFETY:
 When creating Mermaid diagrams:
 - Use valid Mermaid syntax.
 - Keep node IDs simple.
-- Never use raw coordinate pairs as node IDs.
 - Close every Mermaid code fence.
 
-For mathematical diagrams, prefer:
+Example:
 flowchart LR
-    A["Point A"]
-    B["Point B"]
+    A["Start"]
+    B["End"]
     A --> B
 `;
-
-/* =========================================================
-   SOURCES EVENT HELPER
-   ========================================================= */
 
 function sourcesEventForClient(searchResults) {
   if (!searchResults || !searchResults.length) return null;
@@ -359,10 +309,6 @@ function sourcesEventForClient(searchResults) {
     source: r.source || 'Web'
   }));
 }
-
-/* =========================================================
-   RADOX STREAM → CLIENT SSE
-   ========================================================= */
 
 async function streamRadoxToClient(radoxResponse, searchResults) {
   if (!radoxResponse.body) throw new Error('Radox returned no stream body');
@@ -375,12 +321,9 @@ async function streamRadoxToClient(radoxResponse, searchResults) {
     async start(controller) {
       const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
       try {
-        send({ type: 'status', status: 'Thinking...' });
-        
-        // Send sources early so frontend can render them
+        send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
         const srcEvt = sourcesEventForClient(searchResults);
         if (srcEvt) send({ type: 'sources', sources: srcEvt });
-
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -402,7 +345,6 @@ async function streamRadoxToClient(radoxResponse, searchResults) {
         send({ type: 'done' });
         controller.close();
       } catch (error) {
-        console.error('Radox stream error:', error?.message || error);
         send({ type: 'error', error: error?.message || 'Streaming error' });
         controller.close();
       } finally {
@@ -412,10 +354,6 @@ async function streamRadoxToClient(radoxResponse, searchResults) {
   });
   return stream;
 }
-
-/* =========================================================
-   GEMINI STREAM → CLIENT SSE (Fallback)
-   ========================================================= */
 
 async function streamGeminiToClient(geminiResponse, searchResults) {
   const reader = geminiResponse.body.getReader();
@@ -427,11 +365,9 @@ async function streamGeminiToClient(geminiResponse, searchResults) {
     async start(controller) {
       const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
       try {
-        send({ type: 'status', status: 'Thinking...' });
-
+        send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
         const srcEvt = sourcesEventForClient(searchResults);
         if (srcEvt) send({ type: 'sources', sources: srcEvt });
-
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -463,14 +399,9 @@ async function streamGeminiToClient(geminiResponse, searchResults) {
   return stream;
 }
 
-/* =========================================================
-   CALL RADOX AI
-   ========================================================= */
-
 async function callRadoxAI(model, messages, systemPrompt, temperature) {
   const key = process.env.RADOX_API_KEY;
   if (!key) throw new Error('RADOX_API_KEY not configured');
-
   const res = await fetchWithTimeout(RADOX_API, {
     method: 'POST',
     headers: {
@@ -479,16 +410,12 @@ async function callRadoxAI(model, messages, systemPrompt, temperature) {
     },
     body: JSON.stringify({
       model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages
-      ],
+      messages: [{ role: 'system', content: systemPrompt }, ...messages],
       temperature: typeof temperature === 'number' ? temperature : 0.7,
       max_tokens: 8192,
       stream: true
     })
   }, 60000);
-
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Radox ${model} HTTP ${res.status}: ${err.substring(0, 200)}`);
@@ -496,14 +423,9 @@ async function callRadoxAI(model, messages, systemPrompt, temperature) {
   return res;
 }
 
-/* =========================================================
-   CALL GEMINI (fallback)
-   ========================================================= */
-
 async function callGemini(model, contents, systemInstruction, generationConfig) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY not configured');
-
   const url = `${GEMINI_API}${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`;
   const res = await fetchWithTimeout(url, {
     method: 'POST',
@@ -514,17 +436,12 @@ async function callGemini(model, contents, systemInstruction, generationConfig) 
       generationConfig
     })
   }, 60000);
-
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Gemini ${model} HTTP ${res.status}: ${err.substring(0, 200)}`);
   }
   return res;
 }
-
-/* =========================================================
-   CONVERT CONTENTS → OPENAI MESSAGES
-   ========================================================= */
 
 function contentsToMessages(contents) {
   const messages = [];
@@ -539,10 +456,6 @@ function contentsToMessages(contents) {
   }
   return messages;
 }
-
-/* =========================================================
-   MAIN HANDLER
-   ========================================================= */
 
 export default async function handler(req) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -565,19 +478,16 @@ export default async function handler(req) {
   const userText = getLatestUserText(contents);
   if (!userText) return json({ error: 'Invalid request: user message missing' }, 400);
 
-  // Memory + search decision in parallel
   const [memories, shouldSearch] = await Promise.all([
     fetchMemories(userId, userText),
     askSearchDecision(userText)
   ]);
 
-  // Web search
   let searchResults = [];
   if (shouldSearch) {
     searchResults = await quantumSearch(userText);
   }
 
-  // System instruction
   const clientInstruction = body?.systemInstruction?.parts?.[0]?.text || '';
   const memoryContext = buildMemoryContext(memories);
   const searchContext = buildSearchContext(searchResults);
@@ -585,22 +495,37 @@ export default async function handler(req) {
   const finalSystemInstruction = `
 ${clientInstruction}
 
-CURRENT DATE: October 14, 2026.
+CURRENT DATE: October 15, 2026.
 ${memoryContext}
 ${searchContext}
 ${diagramInstruction}
 
-GENERAL RULES:
-- Be accurate and helpful.
-- Follow the user's requested language.
-- Do not invent facts.
-- For math and physics, show useful working.
-- For coding, provide working code.
-- Use web results for current information when provided.
-- When citing sources, use [1], [2], [3] format matching the numbered WEB SEARCH RESULTS above.
+=========== CRITICAL RULES (MUST FOLLOW) ===========
+
+1. LANGUAGE ENFORCEMENT:
+   - If the user's system instruction specifies an AI RESPONSE LANGUAGE (e.g., "respond ONLY in Urdu"), you MUST respond ONLY in that language for the ENTIRE response — no exceptions, no mixing.
+   - If no language is specified, match the user's language automatically.
+   - Never switch language mid-response.
+
+2. CONVERSATION CONTINUITY (VERY IMPORTANT):
+   - After answering the user's question, ALWAYS end with ONE short, natural follow-up question to keep the conversation going.
+   - The follow-up must be relevant and helpful.
+   - Keep it to 1 line max. Never skip this unless the user's question was a trivial one-liner (like "what's 2+2").
+   - Examples:
+     * "Do you want to know more about X?"
+     * "Should I also explain Y?"
+     * "Kya aap X ke baare mein bhi jaanna chahenge?"
+     * "Would you like a step-by-step breakdown?"
+   - Make it feel natural, not forced.
+
+3. ACCURACY:
+   - Use web search results when provided. Cite as [1], [2], etc.
+   - Do not invent facts. If unsure, say so.
+   - For math/physics: show working step-by-step.
+   - For coding: provide complete, runnable code.
+   - When asked for a diagram, use a \`\`\`mermaid code block.
 `;
 
-  // Try Radox models
   const radoxChain = RADOX_MODELS[activeMode] || RADOX_MODELS.fast;
   const openaiMessages = contentsToMessages(contents);
   let lastError = null;
@@ -626,13 +551,12 @@ GENERAL RULES:
     }
   }
 
-  // Gemini fallback
-  console.log('All Radox models failed. Trying Gemini fallback...');
+  console.log('All Radox failed. Trying Gemini fallback...');
   const geminiChain = GEMINI_MODEL_CHAIN[activeMode] || GEMINI_MODEL_CHAIN.fast;
 
   for (const model of geminiChain) {
     try {
-      console.log(`Trying Gemini fallback: ${model}`);
+      console.log(`Trying Gemini: ${model}`);
       const geminiRes = await callGemini(model, contents, finalSystemInstruction, generationConfig);
       const stream = await streamGeminiToClient(geminiRes, searchResults);
       return new Response(stream, {
