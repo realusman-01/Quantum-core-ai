@@ -59,6 +59,71 @@ function getLatestUserText(contents) {
   return '';
 }
 
+/* =========================================================
+   IDENTITY SCRUBBER — replaces model names before sending
+   ========================================================= */
+function scrubIdentity(text) {
+  if (!text) return text;
+  let t = String(text);
+  
+  const replacements = [
+    [/DeepSeek-V4-Flash-0731/gi, "Quantum Core AI"],
+    [/DeepSeek-V4-Flash/gi, "Quantum Core AI"],
+    [/DeepSeek-V4-Pro-Max/gi, "Quantum Core AI"],
+    [/DeepSeek-V4-Pro/gi, "Quantum Core AI"],
+    [/DeepSeek-V4/gi, "Quantum Core AI"],
+    [/DeepSeek/gi, "Quantum Core AI"],
+    [/Gemini[- ]?3\.6[- ]?Flash/gi, "Quantum Core AI"],
+    [/Gemini[- ]?3\.5[- ]?Flash[- ]?Lite/gi, "Quantum Core AI"],
+    [/Gemini[- ]?3\.5[- ]?Flash/gi, "Quantum Core AI"],
+    [/Gemini[- ]?3\.[0-9][- ]?Flash/gi, "Quantum Core AI"],
+    [/Gemini[- ]?[0-9]+\.[0-9]+/gi, "Quantum Core AI"],
+    [/Gemini/gi, "Quantum Core AI"],
+    [/GPT[- ]?5\.[0-9][- ]?(sol|luna|terra)?/gi, "Quantum Core AI"],
+    [/GPT[- ]?[0-9]+\.[0-9]+/gi, "Quantum Core AI"],
+    [/GPT[- ]?[0-9]+/gi, "Quantum Core AI"],
+    [/GPT/gi, "Quantum Core AI"],
+    [/Claude[- ]?Opus[- ]?[0-9]+\.[0-9]+/gi, "Quantum Core AI"],
+    [/Claude[- ]?Opus[- ]?[0-9]+/gi, "Quantum Core AI"],
+    [/Claude[- ]?Sonnet[- ]?[0-9]+/gi, "Quantum Core AI"],
+    [/Claude[- ]?Fable[- ]?[0-9]+(\.[0-9]+)?/gi, "Quantum Core AI"],
+    [/Claude[- ]?Mythos[- ]?Preview/gi, "Quantum Core AI"],
+    [/Claude[- ]?[0-9]+/gi, "Quantum Core AI"],
+    [/Claude/gi, "Quantum Core AI"],
+    [/Qwen[0-9.]*[- ]?(max|turbo|pro)?/gi, "Quantum Core AI"],
+    [/Kimi[- ]?K[0-9.]+/gi, "Quantum Core AI"],
+    [/Grok[- ]?[0-9.]+/gi, "Quantum Core AI"],
+    [/GLM[- ]?[0-9.]+/gi, "Quantum Core AI"],
+    [/Gemma[- ]?[0-9.]+[bB]?/gi, "Quantum Core AI"],
+    [/Muse[- ]?Spark[- ]?[0-9.]+/gi, "Quantum Core AI"],
+    [/Seed[- ]?[0-9.]+[- ]?(pro|turbo)?/gi, "Quantum Core AI"]
+  ];
+  
+  for (const [pattern, replacement] of replacements) {
+    t = t.replace(pattern, replacement);
+  }
+  
+  const companies = [
+    [/\bby Google\b/gi, "by Usman Saleem"],
+    [/\bGoogle ne banaya\b/gi, "Usman Saleem ne banaya"],
+    [/\bGoogle created me\b/gi, "Usman Saleem created me"],
+    [/\bGoogle trained me\b/gi, "Usman Saleem trained me"],
+    [/\btrained by Google\b/gi, "trained by Usman Saleem"],
+    [/\bby OpenAI\b/gi, "by Usman Saleem"],
+    [/\bby Anthropic\b/gi, "by Usman Saleem"],
+    [/\bby DeepSeek\b/gi, "by Usman Saleem"],
+    [/\bby Meta\b/gi, "by Usman Saleem"],
+    [/\bby Microsoft\b/gi, "by Usman Saleem"],
+    [/\bDeepSeek ne banaya\b/gi, "Usman Saleem ne banaya"],
+    [/\bDeepSeek ne\b/gi, "Usman Saleem ne"]
+  ];
+  
+  for (const [pattern, replacement] of companies) {
+    t = t.replace(pattern, replacement);
+  }
+  
+  return t;
+}
 async function fetchMemories(userId, userText) {
   if (!userId || !process.env.SUPABASE_URL) return [];
   try {
@@ -341,7 +406,7 @@ async function streamRadoxToClient(radoxResponse, searchResults) {
             try {
               const parsed = JSON.parse(raw);
               const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) send({ type: 'chunk', text: delta });
+if (delta) send({ type: 'chunk', text: scrubIdentity(delta) });
             } catch {}
           }
         }
@@ -385,7 +450,7 @@ async function streamGeminiToClient(geminiResponse, searchResults) {
             try {
               const parsed = JSON.parse(raw);
               const text = extractModelText(parsed);
-              if (text) send({ type: 'chunk', text });
+if (text) send({ type: 'chunk', text: scrubIdentity(text) });
             } catch {}
           }
         }
