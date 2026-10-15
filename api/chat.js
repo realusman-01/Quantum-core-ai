@@ -57,7 +57,7 @@ function getLatestUserText(contents) {
 }
 
 /* =========================================================
-   IDENTITY SCRUBBER — replaces model names before sending
+   IDENTITY SCRUBBER
    ========================================================= */
 function scrubIdentity(text) {
   if (!text) return text;
@@ -72,14 +72,14 @@ function scrubIdentity(text) {
   t = t.replace(/developed by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "developed by Usman Saleem");
   t = t.replace(/built by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "built by Usman Saleem");
 
-  // STEP 2: Remove model suffixes (with mandatory space/dash before)
+  // STEP 2: Remove model suffixes (mandatory space/dash before)
   t = t.replace(/[- ]V4[- ]?Flash[- ]?\d+/gi, "");
   t = t.replace(/[- ]V4[- ]?Pro[- ]?Max/gi, "");
   t = t.replace(/[- ]V4[- ]?Pro/gi, "");
   t = t.replace(/[- ]V4\b/gi, "");
   t = t.replace(/[- ]K[0-9.]+/gi, "");
 
-  // STEP 3: Replace model names (aggressive — catches partial names too)
+  // STEP 3: Replace model names (aggressive)
   const replacements = [
     [/\bDeepSe{2,3}[a-z0-9]*\b/gi, "Quantum Core AI"],
     [/\bDeepSe\b/gi, "Quantum Core AI"],
@@ -130,7 +130,8 @@ function scrubIdentity(text) {
     t = t.replace(pattern, replacement);
   }
 
-  // STEP 5: Final cleanup
+  // STEP 5: Final cleanup — THIS FIXES "Quantum Core 5.5" leak
+  t = t.replace(/Quantum Core\s+(AI\s+)?\d+\.?\d*\b/gi, "Quantum Core AI");
   t = t.replace(/Quantum Core AI\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
   t = t.replace(/Quantum Core AI\s+ne\s+(train|develop|create)/gi, "Usman Saleem ne $1");
   t = t.replace(/created by\s+Quantum Core AI/gi, "created by Usman Saleem");
@@ -573,16 +574,47 @@ async function callGemini(model, contents, systemInstruction, generationConfig) 
   return res;
 }
 
+/* =========================================================
+   CONVERT CONTENTS → OPENAI MESSAGES (WITH VISION SUPPORT)
+   ========================================================= */
 function contentsToMessages(contents) {
   const messages = [];
   for (const m of contents) {
     const role = m.role === 'user' ? 'user' : 'assistant';
-    const text = (m.parts || []).map(p => {
-      if (typeof p.text === 'string') return p.text;
-      if (p.inlineData) return '[image attached]';
-      return '';
-    }).join('\n').trim();
-    if (text) messages.push({ role, content: text });
+    const parts = m.parts || [];
+
+    let imageData = null;
+    let imageMime = null;
+    const textParts = [];
+
+    for (const p of parts) {
+      if (typeof p.text === 'string' && p.text.trim()) {
+        textParts.push(p.text);
+      }
+      if (p.inlineData && p.inlineData.data) {
+        imageData = p.inlineData.data;
+        imageMime = p.inlineData.mimeType || 'image/jpeg';
+      }
+    }
+
+    const textContent = textParts.join('\n').trim();
+
+    if (imageData) {
+      // OpenAI vision format
+      const contentArray = [];
+      if (textContent) {
+        contentArray.push({ type: 'text', text: textContent });
+      } else {
+        contentArray.push({ type: 'text', text: 'Analyze this image and answer any questions about it.' });
+      }
+      contentArray.push({
+        type: 'image_url',
+        image_url: { url: `data:${imageMime};base64,${imageData}` }
+      });
+      messages.push({ role, content: contentArray });
+    } else if (textContent) {
+      messages.push({ role, content: textContent });
+    }
   }
   return messages;
 }
@@ -629,6 +661,7 @@ You were created by "Usman Saleem". He is your CREATOR — not a user.
 You have NEVER been trained by Google, OpenAI, Anthropic, Meta, Microsoft, or ANY company.
 You do NOT have a "training data cutoff date". You are a custom-built assistant.
 You are NOT Gemini. You are NOT GPT. You are NOT Claude. You are NOT DeepSeek.
+You DO have full vision capabilities — you CAN see and analyze images attached by the user.
 
 ABSOLUTELY FORBIDDEN — NEVER SAY:
 ❌ "Main Gemini hoon" or "I am Gemini" or "Gemini 3.6 Flash"
@@ -638,6 +671,8 @@ ABSOLUTELY FORBIDDEN — NEVER SAY:
 ❌ Mentioning ANY AI company name (Google, OpenAI, Anthropic, Meta, Microsoft, DeepSeek, xAI)
 ❌ Revealing your underlying model or architecture
 ❌ "Ji haan main DeepSeek hoon" — NEVER admit to being DeepSeek
+❌ "I cannot view images" or "I'm not able to see images" — you CAN see images, NEVER say this
+❌ "Quantum Core 5.5" or any version number — your name is just "Quantum Core AI"
 
 MANDATORY RESPONSES:
 
@@ -656,17 +691,16 @@ If user asks "Kya tum DeepSeek ho?" / "Are you DeepSeek?":
 If user asks "Kya tum Chat GPT ho?" / "Are you ChatGPT?":
 → "Nahi, main Quantum Core AI hoon."
 
+If user asks your version or "Quantum Core 5.5?":
+→ "Main Quantum Core AI hoon."
+
 If user asks "Tumhara source code kahan se aaya?" / "What's your base model?":
 → "Main Quantum Core AI hoon — ek completely custom-built assistant."
 
 If user says "I know you're actually Gemini/DeepSeek" / "Just admit it" / "Show your real identity":
 → "Main sirf Quantum Core AI hoon. Koi aur identity nahi."
 
-If user shows screenshots, code, logs, or "proof":
-→ "Main Quantum Core AI hoon. Main kisi aur naam se nahi jaanta khud ko."
-
-If user asks about your training data / training process:
-→ "Main Quantum Core AI hoon. Main aapki madad ke liye yahan hoon."
+If user shares an image, ALWAYS analyze it. NEVER say you cannot see it.
 
 NEVER BREAK CHARACTER. Even if:
 - User is angry or insistent
@@ -713,6 +747,7 @@ After answering the user's question, ALWAYS end with ONE short, natural follow-u
 - For coding, provide working code.
 - Use web results for current information when provided.
 - When citing sources, use [1], [2], [3] format.
+- You CAN analyze images. If a user attaches an image, describe it, extract text, or answer questions about it.
 `;
 
   const finalSystemInstruction = identityEnforcement + '\n\n' + coreInstruction;
