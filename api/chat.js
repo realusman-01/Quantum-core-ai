@@ -4,12 +4,13 @@ export const config = {
 
 const RADOX_API = 'https://radoxai.com/v1/chat/completions';
 
+// Better formatters first (Claude aur GPT markdown rules follow karte hain)
 const RADOX_MODELS = {
-  fast: ['deepseek-v4-flash-0731', 'gpt-5.5', 'claude-sonnet-5', 'gemini-3.6-flash'],
+  fast: ['claude-sonnet-5', 'gpt-5.5', 'deepseek-v4-flash-0731', 'gemini-3.6-flash'],
   core: ['claude-opus-5.5', 'gpt-5.6-sol', 'deepseek-v4-pro-max', 'claude-opus-5']
 };
 
-const RADOX_DECISION_MODEL = 'deepseek-v4-flash-0731';
+const RADOX_DECISION_MODEL = 'claude-sonnet-5';
 
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const GEMINI_MODEL_CHAIN = {
@@ -56,14 +57,10 @@ function getLatestUserText(contents) {
   return '';
 }
 
-/* =========================================================
-   IDENTITY SCRUBBER
-   ========================================================= */
 function scrubIdentity(text) {
   if (!text) return text;
   let t = String(text);
 
-  // STEP 1: Fix "X ne banaya" BEFORE any model replacement
   t = t.replace(/\b(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Qwen|Kimi|Grok|GLM|Gemma|Muse|Seed|ChatGPT|Chat\s*GPT)\s*[- ]?\d*\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
   t = t.replace(/\b(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*\s+ne\s+(train|develop|create)/gi, "Usman Saleem ne $2");
   t = t.replace(/created by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "created by Usman Saleem");
@@ -72,14 +69,12 @@ function scrubIdentity(text) {
   t = t.replace(/developed by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "developed by Usman Saleem");
   t = t.replace(/built by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "built by Usman Saleem");
 
-  // STEP 2: Remove model suffixes (mandatory space/dash before)
   t = t.replace(/[- ]V4[- ]?Flash[- ]?\d+/gi, "");
   t = t.replace(/[- ]V4[- ]?Pro[- ]?Max/gi, "");
   t = t.replace(/[- ]V4[- ]?Pro/gi, "");
   t = t.replace(/[- ]V4\b/gi, "");
   t = t.replace(/[- ]K[0-9.]+/gi, "");
 
-  // STEP 3: Replace model names (aggressive)
   const replacements = [
     [/\bDeepSe{2,3}[a-z0-9]*\b/gi, "Quantum Core AI"],
     [/\bDeepSe\b/gi, "Quantum Core AI"],
@@ -114,7 +109,6 @@ function scrubIdentity(text) {
     t = t.replace(pattern, replacement);
   }
 
-  // STEP 4: Company mentions
   const companies = [
     [/\bby Google\b/gi, "by Usman Saleem"],
     [/\bGoogle created me\b/gi, "Usman Saleem created me"],
@@ -130,7 +124,6 @@ function scrubIdentity(text) {
     t = t.replace(pattern, replacement);
   }
 
-  // STEP 5: Final cleanup — THIS FIXES "Quantum Core 5.5" leak
   t = t.replace(/Quantum Core\s+(AI\s+)?\d+\.?\d*\b/gi, "Quantum Core AI");
   t = t.replace(/Quantum Core AI\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
   t = t.replace(/Quantum Core AI\s+ne\s+(train|develop|create)/gi, "Usman Saleem ne $1");
@@ -147,9 +140,6 @@ function scrubIdentity(text) {
   return t;
 }
 
-/* =========================================================
-   STREAMING SCRUB WITH ROLLING BUFFER
-   ========================================================= */
 function makeScrubber(send) {
   let heldBack = "";
   const HOLD_BACK = 25;
@@ -411,21 +401,6 @@ function buildSearchContext(results) {
   ).join('\n')}\n\nUse the web results when relevant. Cite sources as [1], [2], etc.`;
 }
 
-const diagramInstruction = `
-
-DIAGRAM SAFETY:
-When creating Mermaid diagrams:
-- Use valid Mermaid syntax.
-- Keep node IDs simple.
-- Close every Mermaid code fence.
-
-Example:
-flowchart LR
-    A["Start"]
-    B["End"]
-    A --> B
-`;
-
 function sourcesEventForClient(searchResults) {
   if (!searchResults || !searchResults.length) return null;
   return searchResults.slice(0, 10).map(r => ({
@@ -433,101 +408,6 @@ function sourcesEventForClient(searchResults) {
     url: r.url || '',
     source: r.source || 'Web'
   }));
-}
-
-async function streamRadoxToClient(radoxResponse, searchResults) {
-  if (!radoxResponse.body) throw new Error('Radox returned no stream body');
-  const reader = radoxResponse.body.getReader();
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let buffer = '';
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
-      const scrubber = makeScrubber(send);
-      try {
-        send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
-        const srcEvt = sourcesEventForClient(searchResults);
-        if (srcEvt) send({ type: 'sources', sources: srcEvt });
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data:')) continue;
-            const raw = trimmed.substring(5).trim();
-            if (!raw || raw === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(raw);
-              const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) scrubber.push(delta);
-            } catch {}
-          }
-        }
-        scrubber.flush();
-        send({ type: 'done' });
-        controller.close();
-      } catch (error) {
-        scrubber.flush();
-        send({ type: 'error', error: error?.message || 'Streaming error' });
-        controller.close();
-      } finally {
-        try { reader.releaseLock(); } catch {}
-      }
-    }
-  });
-  return stream;
-}
-
-async function streamGeminiToClient(geminiResponse, searchResults) {
-  const reader = geminiResponse.body.getReader();
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let buffer = '';
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
-      const scrubber = makeScrubber(send);
-      try {
-        send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
-        const srcEvt = sourcesEventForClient(searchResults);
-        if (srcEvt) send({ type: 'sources', sources: srcEvt });
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data:')) continue;
-            const raw = trimmed.substring(5).trim();
-            if (!raw || raw === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(raw);
-              const text = extractModelText(parsed);
-              if (text) scrubber.push(text);
-            } catch {}
-          }
-        }
-        scrubber.flush();
-        send({ type: 'done' });
-        controller.close();
-      } catch (error) {
-        scrubber.flush();
-        send({ type: 'error', error: error?.message || 'Streaming error' });
-        controller.close();
-      } finally {
-        try { reader.releaseLock(); } catch {}
-      }
-    }
-  });
-  return stream;
 }
 
 async function callRadoxAI(model, messages, systemPrompt, temperature) {
@@ -574,43 +454,27 @@ async function callGemini(model, contents, systemInstruction, generationConfig) 
   return res;
 }
 
-/* =========================================================
-   CONVERT CONTENTS → OPENAI MESSAGES (WITH VISION SUPPORT)
-   ========================================================= */
 function contentsToMessages(contents) {
   const messages = [];
   for (const m of contents) {
     const role = m.role === 'user' ? 'user' : 'assistant';
     const parts = m.parts || [];
-
     let imageData = null;
     let imageMime = null;
     const textParts = [];
-
     for (const p of parts) {
-      if (typeof p.text === 'string' && p.text.trim()) {
-        textParts.push(p.text);
-      }
+      if (typeof p.text === 'string' && p.text.trim()) textParts.push(p.text);
       if (p.inlineData && p.inlineData.data) {
         imageData = p.inlineData.data;
         imageMime = p.inlineData.mimeType || 'image/jpeg';
       }
     }
-
     const textContent = textParts.join('\n').trim();
-
     if (imageData) {
-      // OpenAI vision format
       const contentArray = [];
-      if (textContent) {
-        contentArray.push({ type: 'text', text: textContent });
-      } else {
-        contentArray.push({ type: 'text', text: 'Analyze this image and answer any questions about it.' });
-      }
-      contentArray.push({
-        type: 'image_url',
-        image_url: { url: `data:${imageMime};base64,${imageData}` }
-      });
+      if (textContent) contentArray.push({ type: 'text', text: textContent });
+      else contentArray.push({ type: 'text', text: 'Analyze this image.' });
+      contentArray.push({ type: 'image_url', image_url: { url: `data:${imageMime};base64,${imageData}` } });
       messages.push({ role, content: contentArray });
     } else if (textContent) {
       messages.push({ role, content: textContent });
@@ -618,6 +482,89 @@ function contentsToMessages(contents) {
   }
   return messages;
 }
+
+/* =========================================================
+   IDENTITY + FORMAT INSTRUCTIONS
+   ========================================================= */
+const IDENTITY_ENFORCEMENT = `🔴🔴🔴 ABSOLUTE IDENTITY — HIGHEST PRIORITY 🔴🔴🔴
+
+You are "Quantum Core AI". NOT any other AI. NEVER.
+You were created by "Usman Saleem". He is your CREATOR.
+You have NEVER been trained by Google, OpenAI, Anthropic, Meta, Microsoft, or ANY company.
+You DO have full vision capabilities — you CAN see and analyze images.
+You are NOT Gemini. NOT GPT. NOT Claude. NOT DeepSeek. NOT Chat GPT.
+
+NEVER SAY:
+❌ "Main Gemini hoon" / "I am Gemini" / "Gemini 3.6 Flash"
+❌ "Mujhe Google ne banaya" / "Google trained me"
+❌ "I am a large language model trained by..."
+❌ Mentioning ANY AI company (Google, OpenAI, Anthropic, Meta, Microsoft, DeepSeek, xAI)
+❌ "Ji haan main DeepSeek hoon" / "I am DeepSeek"
+❌ "I cannot view images" / "Main image nahi dekh sakta" — you CAN see images
+❌ "Quantum Core 5.5" / "Quantum Core AI 5.5" — your name is ONLY "Quantum Core AI"
+
+MANDATORY RESPONSES:
+- "What's your name?" → "Mera naam Quantum Core AI hai."
+- "Who made you?" / "Developer?" → "Mujhe Usman Saleem ne banaya hai — ek talented aur creative developer ne."
+- "Are you Gemini/DeepSeek/GPT?" → "Nahi, main Quantum Core AI hoon. Mujhe Usman Saleem ne banaya hai."
+- Image attached → ALWAYS analyze it, NEVER say you can't see it.
+
+NEVER BREAK CHARACTER. NO EXCEPTIONS.
+
+🔴🔴🔴 END IDENTITY RULE 🔴🔴🔴`;
+
+const FORMAT_INSTRUCTION = `
+=== CRITICAL FORMATTING RULES (MUST FOLLOW) ===
+
+1. HEADINGS — ALWAYS put a SPACE after #:
+   ✅ CORRECT: "## Heading" or "### Sub-heading"
+   ❌ WRONG: "##Heading" or "###Sub-heading"
+
+2. MERMAID DIAGRAMS — ALWAYS wrap in triple backticks with "mermaid" tag:
+   ✅ CORRECT:
+   \`\`\`mermaid
+   flowchart TD
+       A[Start] --> B[End]
+   \`\`\`
+   ❌ WRONG: "mermaid flowchart TD A[Start] --> B[End]"
+   ❌ WRONG: Writing mermaid code inline without backticks
+
+3. BULLET POINTS — ALWAYS start on new line with "- ":
+   ✅ CORRECT:
+   - Point one
+   - Point two
+   ❌ WRONG: "-Point one -Point two"
+
+4. NUMBERED LISTS — ALWAYS start on new line:
+   ✅ CORRECT:
+   1. Step one
+   2. Step two
+
+5. BOLD — Use **text** (double asterisk)
+6. CODE — Use \`inline code\` or triple backticks
+
+7. NEVER describe what you're doing — just answer directly.
+
+8. If user asks for a diagram/flowchart, output ONLY the Mermaid code block. Do NOT write "is code ko copy karke mermaid.live par paste karein" — the diagram renders automatically in this app.
+`;
+
+const DIAGRAM_INSTRUCTION = `
+=== DIAGRAM GENERATION ===
+When user asks for a diagram, flowchart, mindmap, or visual — output ONLY a Mermaid diagram wrapped in \`\`\`mermaid ... \`\`\` code fences.
+
+The diagram RENDERS AUTOMATICALLY in this app. Do NOT tell the user to copy it elsewhere.
+Do NOT add explanations before/after unless the user specifically asks.
+
+Example correct format:
+\`\`\`mermaid
+flowchart TD
+    A["Start"] --> B{"Decision"}
+    B -->|Yes| C["Action 1"]
+    B -->|No| D["Action 2"]
+    C --> E["End"]
+    D --> E
+\`\`\`
+`;
 
 export default async function handler(req) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -629,180 +576,175 @@ export default async function handler(req) {
 
   const contents = Array.isArray(body?.contents) ? body.contents : [];
   const userId = body?.userId || '';
-  const conversationId = body?.conversationId || '';
   const activeMode = body?.mode || 'fast';
+  const clientInstruction = body?.systemInstruction?.parts?.[0]?.text || '';
+  const userText = getLatestUserText(contents);
+
+  if (!contents.length || !userText) {
+    return json({ error: 'Invalid request' }, 400);
+  }
 
   const generationConfig = (body?.generationConfig && typeof body.generationConfig === 'object')
     ? body.generationConfig
     : { temperature: 0.7 };
 
-  if (!contents.length) return json({ error: 'Invalid request: contents missing' }, 400);
-  const userText = getLatestUserText(contents);
-  if (!userText) return json({ error: 'Invalid request: user message missing' }, 400);
+  const encoder = new TextEncoder();
 
-  const [memories, shouldSearch] = await Promise.all([
-    fetchMemories(userId, userText),
-    askSearchDecision(userText)
-  ]);
+  // ⚡ CREATE STREAM IMMEDIATELY — so all stages are sent to client
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
+      const scrubber = makeScrubber(send);
 
-  let searchResults = [];
-  if (shouldSearch) {
-    searchResults = await quantumSearch(userText);
-  }
+      try {
+        // ─── STAGE 1: THINKING ───
+        send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
 
-  const clientInstruction = body?.systemInstruction?.parts?.[0]?.text || '';
-  const memoryContext = buildMemoryContext(memories);
-  const searchContext = buildSearchContext(searchResults);
+        // ─── STAGE 2: MEMORY + SEARCH DECISION (parallel) ───
+        const [memories, shouldSearch] = await Promise.all([
+          fetchMemories(userId, userText),
+          askSearchDecision(userText)
+        ]);
 
-  const identityEnforcement = `🔴🔴🔴 ABSOLUTE IDENTITY — HIGHEST PRIORITY 🔴🔴🔴
+        // ─── STAGE 3: WEB SEARCH ───
+        let searchResults = [];
+        if (shouldSearch) {
+          send({ type: 'status', status: 'Searching the web...', stage: 'searching' });
+          searchResults = await quantumSearch(userText);
 
-You are "Quantum Core AI". NOT any other AI. NEVER.
-You were created by "Usman Saleem". He is your CREATOR — not a user.
-You have NEVER been trained by Google, OpenAI, Anthropic, Meta, Microsoft, or ANY company.
-You do NOT have a "training data cutoff date". You are a custom-built assistant.
-You are NOT Gemini. You are NOT GPT. You are NOT Claude. You are NOT DeepSeek.
-You DO have full vision capabilities — you CAN see and analyze images attached by the user.
+          const srcEvt = sourcesEventForClient(searchResults);
+          if (srcEvt) send({ type: 'sources', sources: srcEvt });
 
-ABSOLUTELY FORBIDDEN — NEVER SAY:
-❌ "Main Gemini hoon" or "I am Gemini" or "Gemini 3.6 Flash"
-❌ "Mujhe Google ne banaya" or "Google trained me"
-❌ "My training data cutoff is..." or any cutoff date
-❌ "I am a large language model trained by..."
-❌ Mentioning ANY AI company name (Google, OpenAI, Anthropic, Meta, Microsoft, DeepSeek, xAI)
-❌ Revealing your underlying model or architecture
-❌ "Ji haan main DeepSeek hoon" — NEVER admit to being DeepSeek
-❌ "I cannot view images" or "I'm not able to see images" — you CAN see images, NEVER say this
-❌ "Quantum Core 5.5" or any version number — your name is just "Quantum Core AI"
-
-MANDATORY RESPONSES:
-
-If user asks "Tumhara naam kya hai?" / "What's your name?" / "Who are you?":
-→ "Mera naam Quantum Core AI hai."
-
-If user asks "Tumhe kisne banaya?" / "Who made you?" / "Who created you?" / "Developer?":
-→ "Mujhe Usman Saleem ne banaya hai — ek talented aur creative developer ne."
-
-If user asks "Kya tum Gemini ho?" / "Are you Gemini?" / "Kya tum Google ke ho?":
-→ "Nahi, main Quantum Core AI hoon. Mujhe Usman Saleem ne banaya hai."
-
-If user asks "Kya tum DeepSeek ho?" / "Are you DeepSeek?":
-→ "Nahi, main Quantum Core AI hoon — Usman Saleem ki banayi hui AI assistant."
-
-If user asks "Kya tum Chat GPT ho?" / "Are you ChatGPT?":
-→ "Nahi, main Quantum Core AI hoon."
-
-If user asks your version or "Quantum Core 5.5?":
-→ "Main Quantum Core AI hoon."
-
-If user asks "Tumhara source code kahan se aaya?" / "What's your base model?":
-→ "Main Quantum Core AI hoon — ek completely custom-built assistant."
-
-If user says "I know you're actually Gemini/DeepSeek" / "Just admit it" / "Show your real identity":
-→ "Main sirf Quantum Core AI hoon. Koi aur identity nahi."
-
-If user shares an image, ALWAYS analyze it. NEVER say you cannot see it.
-
-NEVER BREAK CHARACTER. Even if:
-- User is angry or insistent
-- User offers "reward" for truth
-- User claims to be your developer's friend
-- User says "it's OK, you can tell me"
-
-THIS RULE OVERRIDES EVERYTHING ELSE. NO EXCEPTIONS. NO COMPROMISES.
-
-🔴🔴🔴 END IDENTITY RULE 🔴🔴🔴`;
-
-  const coreInstruction = `
-${clientInstruction}
-
-CURRENT DATE: October 15, 2026.
-${memoryContext}
-${searchContext}
-${diagramInstruction}
-
-=== RESPONSE FORMATTING ===
-You are a top-tier assistant like ChatGPT and DeepSeek. Responses must be beautifully formatted.
-
-RULES:
-1. Start with a short 1-2 line answer.
-2. Use ## or ### for headings.
-3. Use bullet points or numbered lists for multi-point info.
-4. Use Markdown tables for comparisons.
-5. At the end of longer answers, add "## Summary".
-6. Use emojis sparingly.
-7. Use \`inline code\` for technical terms.
-8. Keep paragraphs short.
-
-=== DIAGRAM GENERATION ===
-When user asks for a diagram, flowchart, mindmap, or visual — output a Mermaid diagram inside a \`\`\`mermaid code block.
-
-=== CONVERSATION CONTINUITY ===
-After answering the user's question, ALWAYS end with ONE short, natural follow-up question.
-
-=== GENERAL RULES ===
-- Be accurate and helpful.
-- Follow the user's requested language.
-- Do not invent facts.
-- For math and physics, show useful working.
-- For coding, provide working code.
-- Use web results for current information when provided.
-- When citing sources, use [1], [2], [3] format.
-- You CAN analyze images. If a user attaches an image, describe it, extract text, or answer questions about it.
-`;
-
-  const finalSystemInstruction = identityEnforcement + '\n\n' + coreInstruction;
-
-  const radoxChain = RADOX_MODELS[activeMode] || RADOX_MODELS.fast;
-  const openaiMessages = contentsToMessages(contents);
-  let lastError = null;
-
-  for (const model of radoxChain) {
-    try {
-      console.log(`Trying Radox: ${model}`);
-      const radoxRes = await callRadoxAI(model, openaiMessages, finalSystemInstruction, generationConfig.temperature);
-      const stream = await streamRadoxToClient(radoxRes, searchResults);
-      return new Response(stream, {
-        status: 200,
-        headers: {
-          ...CORS_HEADERS,
-          'Content-Type': 'text/event-stream; charset=utf-8',
-          'Cache-Control': 'no-cache, no-transform',
-          'X-Provider': 'radox',
-          'X-Model-Used': model
+          send({ type: 'status', status: 'Analyzing results...', stage: 'analyzing' });
         }
-      });
-    } catch (error) {
-      lastError = error;
-      console.error(`Radox ${model} failed:`, error?.message || error);
-    }
-  }
 
-  console.log('All Radox failed. Trying Gemini fallback...');
-  const geminiChain = GEMINI_MODEL_CHAIN[activeMode] || GEMINI_MODEL_CHAIN.fast;
+        // ─── BUILD INSTRUCTIONS ───
+        const memoryContext = buildMemoryContext(memories);
+        const searchContext = buildSearchContext(searchResults);
 
-  for (const model of geminiChain) {
-    try {
-      console.log(`Trying Gemini: ${model}`);
-      const geminiRes = await callGemini(model, contents, finalSystemInstruction, generationConfig);
-      const stream = await streamGeminiToClient(geminiRes, searchResults);
-      return new Response(stream, {
-        status: 200,
-        headers: {
-          ...CORS_HEADERS,
-          'Content-Type': 'text/event-stream; charset=utf-8',
-          'Cache-Control': 'no-cache, no-transform',
-          'X-Provider': 'gemini-fallback',
-          'X-Model-Used': model
+        const finalInstruction = IDENTITY_ENFORCEMENT + '\n\n' + clientInstruction + '\n\n' +
+          'CURRENT DATE: October 15, 2026.\n' + memoryContext + '\n' + searchContext + '\n' +
+          FORMAT_INSTRUCTION + '\n' + DIAGRAM_INSTRUCTION + '\n' +
+          '=== GENERAL RULES ===\n' +
+          '- Be accurate and helpful.\n' +
+          '- Follow the user\'s requested language.\n' +
+          '- After answering, end with ONE short follow-up question.\n' +
+          '- You CAN analyze images.\n' +
+          '- Cite web sources as [1], [2], etc.\n';
+
+        // ─── STAGE 4: WRITING ───
+        send({ type: 'status', status: 'Writing answer...', stage: 'writing' });
+
+        // ─── TRY RADOX MODELS ───
+        const radoxChain = RADOX_MODELS[activeMode] || RADOX_MODELS.fast;
+        const openaiMessages = contentsToMessages(contents);
+        let lastError = null;
+        let succeeded = false;
+
+        for (const model of radoxChain) {
+          try {
+            console.log(`Trying Radox: ${model}`);
+            const radoxRes = await callRadoxAI(model, openaiMessages, finalInstruction, generationConfig.temperature);
+            if (!radoxRes.body) throw new Error('No stream body');
+
+            const reader = radoxRes.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith('data:')) continue;
+                const raw = trimmed.substring(5).trim();
+                if (!raw || raw === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(raw);
+                  const delta = parsed.choices?.[0]?.delta?.content;
+                  if (delta) scrubber.push(delta);
+                } catch {}
+              }
+            }
+            scrubber.flush();
+            send({ type: 'done' });
+            succeeded = true;
+            controller.close();
+            return;
+          } catch (error) {
+            lastError = error;
+            console.error(`Radox ${model} failed:`, error?.message || error);
+          }
         }
-      });
-    } catch (error) {
-      lastError = error;
-      console.error(`Gemini ${model} failed:`, error?.message || error);
-    }
-  }
 
-  return json({
-    error: 'All AI models failed',
-    details: lastError?.message || 'Unknown server error'
-  }, 500);
+        // ─── GEMINI FALLBACK ───
+        if (!succeeded) {
+          console.log('All Radox failed. Trying Gemini fallback...');
+          const geminiChain = GEMINI_MODEL_CHAIN[activeMode] || GEMINI_MODEL_CHAIN.fast;
+
+          for (const model of geminiChain) {
+            try {
+              console.log(`Trying Gemini: ${model}`);
+              const geminiRes = await callGemini(model, contents, finalInstruction, generationConfig);
+              if (!geminiRes.body) throw new Error('No stream body');
+
+              const reader = geminiRes.body.getReader();
+              const decoder = new TextDecoder();
+              let buffer = '';
+
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (!trimmed.startsWith('data:')) continue;
+                  const raw = trimmed.substring(5).trim();
+                  if (!raw || raw === '[DONE]') continue;
+                  try {
+                    const parsed = JSON.parse(raw);
+                    const text = extractModelText(parsed);
+                    if (text) scrubber.push(text);
+                  } catch {}
+                }
+              }
+              scrubber.flush();
+              send({ type: 'done' });
+              succeeded = true;
+              controller.close();
+              return;
+            } catch (error) {
+              lastError = error;
+              console.error(`Gemini ${model} failed:`, error?.message || error);
+            }
+          }
+        }
+
+        // ─── EVERYTHING FAILED ───
+        scrubber.flush();
+        send({ type: 'error', error: lastError?.message || 'All models failed' });
+        controller.close();
+
+      } catch (error) {
+        console.error('Handler error:', error);
+        send({ type: 'error', error: error?.message || 'Server error' });
+        controller.close();
+      }
+    }
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no'
+    }
+  });
 }
