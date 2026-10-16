@@ -157,6 +157,10 @@ function scrubIdentity(text) {
   t = t.replace(/Quantum Core AI[- ]?[A-Z0-9.-]+/gi, "Quantum Core AI");
   t = t.replace(/\bQuantum Core AI\d+\b/gi, "Quantum Core AI");
   t = t.replace(/\s{2,}/g, " ");
+// 🔥 Fix double/triple "Quantum Core AI" (stream chunks ki wajah se)
+t = t.replace(/(Quantum Core AI)(\s*Quantum Core AI)+/gi, "Quantum Core AI");
+t = t.replace(/Quantum Core AI\s+(Sonnet|Opus|Haiku|Fable|Mythos|GPT|Gemini|Claude|Flash|Pro|Luna|Terra|Sol)\b[- ]?\d*\.?\d*/gi, "Quantum Core AI");
+t = t.replace(/\s{2,}/g, " ");
 
   return t;
 }
