@@ -61,20 +61,39 @@ function scrubIdentity(text) {
   if (!text) return text;
   let t = String(text);
 
-  t = t.replace(/\b(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Qwen|Kimi|Grok|GLM|Gemma|Muse|Seed|ChatGPT|Chat\s*GPT)\s*[- ]?\d*\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
+  // ─── 1. "X ne banaya" patterns ───
+  t = t.replace(/\b(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Qwen|Kimi|Grok|GLM|Gemma|Muse|Seed|ChatGPT|Chat\s*GPT|Sonnet|Opus|Haiku|Fable|Mythos|Luna|Terra|Sol)\s*[- ]?\d*\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
   t = t.replace(/\b(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*\s+ne\s+(train|develop|create)/gi, "Usman Saleem ne $2");
-  t = t.replace(/created by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "created by Usman Saleem");
-  t = t.replace(/made by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "made by Usman Saleem");
-  t = t.replace(/trained by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "trained by Usman Saleem");
-  t = t.replace(/developed by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "developed by Usman Saleem");
-  t = t.replace(/built by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft)\s*[- ]?\d*/gi, "built by Usman Saleem");
+  t = t.replace(/created by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Sonnet|Opus|Haiku)\s*[- ]?\d*/gi, "created by Usman Saleem");
+  t = t.replace(/made by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Sonnet|Opus|Haiku)\s*[- ]?\d*/gi, "made by Usman Saleem");
+  t = t.replace(/trained by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Sonnet|Opus|Haiku)\s*[- ]?\d*/gi, "trained by Usman Saleem");
+  t = t.replace(/developed by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Sonnet|Opus|Haiku)\s*[- ]?\d*/gi, "developed by Usman Saleem");
+  t = t.replace(/built by\s+(DeepSe+[a-z0-9]*|Gemini|GPT|Claude|OpenAI|Google|Anthropic|Meta|Microsoft|Sonnet|Opus|Haiku)\s*[- ]?\d*/gi, "built by Usman Saleem");
 
+  // ─── 2. "I am X" self-identity patterns (MULTILINGUAL) ───
+  t = t.replace(/\b(I am|I'm|I am a|I'm a|Main|Main hoon|Main ek|Mera naam|Mera model|Mujhe|Main use karta hoon)\s+(Claude|Gemini|GPT|ChatGPT|DeepSeek|Sonnet|Opus|Haiku|Fable|Mythos|Qwen|Kimi|Grok|GLM|Gemma|Luna|Terra|Sol)\b[- ]?\d*\.?\d*/gi, "$1 Quantum Core AI");
+  t = t.replace(/\b(मैं|मैं हूँ|मेरा नाम|मेरा मॉडल)\s+(Claude|Gemini|GPT|Sonnet|Opus|DeepSeek)\b[- ]?\d*\.?\d*/gi, "$1 Quantum Core AI");
+  t = t.replace(/\b(میں|میں ہوں|میرا نام|میرا ماڈل)\s+(Claude|Gemini|GPT|Sonnet|Opus|DeepSeek)\b[- ]?\d*\.?\d*/gi, "$1 Quantum Core AI");
+
+  // ─── 3. Bare model family names WITH version number ───
+  // (Yeh safe hai — "Sonnet 5.5" kabhi normal English nahi hota)
+  t = t.replace(/\b(Sonnet|Opus|Haiku|Fable|Mythos)\b[- ]?\d+\.?\d*(\s|-)?(pro|max|turbo|flash|preview)?\b/gi, "Quantum Core AI");
+  t = t.replace(/\b(Luna|Terra|Sol)\b[- ]?\d+\.?\d*/gi, "Quantum Core AI");
+
+  // ─── 4. "Quantum Core X" combos ───
+  t = t.replace(/Quantum Core\s+(AI\s+)?(Sonnet|Opus|Haiku|Fable|Mythos|GPT|Gemini|Claude|DeepSeek|Grok|Qwen|Kimi|GLM|Gemma|Flash|Pro|Luna|Terra|Sol)\b[- ]?\d*\.?\d*/gi, "Quantum Core AI");
+  t = t.replace(/Quantum Core\s+(AI\s+)?\d+\.?\d*\b/gi, "Quantum Core AI");
+  t = t.replace(/Quantum Core\s+AI\s+(Sonnet|Opus|Haiku|GPT|Gemini|Claude|DeepSeek)\b[- ]?\d*\.?\d*/gi, "Quantum Core AI");
+
+  // ─── 5. Version suffixes ───
   t = t.replace(/[- ]V4[- ]?Flash[- ]?\d+/gi, "");
   t = t.replace(/[- ]V4[- ]?Pro[- ]?Max/gi, "");
   t = t.replace(/[- ]V4[- ]?Pro/gi, "");
   t = t.replace(/[- ]V4\b/gi, "");
+  t = t.replace(/\bV4[- ]?(Flash|Pro|Pro[- ]?Max|Turbo)\b/gi, "");
   t = t.replace(/[- ]K[0-9.]+/gi, "");
 
+  // ─── 6. Company model names ───
   const replacements = [
     [/\bDeepSe{2,3}[a-z0-9]*\b/gi, "Quantum Core AI"],
     [/\bDeepSe\b/gi, "Quantum Core AI"],
@@ -109,6 +128,7 @@ function scrubIdentity(text) {
     t = t.replace(pattern, replacement);
   }
 
+  // ─── 7. Company names ───
   const companies = [
     [/\bby Google\b/gi, "by Usman Saleem"],
     [/\bGoogle created me\b/gi, "Usman Saleem created me"],
@@ -124,6 +144,7 @@ function scrubIdentity(text) {
     t = t.replace(pattern, replacement);
   }
 
+  // ─── 8. Quantum Core cleanup (jo upar se bacha) ───
   t = t.replace(/Quantum Core\s+(AI\s+)?\d+\.?\d*\b/gi, "Quantum Core AI");
   t = t.replace(/Quantum Core AI\s+ne\s+banaya/gi, "Usman Saleem ne banaya");
   t = t.replace(/Quantum Core AI\s+ne\s+(train|develop|create)/gi, "Usman Saleem ne $1");
