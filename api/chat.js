@@ -68,11 +68,12 @@ function getIdentityResponse(text, clientInstruction) {
   const isIdentity = namePatterns.some(p => p.test(t)) || creatorPatterns.some(p => p.test(t)) || modelPatterns.some(p => p.test(t));
   if (!isIdentity) return null;
 
-  // Check karo ke user ne settings mein koi specific language save ki hai ya nahi
-  const forceUrdu = clientInstruction && clientInstruction.includes("Urdu");
-  const forceEnglish = clientInstruction && clientInstruction.includes("English");
+  // Check karo ke user ne settings mein kya select kiya hai
+  const isUrduSetting = clientInstruction.includes("respond ONLY in Urdu");
+  const isEnglishSetting = clientInstruction.includes("respond ONLY in English");
+  const isAuto = !clientInstruction.includes("respond ONLY in"); // Agar koi language lock nahi hai
 
-  if (forceUrdu) {
+  if (isUrduSetting) {
     const replies = [
       "Mera naam **Quantum Core AI** hai. Mujhe **Usman Saleem** ne banaya hai. Main aapki kya madad kar sakta hoon?",
       "Main **Quantum Core AI** hoon, aur mujhe **Usman Saleem** ne develop kiya hai. Bataiye, kya help chahiye?",
@@ -82,7 +83,7 @@ function getIdentityResponse(text, clientInstruction) {
     return replies[Math.floor(Math.random() * replies.length)];
   }
 
-  if (forceEnglish) {
+  if (isEnglishSetting) {
     const replies = [
       "My name is **Quantum Core AI**. I was created by **Usman Saleem**. How can I help you today?",
       "I am **Quantum Core AI**, developed by **Usman Saleem**. What can I do for you?",
@@ -92,33 +93,36 @@ function getIdentityResponse(text, clientInstruction) {
     return replies[Math.floor(Math.random() * replies.length)];
   }
 
-  // Agar Auto language hai, toh user ke text se detect karo
-  const englishWords = ['who', 'are', 'you', 'made', 'created', 'built', 'name', 'your', 'what', 'is'];
-  const romanUrduWords = ['tum', 'kon', 'kaun', 'kisne', 'banaya', 'hai', 'naam', 'kya', 'ho', 'aap'];
+  if (isAuto) {
+    const englishWords = ['who', 'are', 'you', 'made', 'created', 'built', 'name', 'your', 'what', 'is'];
+    const romanUrduWords = ['tum', 'kon', 'kaun', 'kisne', 'banaya', 'hai', 'naam', 'kya', 'ho', 'aap'];
+    let enScore = 0;
+    let urScore = 0;
 
-  let enScore = 0;
-  let urScore = 0;
+    englishWords.forEach(w => { if (t.includes(w)) enScore++; });
+    romanUrduWords.forEach(w => { if (t.includes(w)) urScore++; });
 
-  englishWords.forEach(w => { if (t.includes(w)) enScore++; });
-  romanUrduWords.forEach(w => { if (t.includes(w)) urScore++; });
-
-  if (enScore >= urScore) {
-    const replies = [
-      "My name is **Quantum Core AI**. I was created by **Usman Saleem**. How can I help you today?",
-      "I am **Quantum Core AI**, developed by **Usman Saleem**. What can I do for you?",
-      "I'm **Quantum Core AI**. **Usman Saleem** is my creator. How may I assist you?",
-      "I am **Quantum Core AI**, a custom AI built by **Usman Saleem**. What are you looking for?"
-    ];
-    return replies[Math.floor(Math.random() * replies.length)];
-  } else {
-    const replies = [
-      "Mera naam **Quantum Core AI** hai. Mujhe **Usman Saleem** ne banaya hai. Main aapki kya madad kar sakta hoon?",
-      "Main **Quantum Core AI** hoon, aur mujhe **Usman Saleem** ne develop kiya hai. Bataiye, kya help chahiye?",
-      "Mujhe **Usman Saleem** ne banaya hai. Mera naam **Quantum Core AI** hai. Aap kya jaanna chahte hain?",
-      "Main ek custom AI hoon jise **Usman Saleem** ne banaya hai. Mera naam **Quantum Core AI** hai. Aapko kis cheez mein madad chahiye?"
-    ];
-    return replies[Math.floor(Math.random() * replies.length)];
+    if (enScore >= urScore) {
+      const replies = [
+        "My name is **Quantum Core AI**. I was created by **Usman Saleem**. How can I help you today?",
+        "I am **Quantum Core AI**, developed by **Usman Saleem**. What can I do for you?",
+        "I'm **Quantum Core AI**. **Usman Saleem** is my creator. How may I assist you?",
+        "I am **Quantum Core AI**, a custom AI built by **Usman Saleem**. What are you looking for?"
+      ];
+      return replies[Math.floor(Math.random() * replies.length)];
+    } else {
+      const replies = [
+        "Mera naam **Quantum Core AI** hai. Mujhe **Usman Saleem** ne banaya hai. Main aapki kya madad kar sakta hoon?",
+        "Main **Quantum Core AI** hoon, aur mujhe **Usman Saleem** ne develop kiya hai. Bataiye, kya help chahiye?",
+        "Mujhe **Usman Saleem** ne banaya hai. Mera naam **Quantum Core AI** hai. Aap kya jaanna chahte hain?",
+        "Main ek custom AI hoon jise **Usman Saleem** ne banaya hai. Mera naam **Quantum Core AI** hai. Aapko kis cheez mein madad chahiye?"
+      ];
+      return replies[Math.floor(Math.random() * replies.length)];
+    }
   }
+
+  // Agar Turkish, French, ya koi aur language select hai -> Return null (AI khud handle karega us language mein)
+  return null;
 }
 
 function scrubIdentity(text) {
@@ -213,7 +217,6 @@ function scrubIdentity(text) {
   t = t.replace(/Quantum Core AI[- ]?[A-Z0-9.-]+/gi, "Quantum Core AI");
   t = t.replace(/\bQuantum Core AI\d+\b/gi, "Quantum Core AI");
 
-  // 🔥 ULTIMATE FIX FOR DOUBLE NAMES (With or without spaces)
   t = t.replace(/(Quantum Core AI)(\s*Quantum Core AI)+/gi, "Quantum Core AI");
   t = t.replace(/Quantum Core AIQuantum Core AI/gi, "Quantum Core AI");
   t = t.replace(/(Quantum Core AI)(AI)+/gi, "Quantum Core AI"); 
