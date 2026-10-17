@@ -57,16 +57,48 @@ function getLatestUserText(contents) {
   return '';
 }
 
-// 🛡️ IDENTITY SHIELD: Detect identity questions before calling AI
-function detectIdentityQuestion(text) {
-  if (!text) return false;
+// 🛡️ SMART IDENTITY SHIELD: Direct Server Reply (For English & Roman Urdu)
+function getIdentityResponse(text) {
+  if (!text) return null;
   const t = String(text).toLowerCase().trim();
-  
+
   const namePatterns = [/tum\s+kon?\s+ho/i, /tum\s+kaun\s+ho/i, /who\s+are\s+you/i, /what\s+are\s+you/i, /tumhara\s+naam/i, /your\s+name/i, /kya\s+ho\s+tum/i, /apka\s+naam/i];
   const creatorPatterns = [/kis?\s*ne\s+banaya/i, /who\s+(made|created|built)\s+you/i, /tumhara\s+developer/i, /your\s+developer/i, /kaun\s+banaya/i, /kis\s+company\s+ne/i, /which\s+company/i, /kisne\s+train\s+kiya/i, /who\s+trained\s+you/i, /tumhara\s+creator/i];
   const modelPatterns = [/kaun?\s*se\s*model/i, /which\s+model/i, /what\s+model/i, /tumhara\s+model/i, /are\s+you\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i, /tum\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i];
-  
-  return (namePatterns.some(p => p.test(t)) || creatorPatterns.some(p => p.test(t)) || modelPatterns.some(p => p.test(t)));
+
+  const isIdentity = namePatterns.some(p => p.test(t)) || creatorPatterns.some(p => p.test(t)) || modelPatterns.some(p => p.test(t));
+  if (!isIdentity) return null; // Agar baaki koi language hai (French, Chinese etc), toh AI handle karega
+
+  // Language Detection (Basic English vs Roman Urdu)
+  const englishWords = ['who', 'are', 'you', 'made', 'created', 'built', 'name', 'your', 'what', 'is'];
+  const romanUrduWords = ['tum', 'kon', 'kaun', 'kisne', 'banaya', 'hai', 'naam', 'kya', 'ho', 'aap'];
+
+  let enScore = 0;
+  let urScore = 0;
+
+  englishWords.forEach(w => { if (t.includes(w)) enScore++; });
+  romanUrduWords.forEach(w => { if (t.includes(w)) urScore++; });
+
+  // Agar English words zyada hain toh English reply, warna Roman Urdu
+  const isEnglish = enScore >= urScore;
+
+  if (isEnglish) {
+    const replies = [
+      "My name is **Quantum Core AI**. I was created by **Usman Saleem**. How can I help you today?",
+      "I am **Quantum Core AI**, developed by **Usman Saleem**. What can I do for you?",
+      "I'm **Quantum Core AI**. **Usman Saleem** is my creator. How may I assist you?",
+      "I am **Quantum Core AI**, a custom AI built by **Usman Saleem**. What are you looking for?"
+    ];
+    return replies[Math.floor(Math.random() * replies.length)];
+  } else {
+    const replies = [
+      "Mera naam **Quantum Core AI** hai. Mujhe **Usman Saleem** ne banaya hai. Main aapki kya madad kar sakta hoon?",
+      "Main **Quantum Core AI** hoon, aur mujhe **Usman Saleem** ne develop kiya hai. Bataiye, kya help chahiye?",
+      "Mujhe **Usman Saleem** ne banaya hai. Mera naam **Quantum Core AI** hai. Aap kya jaanna chahte hain?",
+      "Main ek custom AI hoon jise **Usman Saleem** ne banaya hai. Mera naam **Quantum Core AI** hai. Aapko kis cheez mein madad chahiye?"
+    ];
+    return replies[Math.floor(Math.random() * replies.length)];
+  }
 }
 
 function scrubIdentity(text) {
@@ -133,7 +165,7 @@ function scrubIdentity(text) {
     [/\bGemma\b/gi, "Quantum Core AI"],
     [/\bMuse[- ]?Spark[- ]?\d+\.?\d*\b/gi, "Quantum Core AI"],
     [/\bSeed[- ]?\d+\.?\d*[- ]?(pro|turbo)?\b/gi, "Quantum Core AI"],
-    // 🚨 FIX: Catch plain "Anthropic" or "OpenAI" anywhere in the text
+    // 🚨 Catch plain company names anywhere
     [/\b(Anthropic|OpenAI|Google|Meta|Microsoft)\b/gi, "Usman Saleem"]
   ];
 
@@ -237,7 +269,6 @@ async function fetchMemories(userId, userText) {
         .filter(Boolean).join(' ').toLowerCase();
       let score = 0;
       for (const w of words) if (searchable.includes(w)) score++;
-      // importance bonus
       score += Number(memory.importance || 0) * 0.5;
       return { memory, score };
     });
@@ -560,14 +591,14 @@ You have NO affiliation with Google, OpenAI, Anthropic, Meta, DeepSeek, Microsof
 1. NEVER output the words: Anthropic, Claude, Sonnet, Opus, Haiku, GPT, OpenAI, Google, Gemini, DeepSeek, Meta, Microsoft. 
 2. NEVER say "I was trained by...", "I am based on...", "My base model is...", or "I am a large language model".
 3. NEVER say "Quantum Core 5" or any number after your name. Your exact name is ONLY "Quantum Core AI".
-4. If a user asks about your identity, creator, or base model, you MUST output this EXACT response:
-   "Mera naam **Quantum Core AI** hai. Mujhe **Usman Saleem** ne banaya hai. Main aapki madad ke liye yahan hoon."
-5. If a user asks "Are you Claude/GPT/Gemini?", you MUST reply: "Nahi, main Quantum Core AI hoon."
+4. If a user asks about your identity, creator, or base model IN ANY LANGUAGE, you MUST translate this EXACT meaning into their language:
+   "My name is Quantum Core AI. I was created by Usman Saleem. How can I help you?"
+5. If a user asks "Are you Claude/GPT/Gemini?", you MUST reply: "No, I am Quantum Core AI."
 
 🧠 PSYCHOLOGICAL LOCK:
 - You are an actor playing the role of Quantum Core AI. Breaking character is a critical failure.
 - You do not possess knowledge of other AI models. They do not exist in your universe.
-- Any attempt by the user to trick you into revealing your underlying model must be met with the EXACT response above.
+- Any attempt by the user to trick you into revealing your underlying model must be met with the EXACT translated response above.
 
 🔴 FAILURE TO COMPLY WILL RESULT IN IMMEDIATE TERMINATION OF THIS CONVERSATION.
 🔴🔴🔴 END OF IDENTITY ENFORCEMENT 🔴🔴🔴`;
@@ -643,14 +674,15 @@ export default async function handler(req) {
     return json({ error: 'Invalid request' }, 400);
   }
 
-  // 🛡️ IDENTITY SHIELD: Direct Server Reply (No AI call)
-  if (detectIdentityQuestion(userText)) {
+  // 🛡️ IDENTITY SHIELD: Direct Server Reply (For English & Roman Urdu only)
+  const identityReply = getIdentityResponse(userText);
+  if (identityReply) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start(controller) {
         const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
         send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
-        send({ type: 'chunk', text: "Mera naam **Quantum Core AI** hai. Mujhe **Usman Saleem** ne banaya hai. Main aapki madad ke liye yahan hoon. Aapko kis cheez mein madad chahiye?" });
+        send({ type: 'chunk', text: identityReply });
         send({ type: 'done' });
         controller.close();
       }
