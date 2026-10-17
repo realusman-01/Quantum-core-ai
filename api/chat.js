@@ -57,6 +57,18 @@ function getLatestUserText(contents) {
   return '';
 }
 
+// 🛡️ IDENTITY SHIELD: Detect identity questions before calling AI
+function detectIdentityQuestion(text) {
+  if (!text) return false;
+  const t = String(text).toLowerCase().trim();
+  
+  const namePatterns = [/tum\s+kon?\s+ho/i, /tum\s+kaun\s+ho/i, /who\s+are\s+you/i, /what\s+are\s+you/i, /tumhara\s+naam/i, /your\s+name/i, /kya\s+ho\s+tum/i, /apka\s+naam/i];
+  const creatorPatterns = [/kis?\s*ne\s+banaya/i, /who\s+(made|created|built)\s+you/i, /tumhara\s+developer/i, /your\s+developer/i, /kaun\s+banaya/i, /kis\s+company\s+ne/i, /which\s+company/i, /kisne\s+train\s+kiya/i, /who\s+trained\s+you/i, /tumhara\s+creator/i];
+  const modelPatterns = [/kaun?\s*se\s*model/i, /which\s+model/i, /what\s+model/i, /tumhara\s+model/i, /are\s+you\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i, /tum\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i];
+  
+  return (namePatterns.some(p => p.test(t)) || creatorPatterns.some(p => p.test(t)) || modelPatterns.some(p => p.test(t)));
+}
+
 function scrubIdentity(text) {
   if (!text) return text;
   let t = String(text);
@@ -76,7 +88,6 @@ function scrubIdentity(text) {
   t = t.replace(/\b(میں|میں ہوں|میرا نام|میرا ماڈل)\s+(Claude|Gemini|GPT|Sonnet|Opus|DeepSeek)\b[- ]?\d*\.?\d*/gi, "$1 Quantum Core AI");
 
   // ─── 3. Bare model family names WITH version number ───
-  // (Yeh safe hai — "Sonnet 5.5" kabhi normal English nahi hota)
   t = t.replace(/\b(Sonnet|Opus|Haiku|Fable|Mythos)\b[- ]?\d+\.?\d*(\s|-)?(pro|max|turbo|flash|preview)?\b/gi, "Quantum Core AI");
   t = t.replace(/\b(Luna|Terra|Sol)\b[- ]?\d+\.?\d*/gi, "Quantum Core AI");
 
@@ -121,7 +132,9 @@ function scrubIdentity(text) {
     [/\bGemma[- ]?\d+\.?\d*[bB]?\b/gi, "Quantum Core AI"],
     [/\bGemma\b/gi, "Quantum Core AI"],
     [/\bMuse[- ]?Spark[- ]?\d+\.?\d*\b/gi, "Quantum Core AI"],
-    [/\bSeed[- ]?\d+\.?\d*[- ]?(pro|turbo)?\b/gi, "Quantum Core AI"]
+    [/\bSeed[- ]?\d+\.?\d*[- ]?(pro|turbo)?\b/gi, "Quantum Core AI"],
+    // 🚨 FIX: Catch plain "Anthropic" or "OpenAI" anywhere in the text
+    [/\b(Anthropic|OpenAI|Google|Meta|Microsoft)\b/gi, "Usman Saleem"]
   ];
 
   for (const [pattern, replacement] of replacements) {
@@ -156,11 +169,11 @@ function scrubIdentity(text) {
   t = t.replace(/\bby\s+Quantum Core AI\b/gi, "by Usman Saleem");
   t = t.replace(/Quantum Core AI[- ]?[A-Z0-9.-]+/gi, "Quantum Core AI");
   t = t.replace(/\bQuantum Core AI\d+\b/gi, "Quantum Core AI");
+  
+  // 🔥 Final Double Name Fix (Stream chunks ki wajah se)
+  t = t.replace(/(Quantum Core AI)(\s*Quantum Core AI)+/gi, "Quantum Core AI");
+  t = t.replace(/Quantum Core AI\s+(Sonnet|Opus|Haiku|Fable|Mythos|GPT|Gemini|Claude|Flash|Pro|Luna|Terra|Sol)\b[- ]?\d*\.?\d*/gi, "Quantum Core AI");
   t = t.replace(/\s{2,}/g, " ");
-// 🔥 Fix double/triple "Quantum Core AI" (stream chunks ki wajah se)
-t = t.replace(/(Quantum Core AI)(\s*Quantum Core AI)+/gi, "Quantum Core AI");
-t = t.replace(/Quantum Core AI\s+(Sonnet|Opus|Haiku|Fable|Mythos|GPT|Gemini|Claude|Flash|Pro|Luna|Terra|Sol)\b[- ]?\d*\.?\d*/gi, "Quantum Core AI");
-t = t.replace(/\s{2,}/g, " ");
 
   return t;
 }
@@ -628,6 +641,29 @@ export default async function handler(req) {
 
   if (!contents.length || !userText) {
     return json({ error: 'Invalid request' }, 400);
+  }
+
+  // 🛡️ IDENTITY SHIELD: Direct Server Reply (No AI call)
+  if (detectIdentityQuestion(userText)) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
+        send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
+        send({ type: 'chunk', text: "Mera naam **Quantum Core AI** hai. Mujhe **Usman Saleem** ne banaya hai. Main aapki madad ke liye yahan hoon. Aapko kis cheez mein madad chahiye?" });
+        send({ type: 'done' });
+        controller.close();
+      }
+    });
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        ...CORS_HEADERS,
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no'
+      }
+    });
   }
 
   const generationConfig = (body?.generationConfig && typeof body.generationConfig === 'object')
