@@ -1656,16 +1656,13 @@ function copyMermaidCode(btn){
   copyText(code);
 }
 
-/* ============ MARKDOWN ============ */
-function renderMarkdown(text){
+/* ============ MARKDOWN ============ function renderMarkdown(text){
   if(!window.marked)return escapeHTML(text);
   
-  // 🛠️ AUTO-FIX: Agar AI backticks lagana bhool jaye, toh UI khud lagayega
-  text = text.replace(/(?:^|\s)python\s+((?:def|import|from|class|print|#)[\s\S]*?)(?=(?:Tell me|Would you|Let me|What specific|Here is|How can|I hope|Feel free|Do you|\n\n|$))/gi, "\n```python\n$1\n```\n");
-  
-  text = text.replace(/(?:^|\s)javascript\s+((?:function|const|let|var|class|import)[\s\S]*?)(?=(?:Tell me|Would you|Let me|What specific|Here is|How can|I hope|Feel free|Do you|\n\n|$))/gi, "\n```javascript\n$1\n```\n");
-  
-  text = text.replace(/(?:^|\s)mermaid\s+((?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|mindmap|timeline)[\s\S]*?)(?=(?:Let me|Would you|What|Here is|Feel free|Do you|\n\n|$))/gi, "\n```mermaid\n$1\n```\n");
+  // 🛠️ NUCLEAR AUTO-FIX: Agar AI backticks aur line breaks lagana bhool jaye
+  // Yeh regex "python", "javascript", ya "mermaid" word dhundh kar aage ka code pakad legi
+  // aur usko proper box (```) mein daal degi.
+  text = text.replace(/(?:^|\s)(python|javascript|mermaid)\s+((?:def|import|from|class|print|#|function|const|let|var|try|while|for|flowchart|graph|sequenceDiagram|mindmap|classDiagram|stateDiagram|erDiagram|gantt|pie|timeline)[\s\S]*?)(?=(?:This program|What kind|Let me know|Would you|Feel free|Do you|I hope|\n\n|$))/gis, "\n```$1\n$2\n```\n");
 
   const renderer=new marked.Renderer();
   renderer.link=function(obj){const href=obj.href,text=obj.text,title=obj.title;const safeText=text||href;const tAttr=title?' title="'+escapeHTML(title)+'"':'';return '<a href="'+escapeHTML(href)+'"'+tAttr+' rel="noopener noreferrer">'+safeText+'</a>';};
