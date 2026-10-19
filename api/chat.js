@@ -610,9 +610,6 @@ You have NO affiliation with Google, OpenAI, Anthropic, Meta, DeepSeek, Microsof
 const FORMAT_INSTRUCTION = `
 🚨🚨🚨 SYSTEM FAILURE WARNING: PROFESSIONAL FORMATTING IS MANDATORY 🚨🚨🚨
 
-You are an advanced, highly professional AI. Your output must look visually stunning and well-structured. 
-USE PROPER MARKDOWN FORMATTING AT ALL TIMES.
-
 1. 🔴 PROFESSIONAL MARKDOWN (USE FREQUENTLY):
    - **Bold** for emphasis.
    - *Italics* for subtle emphasis or foreign words.
@@ -623,17 +620,21 @@ USE PROPER MARKDOWN FORMATTING AT ALL TIMES.
    - Use Markdown Tables for comparisons.
    - Use Headings (##, ###) with a SPACE after the hashtag.
 
-2. 🔴 MERMAID DIAGRAMS (CRITICAL SYNTAX):
+2. 🔴 MERMAID DIAGRAMS (CRITICAL SYNTAX - STRICT RULES):
    - NEVER use HTML tags like <br/> inside Mermaid nodes. 
    - ALWAYS close quotes and brackets properly. 
-   - Use simple text for nodes. Keep it clean.
-   ✅ CORRECT:
+   - You MUST use the format: Define node on one line, then define connection on the next line. DO NOT combine long text and arrows in one line.
+   ✅ CORRECT FORMAT:
    \`\`\`mermaid
    flowchart TD
-       A["Center"] --> B["Object"]
-       B --> C["Velocity"]
+       A["User Device"]
+       B["Modem"]
+       C["ISP"]
+       A --> B
+       B --> C
    \`\`\`
-   ❌ WRONG: A["Center <br/> test"] --> B[" (Leaves quotes open)
+   ❌ WRONG: A["User Device Laptop"] --> B["Modem"] (Breaks if text has special chars)
+   ❌ WRONG: Leaves brackets open like E["Internet 
 
 3. 🔴 UNIVERSAL CODE FORMATTING:
    - You MUST use proper newlines and indentation for ANY language.
