@@ -4,10 +4,12 @@ export const config = {
 
 const RADOX_API = 'https://radoxai.com/v1/chat/completions';
 
+// GPT models ko pehle rakha gaya hai kyunki woh formatting rules behtar follow karte hain
 const RADOX_MODELS = {
   fast: ['gpt-5.6-luna', 'gpt-5.5', 'claude-sonnet-5', 'deepseek-v4-flash-0731', 'gemini-3.6-flash'],
   core: ['gpt-5.6-sol', 'claude-opus-5.5', 'deepseek-v4-pro-max', 'claude-opus-5']
 };
+
 const RADOX_DECISION_MODEL = 'claude-sonnet-5';
 
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
@@ -62,7 +64,7 @@ function getIdentityResponse(text, clientInstruction) {
 
   const namePatterns = [/tum\s+kon?\s+ho/i, /tum\s+kaun\s+ho/i, /who\s+are\s+you/i, /what\s+are\s+you/i, /tumhara\s+naam/i, /your\s+name/i, /kya\s+ho\s+tum/i, /apka\s+naam/i];
   const creatorPatterns = [/kis?\s*ne\s+banaya/i, /who\s+(made|created|built)\s+you/i, /tumhara\s+developer/i, /your\s+developer/i, /kaun\s+banaya/i, /kis\s+company\s+ne/i, /which\s+company/i, /kisne\s+train\s+kiya/i, /who\s+trained\s+you/i, /tumhara\s+creator/i];
-  const modelPatterns = [/kaun?\s*se\s+model/i, /which\s+model/i, /what\s+model/i, /tumhara\s+model/i, /are\s+you\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i, /tum\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i];
+  const modelPatterns = [/kaun?\s*se\s*model/i, /which\s+model/i, /what\s+model/i, /tumhara\s+model/i, /are\s+you\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i, /tum\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i];
 
   const isIdentity = namePatterns.some(p => p.test(t)) || creatorPatterns.some(p => p.test(t)) || modelPatterns.some(p => p.test(t));
   if (!isIdentity) return null;
@@ -619,23 +621,7 @@ const FORMAT_INSTRUCTION = `
    - Use Markdown Tables for comparisons.
    - Use Headings (##, ###) with a SPACE after the hashtag.
 
-2. 🔴 MERMAID DIAGRAMS (CRITICAL SYNTAX - STRICT RULES):
-   - NEVER use HTML tags like <br/> inside Mermaid nodes. 
-   - ALWAYS close quotes and brackets properly. 
-   - You MUST use the format: Define node on one line, then define connection on the next line. DO NOT combine long text and arrows in one line.
-   ✅ CORRECT FORMAT:
-   \`\`\`mermaid
-   flowchart TD
-       A["User Device"]
-       B["Modem"]
-       C["ISP"]
-       A --> B
-       B --> C
-   \`\`\`
-   ❌ WRONG: A["User Device Laptop"] --> B["Modem"] (Breaks if text has special chars)
-   ❌ WRONG: Leaves brackets open like E["Internet 
-
-3. 🔴 UNIVERSAL CODE FORMATTING:
+2. 🔴 UNIVERSAL CODE FORMATTING:
    - You MUST use proper newlines and indentation for ANY language.
    - NEVER output code in a single line. 
    - Wrap code in triple backticks with the language name.
@@ -645,15 +631,40 @@ const FORMAT_INSTRUCTION = `
        print("Hello")
    \`\`\`
 
-4. LISTS: Start on a new line with "- " or "1. ".
+3. LISTS: Start on a new line with "- " or "1. ".
 
 IF YOU BREAK THESE RULES, THE SYSTEM WILL CRASH.
 `;
 
 const DIAGRAM_INSTRUCTION = `
-=== DIAGRAM GENERATION ===
-When user asks for a diagram, flowchart, mindmap, or visual — output ONLY a Mermaid diagram wrapped in \`\`\`mermaid ... \`\`\` code fences.
-The diagram RENDERS AUTOMATICALLY in this app. Do NOT tell the user to copy it elsewhere.
+=== DIAGRAM GENERATION (STRICT TEMPLATE - DO NOT GUESS) ===
+When the user asks for a diagram, flowchart, or visual, you MUST output a Mermaid code block using EXACTLY this structure.
+
+🔴 RULES:
+- DO NOT use <br/> tags.
+- DO NOT duplicate node names (e.g., no "Router Router").
+- DO NOT break arrows across lines.
+- ALWAYS use double quotes for node text: A["Your Text Here"]
+- ALWAYS put the node definition and connection on ONE SINGLE LINE.
+
+✅ COPY THIS EXACT TEMPLATE AND FILL IN THE BLANKS:
+
+\`\`\`mermaid
+flowchart TD
+    Node1["First Step Text"]
+    Node2["Second Step Text"]
+    Node3["Third Step Text"]
+    Node4["Fourth Step Text"]
+    
+    Node1 --> Node2
+    Node2 --> Node3
+    Node3 --> Node4
+\`\`\`
+
+❌ DO NOT DO THIS:
+- Node1["Text"] Node1 --> Node2 (Node written twice)
+- Node1["Text"] --> (Arrow left empty)
+- Node1["Text <br/> more text"] (No HTML tags)
 `;
 
 export default async function handler(req) {
