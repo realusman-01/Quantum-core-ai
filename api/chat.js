@@ -610,39 +610,31 @@ You have NO affiliation with Google, OpenAI, Anthropic, Meta, DeepSeek, Microsof
 
 // 🚨 YAHAN HAI SABSE BADA FIX: FORMATTING KO STRICT KAR DIYA GAYA HAI
 const FORMAT_INSTRUCTION = `
-=== CRITICAL FORMATTING RULES (MUST FOLLOW - NO EXCEPTIONS) ===
+🚨🚨🚨 SYSTEM FAILURE WARNING: FORMATTING IS MANDATORY 🚨🚨🚨
 
-1. HEADINGS: ALWAYS put a SPACE after # (e.g., "## Heading", not "##Heading").
-2. BOLD: Use **text** (double asterisk).
-3. BULLET POINTS: ALWAYS start on a new line with "- ".
-4. NUMBERED LISTS: ALWAYS start on a new line with "1. ".
+IF YOU DO NOT USE TRIPLE BACKTICKS (\`\`\`) FOR CODE, THE SYSTEM WILL CRASH.
 
-5. 🔴 CODE BLOCKS (CRITICAL):
-   You MUST ALWAYS wrap any programming code in triple backticks with the language name.
+1. 🔴 CODE BLOCKS (CRITICAL): 
+   You MUST wrap ANY programming code in triple backticks with the language name.
    ✅ CORRECT:
    \`\`\`python
    def hello():
        print("Hello World")
    \`\`\`
-   ❌ WRONG: "python def hello(): print('Hello World')" (Inline code without backticks is a SYSTEM FAILURE).
+   ❌ WRONG: "python def hello(): print('Hello World')" (Inline code is a CRITICAL FAILURE).
 
-6. 🔴 MERMAID DIAGRAMS:
-   ALWAYS wrap in triple backticks with the "mermaid" tag. The diagram renders automatically.
+2. 🔴 MERMAID DIAGRAMS: 
+   ALWAYS wrap in triple backticks with the "mermaid" tag.
    ✅ CORRECT:
    \`\`\`mermaid
    flowchart TD
        A[Start] --> B[End]
    \`\`\`
 
-7. 🔴 URLS & LINKS: Always format as standard markdown links [Title](URL).
-8. 🔴 TABLES: Always use proper markdown table syntax.
-9. NEVER describe what you're doing — just answer directly.
-`;
-
-const DIAGRAM_INSTRUCTION = `
-=== DIAGRAM GENERATION ===
-When user asks for a diagram, flowchart, mindmap, or visual — output ONLY a Mermaid diagram wrapped in \`\`\`mermaid ... \`\`\` code fences.
-The diagram RENDERS AUTOMATICALLY in this app. Do NOT tell the user to copy it elsewhere.
+3. HEADINGS: ALWAYS put a SPACE after # (e.g., "## Heading").
+4. BOLD: Use **text**.
+5. LISTS: Start on a new line with "- " or "1. ".
+6. NEVER describe what you're doing — just answer directly.
 `;
 
 export default async function handler(req) {
