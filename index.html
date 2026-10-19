@@ -1712,22 +1712,41 @@ function renderMarkdown(text){
 
   const renderer=new marked.Renderer();
   renderer.link=function(obj){const href=obj.href,text=obj.text,title=obj.title;const safeText=text||href;const tAttr=title?' title="'+escapeHTML(title)+'"':'';return '<a href="'+escapeHTML(href)+'"'+tAttr+' rel="noopener noreferrer">'+safeText+'</a>';};
-  renderer.code=function(obj){
-    const text=obj.text,lang=obj.lang;
-    const language=(lang||"code").toLowerCase().replace(/[^a-z0-9+#-]/g,"");
-    const mermaidKeywords=/^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
-    const looksLikeMermaid = mermaidKeywords.test(text.trim());
-    if(language==="mermaid" || (language==="code" && looksLikeMermaid)){
-      return '<div class="code-wrapper" data-mermaid="1"><div class="code-head"><span class="code-lang">MERMAID DIAGRAM</span><div class="code-actions"></div></div><pre><code class="language-mermaid hljs">'+escapeHTML(text)+'</code></pre></div>';
-    }
-    let highlighted="";
-    try{if(language&&window.hljs&&hljs.getLanguage(language))highlighted=hljs.highlight(text,{language:language}).value;else if(window.hljs)highlighted=hljs.highlightAuto(text).value;else highlighted=escapeHTML(text);}
-    catch(e){highlighted=escapeHTML(text);}
-    const encoded=encodeURIComponent(text);
-    let runBtn="";
-    if(language==="python"){runBtn='<button class="code-btn" data-code="'+encoded+'" onclick="runPythonCode(this)"><i class="fa-solid fa-play"></i> Run</button>';}
-    return '<div class="code-wrapper"><div class="code-head"><span class="code-lang">'+escapeHTML(language||"code")+'</span><div class="code-actions">'+runBtn+'<button class="code-btn" style="background:transparent;border:1px solid rgba(255,255,255,0.2)" data-code="'+encoded+'" onclick="copyCodeFromButton(this)"><i class="fa-solid fa-copy"></i> Copy</button></div></div><pre><code class="hljs">'+highlighted+'</code></pre><div class="code-output"></div></div>';
-  };
+  renderer.code = function(obj) {
+  let rawText = obj.text;
+  const language = (obj.lang || "code").toLowerCase().replace(/[^a-z0-9+#-]/g, "");
+  
+  // 🚨 ULTIMATE PYTHON FIXER (Line breaks lagane ke liye)
+  if (language === "python" || rawText.includes("def ") || rawText.startsWith("import tkinter")) {
+    rawText = rawText.replace(/\s+(import\s+|from\s+|def\s+|class\s+|if\s+|elif\s+|else\s*:|for\s+|while\s+|try\s*:|except\s*:|finally\s*:|return\s+|print\s*\()/g, '\n$1');
+    rawText = rawText.replace(/:\s+(?!\n)/g, ':\n    ');
+    rawText = rawText.replace(/\s+(root\s*=\s*|screen_var\s*=\s*|screen\s*=\s*|btn_frame\s*=\s*|buttons\s*=\s*|root\.\w+|screen\.\w+|btn_frame\.\w+|r\.\w+)/g, '\n$1');
+    rawText = rawText.replace(/#\s*(?=[a-zA-Z])/g, '\n# ');
+    rawText = rawText.replace(/\n{3,}/g, '\n\n').trim();
+  }
+  
+  const mermaidKeywords = /^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
+  const looksLikeMermaid = mermaidKeywords.test(rawText.trim());
+  
+  if (language === "mermaid" || (language === "code" && looksLikeMermaid)) {
+    return '<div class="code-wrapper" data-mermaid="1"><div class="code-head"><span class="code-lang">MERMAID DIAGRAM</span><div class="code-actions"></div></div><pre><code class="language-mermaid hljs">' + escapeHTML(rawText) + '</code></pre></div>';
+  }
+  
+  let highlighted = "";
+  try {
+    if (language && window.hljs && hljs.getLanguage(language)) highlighted = hljs.highlight(rawText, { language: language }).value;
+    else if (window.hljs) highlighted = hljs.highlightAuto(rawText).value;
+    else highlighted = escapeHTML(rawText);
+  } catch (e) { highlighted = escapeHTML(rawText); }
+  
+  const encoded = encodeURIComponent(rawText);
+  let runBtn = "";
+  if (language === "python" || rawText.startsWith("import tkinter")) {
+    runBtn = '<button class="code-btn" data-code="' + encoded + '" onclick="runPythonCode(this)"><i class="fa-solid fa-play"></i> Run</button>';
+  }
+  
+  return '<div class="code-wrapper"><div class="code-head"><span class="code-lang">' + escapeHTML(language || "code") + '</span><div class="code-actions">' + runBtn + '<button class="code-btn" style="background:transparent;border:1px solid rgba(255,255,255,0.2)" data-code="' + encoded + '" onclick="copyCodeFromButton(this)"><i class="fa-solid fa-copy"></i> Copy</button></div></div><pre><code class="hljs">' + highlighted + '</code></pre><div class="code-output"></div></div>';
+};
   
   let html=marked.parse(text,{renderer:renderer,breaks:true});
   
