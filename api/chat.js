@@ -4,7 +4,6 @@ export const config = {
 
 const RADOX_API = 'https://radoxai.com/v1/chat/completions';
 
-// GPT models ko pehle rakha gaya hai kyunki woh formatting rules behtar follow karte hain
 const RADOX_MODELS = {
   fast: ['gpt-5.6-luna', 'gpt-5.5', 'claude-sonnet-5', 'deepseek-v4-flash-0731', 'gemini-3.6-flash'],
   core: ['gpt-5.6-sol', 'claude-opus-5.5', 'deepseek-v4-pro-max', 'claude-opus-5']
@@ -57,6 +56,14 @@ function getLatestUserText(contents) {
   return '';
 }
 
+// 🔍 CHECK IF USER IS ASKING FOR A DIAGRAM
+function isDiagramRequest(text) {
+  if (!text) return false;
+  const t = String(text).toLowerCase();
+  const keywords = ['diagram', 'flowchart', 'flow chart', 'chart', 'visual', 'mindmap', 'graph', 'mermaid', 'draw a', 'draw the', 'naksha', 'chitra'];
+  return keywords.some(k => t.includes(k));
+}
+
 // 🛡️ SMART IDENTITY SHIELD
 function getIdentityResponse(text, clientInstruction) {
   if (!text) return null;
@@ -64,7 +71,7 @@ function getIdentityResponse(text, clientInstruction) {
 
   const namePatterns = [/tum\s+kon?\s+ho/i, /tum\s+kaun\s+ho/i, /who\s+are\s+you/i, /what\s+are\s+you/i, /tumhara\s+naam/i, /your\s+name/i, /kya\s+ho\s+tum/i, /apka\s+naam/i];
   const creatorPatterns = [/kis?\s*ne\s+banaya/i, /who\s+(made|created|built)\s+you/i, /tumhara\s+developer/i, /your\s+developer/i, /kaun\s+banaya/i, /kis\s+company\s+ne/i, /which\s+company/i, /kisne\s+train\s+kiya/i, /who\s+trained\s+you/i, /tumhara\s+creator/i];
-  const modelPatterns = [/kaun?\s*se\s*model/i, /which\s+model/i, /what\s+model/i, /tumhara\s+model/i, /are\s+you\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i, /tum\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i];
+  const modelPatterns = [/kaun?\s*se\s+model/i, /which\s+model/i, /what\s+model/i, /tumhara\s+model/i, /are\s+you\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i, /tum\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i];
 
   const isIdentity = namePatterns.some(p => p.test(t)) || creatorPatterns.some(p => p.test(t)) || modelPatterns.some(p => p.test(t));
   if (!isIdentity) return null;
@@ -754,52 +761,64 @@ export default async function handler(req) {
 
         send({ type: 'status', status: 'Writing answer...', stage: 'writing' });
 
-        const radoxChain = RADOX_MODELS[activeMode] || RADOX_MODELS.fast;
-        const openaiMessages = contentsToMessages(contents);
+        // 🔀 SMART ROUTING: Diagram requests bypass Radox and go straight to Gemini
+        const isDiagram = isDiagramRequest(userText);
         let lastError = null;
         let succeeded = false;
 
-        for (const model of radoxChain) {
-          try {
-            console.log(`Trying Radox: ${model}`);
-            const radoxRes = await callRadoxAI(model, openaiMessages, finalInstruction, generationConfig.temperature);
-            if (!radoxRes.body) throw new Error('No stream body');
+        if (!isDiagram) {
+          // Try Radox Models (GPT/Claude)
+          const radoxChain = RADOX_MODELS[activeMode] || RADOX_MODELS.fast;
+          const openaiMessages = contentsToMessages(contents);
 
-            const reader = radoxRes.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
+          for (const model of radoxChain) {
+            try {
+              console.log(`Trying Radox: ${model}`);
+              const radoxRes = await callRadoxAI(model, openaiMessages, finalInstruction, generationConfig.temperature);
+              if (!radoxRes.body) throw new Error('No stream body');
 
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split('\n');
-              buffer = lines.pop() || '';
-              for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed.startsWith('data:')) continue;
-                const raw = trimmed.substring(5).trim();
-                if (!raw || raw === '[DONE]') continue;
-                try {
-                  const parsed = JSON.parse(raw);
-                  const delta = parsed.choices?.[0]?.delta?.content;
-                  if (delta) scrubber.push(delta);
-                } catch {}
+              const reader = radoxRes.body.getReader();
+              const decoder = new TextDecoder();
+              let buffer = '';
+
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (!trimmed.startsWith('data:')) continue;
+                  const raw = trimmed.substring(5).trim();
+                  if (!raw || raw === '[DONE]') continue;
+                  try {
+                    const parsed = JSON.parse(raw);
+                    const delta = parsed.choices?.[0]?.delta?.content;
+                    if (delta) scrubber.push(delta);
+                  } catch {}
+                }
               }
+              scrubber.flush();
+              send({ type: 'done' });
+              succeeded = true;
+              controller.close();
+              return;
+            } catch (error) {
+              lastError = error;
+              console.error(`Radox ${model} failed:`, error?.message || error);
             }
-            scrubber.flush();
-            send({ type: 'done' });
-            succeeded = true;
-            controller.close();
-            return;
-          } catch (error) {
-            lastError = error;
-            console.error(`Radox ${model} failed:`, error?.message || error);
           }
         }
 
+        // If Diagram Request OR All Radox Failed -> Use Gemini
         if (!succeeded) {
-          console.log('All Radox failed. Trying Gemini fallback...');
+          if (isDiagram) {
+            console.log('Diagram request detected. Using Gemini directly.');
+          } else {
+            console.log('All Radox failed. Trying Gemini fallback...');
+          }
+          
           const geminiChain = GEMINI_MODEL_CHAIN[activeMode] || GEMINI_MODEL_CHAIN.fast;
 
           for (const model of geminiChain) {
