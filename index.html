@@ -383,6 +383,10 @@ body.select-locked .msg-wrap.select-active *{-webkit-user-select:text !important
 #call-reconnect.show{display:flex;}
 #call-reconnect .spinner{width:36px;height:36px;border-width:4px;border-color:rgba(255,255,255,0.3);border-top-color:#fff;}
 @media(max-width:500px){
+  /* Mermaid ka raw code hamesha hide rahe, sirf diagram ya error box dikhe */
+.code-wrapper[data-mermaid="1"] {
+  display: none !important;
+}
 .drawer{width:305px;}
 .msg{font-size:13.5px;}
 .msg.user{max-width:88%;}
@@ -1597,57 +1601,54 @@ async function renderAllMermaids(container) {
   let idx = 0;
   
   for (const block of codeBlocks) {
-    const code = block.textContent || "";
-    if (!mermaidKeywords.test(code.trim())) continue;
-    if (block.closest(".mermaid-container")) continue;
-    const wrapper = block.closest(".code-wrapper");
-    if (!wrapper) continue;
-    
-    const placeholder = document.createElement("div");
-    placeholder.className = "mermaid-container";
-    placeholder.innerHTML = '<div class="diagram-label">📊 Diagram</div><div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;"><div class="spinner" style="margin:0 auto 10px;width:24px;height:24px;border-width:3px;"></div>Rendering diagram...</div>';
-    wrapper.parentNode.insertBefore(placeholder, wrapper);
-    wrapper.style.display = "none";
-    
-    const newId = "mermaid_" + Date.now() + "_" + idx++;
     try {
+      const code = block.textContent || "";
+      if (!mermaidKeywords.test(code.trim())) continue;
+      
+      const wrapper = block.closest(".code-wrapper");
+      if (!wrapper) continue;
+      
+      if (wrapper.classList.contains("mermaid-processed")) continue;
+      wrapper.classList.add("mermaid-processed");
+      
+      wrapper.style.display = "none";
+      
+      const placeholder = document.createElement("div");
+      placeholder.className = "mermaid-container";
+      placeholder.innerHTML = '<div class="diagram-label">📊 Diagram</div><div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;"><div class="spinner" style="margin:0 auto 10px;width:24px;height:24px;border-width:3px;"></div>Rendering diagram...</div>';
+      wrapper.parentNode.insertBefore(placeholder, wrapper);
+      
+      const newId = "mermaid_" + Date.now() + "_" + (idx++);
       let cleanedCode = code.trim();
-      cleanedCode = cleanedCode.replace(/^mermaid\s*\n/i, "");
-      cleanedCode = cleanedCode.replace(/^(flowchart|graph)\s+(TD|TB|BT|LR|RL)\s+(?=[A-Za-z\["\w])/gim, "$1 $2\n    ");
-      cleanedCode = cleanedCode.replace(/^(sequenceDiagram)\s+(?=[A-Za-z])/gim, "$1\n    ");
-      cleanedCode = cleanedCode.replace(/<br\s*\/>/gi, "<br>");
-      cleanedCode = cleanedCode.replace(/-->\s*(?=[A-Z][A-Za-z0-9_]*\[)/g, "--> \n    ");
-      cleanedCode = cleanedCode.split("\n").map(function(l) { return l.trimEnd(); }).join("\n");
-      cleanedCode = cleanedCode.trim();
       
-      const { svg } = await mermaid.render(newId, cleanedCode);
-      const div = document.createElement("div");
-      div.className = "mermaid-container";
-      div.innerHTML = '<div class="diagram-label">📊 Diagram</div>' + svg;
-      const toolbar = document.createElement("div");
-      toolbar.className = "mermaid-toolbar";
-      toolbar.innerHTML = '<button onclick="downloadMermaidSvg(this)"><i class="fa-solid fa-download"></i> SVG</button><button onclick="copyMermaidCode(this)"><i class="fa-solid fa-code"></i> Code</button>';
-      toolbar.dataset.code = cleanedCode;
-      div.insertBefore(toolbar, div.firstChild.nextSibling);
-      
-      wrapper.replaceWith(div);
-      placeholder.remove();
-    } catch (e) {
-      console.warn("Mermaid render failed:", e);
-      
-      // 🧨 POPUP KILLER: Mermaid jo error popup body mein daalti hai, usko delete karo
-      const errElem = document.getElementById("d" + newId);
-      if (errElem) errElem.remove();
-      const errElem2 = document.getElementById(newId);
-      if (errElem2) errElem2.remove();
-      
-      // Custom Error Box
-      const errDiv = document.createElement("div");
-      errDiv.className = "mermaid-container";
-      errDiv.innerHTML = '<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn (AI ne ghalat code diya).</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">' + escapeHTML(code) + '</pre>';
-      
-      wrapper.replaceWith(errDiv);
-      placeholder.remove();
+      try {
+        const { svg } = await mermaid.render(newId, cleanedCode);
+        const div = document.createElement("div");
+        div.className = "mermaid-container";
+        div.innerHTML = '<div class="diagram-label">📊 Diagram</div>' + svg;
+        
+        const toolbar = document.createElement("div");
+        toolbar.className = "mermaid-toolbar";
+        toolbar.innerHTML = '<button onclick="downloadMermaidSvg(this)"><i class="fa-solid fa-download"></i> SVG</button><button onclick="copyMermaidCode(this)"><i class="fa-solid fa-code"></i> Code</button>';
+        toolbar.dataset.code = cleanedCode;
+        div.insertBefore(toolbar, div.firstChild.nextSibling);
+        
+        placeholder.replaceWith(div);
+      } catch (mermaidError) {
+        console.warn("Mermaid render failed:", mermaidError);
+        // 🧨 Red Bomb Popup Delete karo
+        const errElem = document.getElementById("d" + newId);
+        if (errElem) errElem.remove();
+        const errElem2 = document.getElementById(newId);
+        if (errElem2) errElem2.remove();
+        
+        const errDiv = document.createElement("div");
+        errDiv.className = "mermaid-container";
+        errDiv.innerHTML = '<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn (AI ne ghalat code diya).</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">' + escapeHTML(code) + '</pre>';
+        placeholder.replaceWith(errDiv);
+      }
+    } catch (err) {
+      console.error("Outer error in renderAllMermaids:", err);
     }
   }
 }
