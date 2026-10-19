@@ -632,8 +632,19 @@ const FORMAT_INSTRUCTION = `
    SELECT * FROM users;
    \`\`\`
 
-2. 🔴 MERMAID DIAGRAMS: 
-   ALWAYS wrap in \`\`\`mermaid ... \`\`\` with proper newlines for every node.
+2. 🔴 MERMAID DIAGRAMS (CRITICAL SYNTAX): 
+   You MUST write valid Mermaid syntax.
+   - ALWAYS close quotes properly! (e.g., A["Start"]) DO NOT leave quotes open.
+   - NEVER break a node definition in the middle of a word.
+   - Put each node and connection on a NEW LINE.
+   - Use double quotes for node labels if they contain spaces.
+   ✅ CORRECT:
+   \`\`\`mermaid
+   flowchart TD
+       A["Center"] --> B["Object"]
+       B --> C["Velocity"]
+   \`\`\`
+   ❌ WRONG: C -- "Centripeta (leaves quote open, breaks parsing)
 
 3. HEADINGS: ALWAYS put a SPACE after # (e.g., "## Heading").
 4. BOLD: Use **text**.
