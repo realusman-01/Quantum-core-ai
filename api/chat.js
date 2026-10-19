@@ -5,10 +5,9 @@ export const config = {
 const RADOX_API = 'https://radoxai.com/v1/chat/completions';
 
 const RADOX_MODELS = {
-  fast: ['claude-sonnet-5', 'gpt-5.5', 'deepseek-v4-flash-0731', 'gemini-3.6-flash'],
-  core: ['claude-opus-5.5', 'gpt-5.6-sol', 'deepseek-v4-pro-max', 'claude-opus-5']
+  fast: ['gpt-5.6-luna', 'gpt-5.5', 'claude-sonnet-5', 'deepseek-v4-flash-0731', 'gemini-3.6-flash'],
+  core: ['gpt-5.6-sol', 'claude-opus-5.5', 'deepseek-v4-pro-max', 'claude-opus-5']
 };
-
 const RADOX_DECISION_MODEL = 'claude-sonnet-5';
 
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
