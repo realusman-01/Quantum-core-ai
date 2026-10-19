@@ -1656,13 +1656,59 @@ function copyMermaidCode(btn){
   copyText(code);
 }
 
- function renderMarkdown(text){
+/* ============ MARKDOWN ============ */
+function formatAIText(text) {
+  // 1. Fix code blocks that are completely inline (e.g. ```python print("hi") ```)
+  text = text.replace(/```([a-z]+)\s+([\s\S]*?)\s*```/gi, function(match, lang, code) {
+    let formattedCode = code.trim();
+    if (lang.toLowerCase() === 'python' && !formattedCode.includes('\n')) {
+      formattedCode = formattedCode
+        .replace(/\bdef\s/g, '\ndef ').replace(/\bimport\s/g, '\nimport ').replace(/\bfrom\s/g, '\nfrom ')
+        .replace(/\bprint\s*\(/g, '\nprint(').replace(/\btry:/g, '\ntry:').replace(/\bexcept\s/g, '\nexcept ')
+        .replace(/\bif\s/g, '\nif ').replace(/\belif\s/g, '\nelif ').replace(/\belse:/g, '\nelse:')
+        .replace(/\bwhile\s/g, '\nwhile ').replace(/\bfor\s/g, '\nfor ').replace(/\breturn\s/g, '\nreturn ')
+        .replace(/#\s/g, '\n# ').replace(/\binput\s*\(/g, '\ninput(').replace(/\bfloat\s*\(/g, '\nfloat(')
+        .trim();
+    } else if (lang.toLowerCase() === 'mermaid' && (!formattedCode.includes('\n') || formattedCode.split('\n').length < 2)) {
+      formattedCode = formattedCode
+        .replace(/^(flowchart|graph)\s+([A-Z]{2})/i, '$1 $2\n')
+        .replace(/\s*-->\s*/g, ' --> \n')
+        .replace(/\s*-\.->\s*/g, ' -.-> \n')
+        .replace(/([^\n])\s+([A-Z]\[)/g, '$1\n$2');
+    }
+    return '\n```' + lang + '\n' + formattedCode + '\n```\n';
+  });
+
+  // 2. Fix MISSING backticks
+  text = text.replace(/(?:^|\s)(python|mermaid)\s+((?:def|import|from|class|print|#|flowchart|graph|sequenceDiagram|mindmap|classDiagram|stateDiagram|erDiagram)[\s\S]*?)(?=(?:\n\n|###|This program|What kind|Let me know|Would you|Feel free|Do you|I hope|Here is|How it works|You can|You need|To run|Just copy|$))/gis, function(match, lang, code) {
+    let formattedCode = code.trim();
+    if (lang.toLowerCase() === 'python') {
+      formattedCode = formattedCode
+        .replace(/\bdef\s/g, '\ndef ').replace(/\bimport\s/g, '\nimport ').replace(/\bfrom\s/g, '\nfrom ')
+        .replace(/\bprint\s*\(/g, '\nprint(').replace(/\btry:/g, '\ntry:').replace(/\bexcept\s/g, '\nexcept ')
+        .replace(/\bif\s/g, '\nif ').replace(/\belif\s/g, '\nelif ').replace(/\belse:/g, '\nelse:')
+        .replace(/\bwhile\s/g, '\nwhile ').replace(/\bfor\s/g, '\nfor ').replace(/\breturn\s/g, '\nreturn ')
+        .replace(/#\s/g, '\n# ').replace(/\binput\s*\(/g, '\ninput(').replace(/\bfloat\s*\(/g, '\nfloat(')
+        .replace(/\n\s+/g, '\n')
+        .trim();
+    } else if (lang.toLowerCase() === 'mermaid') {
+      formattedCode = formattedCode
+        .replace(/^(flowchart|graph)\s+([A-Z]{2})/i, '$1 $2\n')
+        .replace(/\s*-->\s*/g, ' --> \n')
+        .replace(/\s*-\.->\s*/g, ' -.-> \n')
+        .replace(/([^\n])\s+([A-Z]\[)/g, '$1\n$2')
+        .trim();
+    }
+    return '\n```' + lang + '\n' + formattedCode + '\n```\n';
+  });
+
+  return text;
+}
+
+function renderMarkdown(text){
   if(!window.marked)return escapeHTML(text);
   
-  // 🛠️ NUCLEAR AUTO-FIX: Agar AI backticks aur line breaks lagana bhool jaye
-  // Yeh regex "python", "javascript", ya "mermaid" word dhundh kar aage ka code pakad legi
-  // aur usko proper box (```) mein daal degi.
-  text = text.replace(/(?:^|\s)(python|javascript|mermaid)\s+((?:def|import|from|class|print|#|function|const|let|var|try|while|for|flowchart|graph|sequenceDiagram|mindmap|classDiagram|stateDiagram|erDiagram|gantt|pie|timeline)[\s\S]*?)(?=(?:This program|What kind|Let me know|Would you|Feel free|Do you|I hope|\n\n|$))/gis, "\n```$1\n$2\n```\n");
+  text = formatAIText(text);
 
   const renderer=new marked.Renderer();
   renderer.link=function(obj){const href=obj.href,text=obj.text,title=obj.title;const safeText=text||href;const tAttr=title?' title="'+escapeHTML(title)+'"':'';return '<a href="'+escapeHTML(href)+'"'+tAttr+' rel="noopener noreferrer">'+safeText+'</a>';};
