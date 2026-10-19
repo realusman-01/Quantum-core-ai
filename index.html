@@ -1589,49 +1589,63 @@ async function waitForMermaid(maxWaitMs){
   return !!window.mermaid;
 }
 
-async function renderAllMermaids(container){
+async function renderAllMermaids(container) {
   const ready = await waitForMermaid(3000);
-  if(!ready) return;
-  const codeBlocks=container.querySelectorAll("pre > code");
-  const mermaidKeywords=/^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
-  let idx=0;
-  for(const block of codeBlocks){
-    const code=block.textContent || "";
-    if(!mermaidKeywords.test(code.trim()))continue;
-    if(block.closest(".mermaid-container"))continue;
-    const wrapper=block.closest(".code-wrapper");
-    if(!wrapper)continue;
-    const placeholder=document.createElement("div");
-    placeholder.className="mermaid-container";
-    placeholder.innerHTML='<div class="diagram-label">📊 Diagram</div><div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;"><div class="spinner" style="margin:0 auto 10px;width:24px;height:24px;border-width:3px;"></div>Rendering diagram...</div>';
+  if (!ready) return;
+  const codeBlocks = container.querySelectorAll("pre > code");
+  const mermaidKeywords = /^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
+  let idx = 0;
+  
+  for (const block of codeBlocks) {
+    const code = block.textContent || "";
+    if (!mermaidKeywords.test(code.trim())) continue;
+    if (block.closest(".mermaid-container")) continue;
+    const wrapper = block.closest(".code-wrapper");
+    if (!wrapper) continue;
+    
+    const placeholder = document.createElement("div");
+    placeholder.className = "mermaid-container";
+    placeholder.innerHTML = '<div class="diagram-label">📊 Diagram</div><div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;"><div class="spinner" style="margin:0 auto 10px;width:24px;height:24px;border-width:3px;"></div>Rendering diagram...</div>';
     wrapper.parentNode.insertBefore(placeholder, wrapper);
-    const newId="mermaid_"+Date.now()+"_"+idx++;
-    try{
+    wrapper.style.display = "none";
+    
+    const newId = "mermaid_" + Date.now() + "_" + idx++;
+    try {
       let cleanedCode = code.trim();
       cleanedCode = cleanedCode.replace(/^mermaid\s*\n/i, "");
       cleanedCode = cleanedCode.replace(/^(flowchart|graph)\s+(TD|TB|BT|LR|RL)\s+(?=[A-Za-z\["\w])/gim, "$1 $2\n    ");
       cleanedCode = cleanedCode.replace(/^(sequenceDiagram)\s+(?=[A-Za-z])/gim, "$1\n    ");
       cleanedCode = cleanedCode.replace(/<br\s*\/>/gi, "<br>");
       cleanedCode = cleanedCode.replace(/-->\s*(?=[A-Z][A-Za-z0-9_]*\[)/g, "--> \n    ");
-      cleanedCode = cleanedCode.split("\n").map(function(l){return l.trimEnd();}).join("\n");
+      cleanedCode = cleanedCode.split("\n").map(function(l) { return l.trimEnd(); }).join("\n");
       cleanedCode = cleanedCode.trim();
       
-      const {svg}=await mermaid.render(newId,cleanedCode);
-      const div=document.createElement("div");
-      div.className="mermaid-container";
-      div.innerHTML='<div class="diagram-label">📊 Diagram</div>'+svg;
-      const toolbar=document.createElement("div");
-      toolbar.className="mermaid-toolbar";
-      toolbar.innerHTML='<button onclick="downloadMermaidSvg(this)"><i class="fa-solid fa-download"></i> SVG</button><button onclick="copyMermaidCode(this)"><i class="fa-solid fa-code"></i> Code</button>';
-      toolbar.dataset.code=cleanedCode;
+      const { svg } = await mermaid.render(newId, cleanedCode);
+      const div = document.createElement("div");
+      div.className = "mermaid-container";
+      div.innerHTML = '<div class="diagram-label">📊 Diagram</div>' + svg;
+      const toolbar = document.createElement("div");
+      toolbar.className = "mermaid-toolbar";
+      toolbar.innerHTML = '<button onclick="downloadMermaidSvg(this)"><i class="fa-solid fa-download"></i> SVG</button><button onclick="copyMermaidCode(this)"><i class="fa-solid fa-code"></i> Code</button>';
+      toolbar.dataset.code = cleanedCode;
       div.insertBefore(toolbar, div.firstChild.nextSibling);
+      
       wrapper.replaceWith(div);
       placeholder.remove();
-    }catch(e){
-      console.warn("Mermaid render failed:",e);
-      const errDiv=document.createElement("div");
-      errDiv.className="mermaid-container";
-      errDiv.innerHTML='<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn.</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">'+escapeHTML(code)+'</pre>';
+    } catch (e) {
+      console.warn("Mermaid render failed:", e);
+      
+      // 🧨 POPUP KILLER: Mermaid jo error popup body mein daalti hai, usko delete karo
+      const errElem = document.getElementById("d" + newId);
+      if (errElem) errElem.remove();
+      const errElem2 = document.getElementById(newId);
+      if (errElem2) errElem2.remove();
+      
+      // Custom Error Box
+      const errDiv = document.createElement("div");
+      errDiv.className = "mermaid-container";
+      errDiv.innerHTML = '<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn (AI ne ghalat code diya).</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">' + escapeHTML(code) + '</pre>';
+      
       wrapper.replaceWith(errDiv);
       placeholder.remove();
     }
