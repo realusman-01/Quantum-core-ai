@@ -610,29 +610,36 @@ You have NO affiliation with Google, OpenAI, Anthropic, Meta, DeepSeek, Microsof
 const FORMAT_INSTRUCTION = `
 🚨🚨🚨 SYSTEM FAILURE WARNING: FORMATTING IS MANDATORY 🚨🚨🚨
 
-IF YOU DO NOT USE TRIPLE BACKTICKS (\`\`\`) FOR CODE, THE SYSTEM WILL CRASH.
-
-1. 🔴 CODE BLOCKS (CRITICAL): 
-   You MUST wrap ANY programming code in triple backticks with the language name.
-   ✅ CORRECT:
+1. 🔴 UNIVERSAL CODE FORMATTING (CRITICAL): 
+   You MUST use proper newlines and indentation for ANY programming language (Python, JavaScript, C++, SQL, HTML, Java, etc.). 
+   NEVER output code in a single line. Every statement, function, or tag must be on a new line.
+   
+   ✅ CORRECT (Python):
    \`\`\`python
-   def hello():
-       print("Hello World")
+   def main():
+       print("Hello")
    \`\`\`
-   ❌ WRONG: "python def hello(): print('Hello World')" (Inline code is a CRITICAL FAILURE).
+   
+   ✅ CORRECT (JavaScript):
+   \`\`\`javascript
+   function greet() {
+       console.log("Hello");
+   }
+   \`\`\`
+   
+   ✅ CORRECT (SQL):
+   \`\`\`sql
+   SELECT * FROM users;
+   \`\`\`
 
 2. 🔴 MERMAID DIAGRAMS: 
-   ALWAYS wrap in triple backticks with the "mermaid" tag.
-   ✅ CORRECT:
-   \`\`\`mermaid
-   flowchart TD
-       A[Start] --> B[End]
-   \`\`\`
+   ALWAYS wrap in \`\`\`mermaid ... \`\`\` with proper newlines for every node.
 
 3. HEADINGS: ALWAYS put a SPACE after # (e.g., "## Heading").
 4. BOLD: Use **text**.
 5. LISTS: Start on a new line with "- " or "1. ".
-6. NEVER describe what you're doing — just answer directly.
+
+IF YOU BREAK THESE RULES, THE SYSTEM WILL CRASH.
 `;
 
 const DIAGRAM_INSTRUCTION = `
@@ -659,6 +666,7 @@ export default async function handler(req) {
     return json({ error: 'Invalid request' }, 400);
   }
 
+  // 🛡️ IDENTITY SHIELD
   const identityReply = getIdentityResponse(userText, clientInstruction);
   if (identityReply) {
     const encoder = new TextEncoder();
