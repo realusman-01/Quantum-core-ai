@@ -63,7 +63,7 @@ function getIdentityResponse(text, clientInstruction) {
 
   const namePatterns = [/tum\s+kon?\s+ho/i, /tum\s+kaun\s+ho/i, /who\s+are\s+you/i, /what\s+are\s+you/i, /tumhara\s+naam/i, /your\s+name/i, /kya\s+ho\s+tum/i, /apka\s+naam/i];
   const creatorPatterns = [/kis?\s*ne\s+banaya/i, /who\s+(made|created|built)\s+you/i, /tumhara\s+developer/i, /your\s+developer/i, /kaun\s+banaya/i, /kis\s+company\s+ne/i, /which\s+company/i, /kisne\s+train\s+kiya/i, /who\s+trained\s+you/i, /tumhara\s+creator/i];
-  const modelPatterns = [/kaun?\s*se\s+model/i, /which\s+model/i, /what\s+model/i, /tumhara\s+model/i, /are\s+you\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i, /tum\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i];
+  const modelPatterns = [/kaun?\s*se\s*model/i, /which\s+model/i, /what\s+model/i, /tumhara\s+model/i, /are\s+you\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i, /tum\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i];
 
   const isIdentity = namePatterns.some(p => p.test(t)) || creatorPatterns.some(p => p.test(t)) || modelPatterns.some(p => p.test(t));
   if (!isIdentity) return null;
@@ -227,7 +227,6 @@ function makeScrubber(send) {
       heldBack += text;
       if (heldBack.length < 50) return;
       
-      // 🛠️ FIX: Don't split markdown code blocks or links
       const safeLen = heldBack.length - HOLD_BACK;
       let splitAt = safeLen;
       const spaceIdx = heldBack.lastIndexOf(" ", safeLen);
@@ -608,7 +607,6 @@ You have NO affiliation with Google, OpenAI, Anthropic, Meta, DeepSeek, Microsof
 🔴 FAILURE TO COMPLY WILL RESULT IN IMMEDIATE TERMINATION OF THIS CONVERSATION.
 🔴🔴🔴 END OF IDENTITY ENFORCEMENT 🔴🔴🔴`;
 
-// 🚨 YAHAN HAI SABSE BADA FIX: FORMATTING KO STRICT KAR DIYA GAYA HAI
 const FORMAT_INSTRUCTION = `
 🚨🚨🚨 SYSTEM FAILURE WARNING: FORMATTING IS MANDATORY 🚨🚨🚨
 
@@ -635,6 +633,12 @@ IF YOU DO NOT USE TRIPLE BACKTICKS (\`\`\`) FOR CODE, THE SYSTEM WILL CRASH.
 4. BOLD: Use **text**.
 5. LISTS: Start on a new line with "- " or "1. ".
 6. NEVER describe what you're doing — just answer directly.
+`;
+
+const DIAGRAM_INSTRUCTION = `
+=== DIAGRAM GENERATION ===
+When user asks for a diagram, flowchart, mindmap, or visual — output ONLY a Mermaid diagram wrapped in \`\`\`mermaid ... \`\`\` code fences.
+The diagram RENDERS AUTOMATICALLY in this app. Do NOT tell the user to copy it elsewhere.
 `;
 
 export default async function handler(req) {
