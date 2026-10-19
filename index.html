@@ -1620,7 +1620,19 @@ async function renderAllMermaids(container) {
       
       const newId = "mermaid_" + Date.now() + "_" + (idx++);
       let cleanedCode = code.trim();
-      
+// 🪄 MAGIC SANITIZER: AI ki ghaltiyan auto-fix karo
+// 1. Agar line quotes/bracket ke baghair khatam ho (jaise E["Internet)
+cleanedCode = cleanedCode.replace(/\[\"([^\"\n]+)$/gm, '["$1"]');
+// 2. Duplicate Node IDs hatao (jaise "B B -->" ko "B -->" karo)
+cleanedCode = cleanedCode.replace(/\b([A-Z])\s+\1\s*(-->|---)/g, '$1 $2');
+// 3. Broken arrows jo line ke aakhir mein hain unhe hatao
+cleanedCode = cleanedCode.replace(/-->\s*$/gm, '');
+
+// Purane basic cleanup
+cleanedCode = cleanedCode.replace(/^mermaid\s*\n/i, "");
+cleanedCode = cleanedCode.replace(/<br\s*\/>/gi, " ");
+cleanedCode = cleanedCode.split("\n").map(function(l){return l.trimEnd();}).join("\n");
+cleanedCode = cleanedCode.trim();
       try {
         const { svg } = await mermaid.render(newId, cleanedCode);
         const div = document.createElement("div");
