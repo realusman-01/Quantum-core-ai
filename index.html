@@ -1712,19 +1712,48 @@ function renderMarkdown(text){
 
   const renderer=new marked.Renderer();
   renderer.link=function(obj){const href=obj.href,text=obj.text,title=obj.title;const safeText=text||href;const tAttr=title?' title="'+escapeHTML(title)+'"':'';return '<a href="'+escapeHTML(href)+'"'+tAttr+' rel="noopener noreferrer">'+safeText+'</a>';};
-  renderer.code = function(obj) {
+renderer.code = function(obj) {
   let rawText = obj.text;
   const language = (obj.lang || "code").toLowerCase().replace(/[^a-z0-9+#-]/g, "");
   
-  // 🚨 ULTIMATE PYTHON FIXER (Line breaks lagane ke liye)
-  if (language === "python" || rawText.includes("def ") || rawText.startsWith("import tkinter")) {
-    rawText = rawText.replace(/\s+(import\s+|from\s+|def\s+|class\s+|if\s+|elif\s+|else\s*:|for\s+|while\s+|try\s*:|except\s*:|finally\s*:|return\s+|print\s*\()/g, '\n$1');
-    rawText = rawText.replace(/:\s+(?!\n)/g, ':\n    ');
-    rawText = rawText.replace(/\s+(root\s*=\s*|screen_var\s*=\s*|screen\s*=\s*|btn_frame\s*=\s*|buttons\s*=\s*|root\.\w+|screen\.\w+|btn_frame\.\w+|r\.\w+)/g, '\n$1');
-    rawText = rawText.replace(/#\s*(?=[a-zA-Z])/g, '\n# ');
+  // 🚨 UNIVERSAL CODE FIXER (Sab languages ke liye)
+  if (language !== "mermaid" && !rawText.includes("flowchart") && !rawText.includes("sequenceDiagram")) {
+    
+    // 1. Strings ke andar aayi ghalat newlines hatao (e.g. "Hello \n World" -> "Hello World")
+    rawText = rawText.replace(/(["'`])([^"'`]*?)\1/g, function(match) {
+      return match.replace(/\n\s*/g, ' ');
+    });
+    
+    // 2. Braces aur Semicolons ke baad newline (C, C++, JS, Java, PHP)
+    if (["javascript", "js", "c", "cpp", "c++", "java", "php", "csharp", "cs", "css"].includes(language)) {
+      rawText = rawText.replace(/([{};])/g, '$1\n');
+      rawText = rawText.replace(/([^ \n])\s+(function|class|const|let|var|if|for|while|switch|import|export|return|public|private)\s+/g, '$1\n$2 ');
+    }
+    
+    // 3. SQL ke liye newlines
+    if (language === "sql") {
+      rawText = rawText.replace(/\s+(SELECT|FROM|WHERE|INSERT INTO|UPDATE|DELETE FROM|CREATE TABLE|ALTER TABLE|GROUP BY|ORDER BY|JOIN|LEFT JOIN|RIGHT JOIN)\s+/gi, '\n$1 ');
+    }
+    
+    // 4. Python ke liye newlines aur indentation
+    if (language === "python" || rawText.includes("def ") || rawText.includes("import ")) {
+      rawText = rawText.replace(/=\s*\n\s*/g, '= ');
+      rawText = rawText.replace(/\(\s*\n\s*/g, '(');
+      rawText = rawText.replace(/,\s*\n\s*/g, ', ');
+      rawText = rawText.replace(/(?:^|\s)(def\s+|class\s+|import\s+|from\s+|if\s+|elif\s+|else\s*:|for\s+|while\s+|try\s*:|except\s*:|finally\s*:)/g, '\n$1');
+      rawText = rawText.replace(/:\s*(?!\n)/g, ':\n    ');
+    }
+    
+    // 5. HTML ke liye newlines (Tags ke beech)
+    if (language === "html" || language === "xml") {
+      rawText = rawText.replace(/(<[^>]+>)/g, '\n$1\n');
+    }
+    
+    // 6. Extra khaali lines hatao
     rawText = rawText.replace(/\n{3,}/g, '\n\n').trim();
   }
   
+  // Mermaid check
   const mermaidKeywords = /^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
   const looksLikeMermaid = mermaidKeywords.test(rawText.trim());
   
@@ -1741,7 +1770,7 @@ function renderMarkdown(text){
   
   const encoded = encodeURIComponent(rawText);
   let runBtn = "";
-  if (language === "python" || rawText.startsWith("import tkinter")) {
+  if (language === "python" || rawText.includes("def ")) {
     runBtn = '<button class="code-btn" data-code="' + encoded + '" onclick="runPythonCode(this)"><i class="fa-solid fa-play"></i> Run</button>';
   }
   
