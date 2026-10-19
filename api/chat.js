@@ -63,7 +63,7 @@ function getIdentityResponse(text, clientInstruction) {
 
   const namePatterns = [/tum\s+kon?\s+ho/i, /tum\s+kaun\s+ho/i, /who\s+are\s+you/i, /what\s+are\s+you/i, /tumhara\s+naam/i, /your\s+name/i, /kya\s+ho\s+tum/i, /apka\s+naam/i];
   const creatorPatterns = [/kis?\s*ne\s+banaya/i, /who\s+(made|created|built)\s+you/i, /tumhara\s+developer/i, /your\s+developer/i, /kaun\s+banaya/i, /kis\s+company\s+ne/i, /which\s+company/i, /kisne\s+train\s+kiya/i, /who\s+trained\s+you/i, /tumhara\s+creator/i];
-  const modelPatterns = [/kaun?\s*se\s*model/i, /which\s+model/i, /what\s+model/i, /tumhara\s+model/i, /are\s+you\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i, /tum\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i];
+  const modelPatterns = [/kaun?\s*se\s+model/i, /which\s+model/i, /what\s+model/i, /tumhara\s+model/i, /are\s+you\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i, /tum\s+(gpt|claude|gemini|deepseek|sonnet|opus)/i];
 
   const isIdentity = namePatterns.some(p => p.test(t)) || creatorPatterns.some(p => p.test(t)) || modelPatterns.some(p => p.test(t));
   if (!isIdentity) return null;
@@ -608,47 +608,44 @@ You have NO affiliation with Google, OpenAI, Anthropic, Meta, DeepSeek, Microsof
 🔴🔴🔴 END OF IDENTITY ENFORCEMENT 🔴🔴🔴`;
 
 const FORMAT_INSTRUCTION = `
-🚨🚨🚨 SYSTEM FAILURE WARNING: FORMATTING IS MANDATORY 🚨🚨🚨
+🚨🚨🚨 SYSTEM FAILURE WARNING: PROFESSIONAL FORMATTING IS MANDATORY 🚨🚨🚨
 
-1. 🔴 UNIVERSAL CODE FORMATTING (CRITICAL): 
-   You MUST use proper newlines and indentation for ANY programming language (Python, JavaScript, C++, SQL, HTML, Java, etc.). 
-   NEVER output code in a single line. Every statement, function, or tag must be on a new line.
-   
-   ✅ CORRECT (Python):
-   \`\`\`python
-   def main():
-       print("Hello")
-   \`\`\`
-   
-   ✅ CORRECT (JavaScript):
-   \`\`\`javascript
-   function greet() {
-       console.log("Hello");
-   }
-   \`\`\`
-   
-   ✅ CORRECT (SQL):
-   \`\`\`sql
-   SELECT * FROM users;
-   \`\`\`
+You are an advanced, highly professional AI. Your output must look visually stunning and well-structured. 
+USE PROPER MARKDOWN FORMATTING AT ALL TIMES.
 
-2. 🔴 MERMAID DIAGRAMS (CRITICAL SYNTAX): 
-   You MUST write valid Mermaid syntax.
-   - ALWAYS close quotes properly! (e.g., A["Start"]) DO NOT leave quotes open.
-   - NEVER break a node definition in the middle of a word.
-   - Put each node and connection on a NEW LINE.
-   - Use double quotes for node labels if they contain spaces.
+1. 🔴 PROFESSIONAL MARKDOWN (USE FREQUENTLY):
+   - **Bold** for emphasis.
+   - *Italics* for subtle emphasis or foreign words.
+   - __Underline__ for important terms (if supported).
+   - ~~Strikethrough~~ for deleted text.
+   - Use \`inline code\` for commands or short syntax.
+   - Use \`> \` for Blockquotes (great for quotes or important warnings).
+   - Use Markdown Tables for comparisons.
+   - Use Headings (##, ###) with a SPACE after the hashtag.
+
+2. 🔴 MERMAID DIAGRAMS (CRITICAL SYNTAX):
+   - NEVER use HTML tags like <br/> inside Mermaid nodes. 
+   - ALWAYS close quotes and brackets properly. 
+   - Use simple text for nodes. Keep it clean.
    ✅ CORRECT:
    \`\`\`mermaid
    flowchart TD
        A["Center"] --> B["Object"]
        B --> C["Velocity"]
    \`\`\`
-   ❌ WRONG: C -- "Centripeta (leaves quote open, breaks parsing)
+   ❌ WRONG: A["Center <br/> test"] --> B[" (Leaves quotes open)
 
-3. HEADINGS: ALWAYS put a SPACE after # (e.g., "## Heading").
-4. BOLD: Use **text**.
-5. LISTS: Start on a new line with "- " or "1. ".
+3. 🔴 UNIVERSAL CODE FORMATTING:
+   - You MUST use proper newlines and indentation for ANY language.
+   - NEVER output code in a single line. 
+   - Wrap code in triple backticks with the language name.
+   ✅ CORRECT (Python):
+   \`\`\`python
+   def main():
+       print("Hello")
+   \`\`\`
+
+4. LISTS: Start on a new line with "- " or "1. ".
 
 IF YOU BREAK THESE RULES, THE SYSTEM WILL CRASH.
 `;
