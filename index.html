@@ -1608,17 +1608,11 @@ async function renderAllMermaids(container){
     const newId="mermaid_"+Date.now()+"_"+idx++;
     try{
       let cleanedCode = code.trim();
-      // Remove "mermaid" prefix
       cleanedCode = cleanedCode.replace(/^mermaid\s*\n/i, "");
-      // CRITICAL: Add newline after diagram type if not present
       cleanedCode = cleanedCode.replace(/^(flowchart|graph)\s+(TD|TB|BT|LR|RL)\s+(?=[A-Za-z\["\w])/gim, "$1 $2\n    ");
-      // Add newline after sequenceDiagram if followed by text
       cleanedCode = cleanedCode.replace(/^(sequenceDiagram)\s+(?=[A-Za-z])/gim, "$1\n    ");
-      // Convert <br/> and <br /> to <br>
       cleanedCode = cleanedCode.replace(/<br\s*\/>/gi, "<br>");
-      // Ensure newlines between node definitions (after --> ...)
       cleanedCode = cleanedCode.replace(/-->\s*(?=[A-Z][A-Za-z0-9_]*\[)/g, "--> \n    ");
-      // Trim each line
       cleanedCode = cleanedCode.split("\n").map(function(l){return l.trimEnd();}).join("\n");
       cleanedCode = cleanedCode.trim();
       
@@ -1665,6 +1659,14 @@ function copyMermaidCode(btn){
 /* ============ MARKDOWN ============ */
 function renderMarkdown(text){
   if(!window.marked)return escapeHTML(text);
+  
+  // 🛠️ AUTO-FIX: Agar AI backticks lagana bhool jaye, toh UI khud lagayega
+  text = text.replace(/(?:^|\s)python\s+((?:def|import|from|class|print|#)[\s\S]*?)(?=(?:Tell me|Would you|Let me|What specific|Here is|How can|I hope|Feel free|Do you|\n\n|$))/gi, "\n```python\n$1\n```\n");
+  
+  text = text.replace(/(?:^|\s)javascript\s+((?:function|const|let|var|class|import)[\s\S]*?)(?=(?:Tell me|Would you|Let me|What specific|Here is|How can|I hope|Feel free|Do you|\n\n|$))/gi, "\n```javascript\n$1\n```\n");
+  
+  text = text.replace(/(?:^|\s)mermaid\s+((?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|mindmap|timeline)[\s\S]*?)(?=(?:Let me|Would you|What|Here is|Feel free|Do you|\n\n|$))/gi, "\n```mermaid\n$1\n```\n");
+
   const renderer=new marked.Renderer();
   renderer.link=function(obj){const href=obj.href,text=obj.text,title=obj.title;const safeText=text||href;const tAttr=title?' title="'+escapeHTML(title)+'"':'';return '<a href="'+escapeHTML(href)+'"'+tAttr+' rel="noopener noreferrer">'+safeText+'</a>';};
   renderer.code=function(obj){
@@ -1683,7 +1685,9 @@ function renderMarkdown(text){
     if(language==="python"){runBtn='<button class="code-btn" data-code="'+encoded+'" onclick="runPythonCode(this)"><i class="fa-solid fa-play"></i> Run</button>';}
     return '<div class="code-wrapper"><div class="code-head"><span class="code-lang">'+escapeHTML(language||"code")+'</span><div class="code-actions">'+runBtn+'<button class="code-btn" style="background:transparent;border:1px solid rgba(255,255,255,0.2)" data-code="'+encoded+'" onclick="copyCodeFromButton(this)"><i class="fa-solid fa-copy"></i> Copy</button></div></div><pre><code class="hljs">'+highlighted+'</code></pre><div class="code-output"></div></div>';
   };
+  
   let html=marked.parse(text,{renderer:renderer,breaks:true});
+  
   const temp=document.createElement("div");
   temp.innerHTML=html;
   temp.querySelectorAll("p").forEach(function(p){
@@ -1948,10 +1952,16 @@ function buildSystemInstruction(){
     '       A[Start] --> B[End]\n' +
     '   \\`\\`\\`\n' +
     '   WRONG: Inline without backticks or same line.\n\n' +
-    '3. BULLET POINTS — start on new line with "- "\n' +
-    '4. NUMBERED LISTS — start on new line with "1. "\n' +
-    '5. BOLD — use **text**\n' +
-    '6. NEVER tell user to copy diagram elsewhere. It renders automatically.\n';
+    '3. CODE BLOCKS — ALWAYS wrap programming code in triple backticks with language name:\n' +
+    '   CORRECT:\n' +
+    '   \\`\\`\\`python\n' +
+    '   print("Hello")\n' +
+    '   \\`\\`\\`\n' +
+    '   WRONG: "python print("Hello")" inline without backticks.\n\n' +
+    '4. BULLET POINTS — start on new line with "- "\n' +
+    '5. NUMBERED LISTS — start on new line with "1. "\n' +
+    '6. BOLD — use **text**\n' +
+    '7. NEVER tell user to copy diagram/code elsewhere. It renders automatically.\n';
 
   const conversationStyle = '\n\n=== CONVERSATION CONTINUITY ===\nAfter answering, ALWAYS end with ONE short follow-up question.\n';
 
@@ -2000,6 +2010,22 @@ async function processStream(response,botElement,userPrompt,botRef){
   const MIN_RENDER_INTERVAL=30;
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
+  // 🛡️ CLIENT-SIDE SCRUBBER (Double Protection)
+  function scrubClient(text) {
+    if(!text) return text;
+    let t = String(text);
+    
+    // Double Naam Fix
+    t = t.replace(/(Quantum Core AI)(\s*Quantum Core AI)+/gi, "Quantum Core AI");
+    t = t.replace(/Quantum Core AIQuantum Core AI/gi, "Quantum Core AI");
+    
+    // Anthropic / Claude / GPT Fix
+    t = t.replace(/\b(Anthropic|OpenAI|Google|Meta|Microsoft|Claude|ChatGPT|DeepSeek|Gemini|GPT|Sonnet|Opus|Haiku)\s*ne\s+(banaya|train kiya|develop kiya)/gi, "Usman Saleem ne banaya");
+    t = t.replace(/(Quantum Core AI)\s+(Sonnet|Opus|Haiku|Fable|Mythos|GPT|Gemini|Claude|Flash|Pro|Luna|Terra|Sol)[- ]?\d*\.?\d*/gi, "$1");
+    
+    return t;
+  }
+
   function renderStageIcon(stage){
     if(stage==="thinking") return '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>';
     if(stage==="searching") return '<i class="fa-solid fa-magnifying-glass" style="animation:pulseSearch 1.4s infinite;"></i>';
@@ -2030,7 +2056,7 @@ async function processStream(response,botElement,userPrompt,botRef){
       rafId=null;
       lastRenderTime=performance.now();
       requestAnimationFrame(function(){
-        botElement.innerHTML=renderStreamText(fullText);
+        botElement.innerHTML=renderStreamText(scrubClient(fullText));
         if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
         if(autoScrollEnabled){chatBox.scrollTop=chatBox.scrollHeight;}
       });
@@ -2088,7 +2114,7 @@ async function processStream(response,botElement,userPrompt,botRef){
       if(liveVoiceActive||callActive)updateLiveVoiceStatus("🎤 Listening...");
       return;
     }
-    botElement.innerHTML=renderMarkdown(fullText);
+    botElement.innerHTML=renderMarkdown(scrubClient(fullText));
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
     renderAllMermaids(botElement);
 
