@@ -1607,7 +1607,6 @@ async function renderAllMermaids(container) {
       
       const wrapper = block.closest(".code-wrapper");
       if (!wrapper) continue;
-      
       if (wrapper.classList.contains("mermaid-processed")) continue;
       wrapper.classList.add("mermaid-processed");
       
@@ -1620,19 +1619,6 @@ async function renderAllMermaids(container) {
       
       const newId = "mermaid_" + Date.now() + "_" + (idx++);
       let cleanedCode = code.trim();
-// 🪄 MAGIC SANITIZER: AI ki ghaltiyan auto-fix karo
-// 1. Agar line quotes/bracket ke baghair khatam ho (jaise E["Internet)
-cleanedCode = cleanedCode.replace(/\[\"([^\"\n]+)$/gm, '["$1"]');
-// 2. Duplicate Node IDs hatao (jaise "B B -->" ko "B -->" karo)
-cleanedCode = cleanedCode.replace(/\b([A-Z])\s+\1\s*(-->|---)/g, '$1 $2');
-// 3. Broken arrows jo line ke aakhir mein hain unhe hatao
-cleanedCode = cleanedCode.replace(/-->\s*$/gm, '');
-
-// Purane basic cleanup
-cleanedCode = cleanedCode.replace(/^mermaid\s*\n/i, "");
-cleanedCode = cleanedCode.replace(/<br\s*\/>/gi, " ");
-cleanedCode = cleanedCode.split("\n").map(function(l){return l.trimEnd();}).join("\n");
-cleanedCode = cleanedCode.trim();
       try {
         const { svg } = await mermaid.render(newId, cleanedCode);
         const div = document.createElement("div");
@@ -1656,7 +1642,7 @@ cleanedCode = cleanedCode.trim();
         
         const errDiv = document.createElement("div");
         errDiv.className = "mermaid-container";
-        errDiv.innerHTML = '<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn (AI ne ghalat code diya).</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">' + escapeHTML(code) + '</pre>';
+        errDiv.innerHTML = '<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn.</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">' + escapeHTML(code) + '</pre>';
         placeholder.replaceWith(errDiv);
       }
     } catch (err) {
