@@ -1618,7 +1618,9 @@ async function renderAllMermaids(container) {
       wrapper.parentNode.insertBefore(placeholder, wrapper);
       
       const newId = "mermaid_" + Date.now() + "_" + (idx++);
-      let cleanedCode = code.trim();
+      // Preserve source syntax. Remove only accidental outer Markdown fences.
+      let cleanedCode = String(code || "").replace(/\r\n?/g, "\n").trim();
+      cleanedCode = cleanedCode.replace(/^```(?:mermaid)?\s*/i, "").replace(/\s*```$/, "").trim();
       try {
         const { svg } = await mermaid.render(newId, cleanedCode);
         const div = document.createElement("div");
@@ -1642,7 +1644,7 @@ async function renderAllMermaids(container) {
         
         const errDiv = document.createElement("div");
         errDiv.className = "mermaid-container";
-        errDiv.innerHTML = '<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn.</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;">' + escapeHTML(code) + '</pre>';
+        errDiv.innerHTML = '<div class="diagram-label">📊 Diagram</div><div style="color:var(--danger);font-size:12px;margin-bottom:8px;">⚠️ Diagram could not be drawn. The source is preserved below.</div><pre style="text-align:left;font-size:11.5px;background:#05070b;color:#10b981;padding:10px;border-radius:8px;overflow-x:auto;white-space:pre;">' + escapeHTML(cleanedCode) + '</pre>';
         placeholder.replaceWith(errDiv);
       }
     } catch (err) {
@@ -1682,12 +1684,9 @@ function formatAIText(text) {
         .replace(/\bwhile\s/g, '\nwhile ').replace(/\bfor\s/g, '\nfor ').replace(/\breturn\s/g, '\nreturn ')
         .replace(/#\s/g, '\n# ').replace(/\binput\s*\(/g, '\ninput(').replace(/\bfloat\s*\(/g, '\nfloat(')
         .trim();
-    } else if (lang.toLowerCase() === 'mermaid' && (!formattedCode.includes('\n') || formattedCode.split('\n').length < 2)) {
-      formattedCode = formattedCode
-        .replace(/^(flowchart|graph)\s+([A-Z]{2})/i, '$1 $2\n')
-        .replace(/\s*-->\s*/g, ' --> \n')
-        .replace(/\s*-\.->\s*/g, ' -.-> \n')
-        .replace(/([^\n])\s+([A-Z]\[)/g, '$1\n$2');
+    } else if (lang.toLowerCase() === 'mermaid') {
+      // Mermaid is a syntax-sensitive language. Never rewrite arrows or node lines here.
+      formattedCode = formattedCode.trim();
     }
     return '\n```' + lang + '\n' + formattedCode + '\n```\n';
   });
@@ -1705,12 +1704,8 @@ function formatAIText(text) {
         .replace(/\n\s+/g, '\n')
         .trim();
     } else if (lang.toLowerCase() === 'mermaid') {
-      formattedCode = formattedCode
-        .replace(/^(flowchart|graph)\s+([A-Z]{2})/i, '$1 $2\n')
-        .replace(/\s*-->\s*/g, ' --> \n')
-        .replace(/\s*-\.->\s*/g, ' -.-> \n')
-        .replace(/([^\n])\s+([A-Z]\[)/g, '$1\n$2')
-        .trim();
+      // Preserve Mermaid source exactly; automatic newline insertion breaks valid syntax.
+      formattedCode = formattedCode.trim();
     }
     return '\n```' + lang + '\n' + formattedCode + '\n```\n';
   });
