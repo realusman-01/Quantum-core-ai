@@ -236,20 +236,14 @@ async function supabaseRequest(path, options = {}) {
   }
 }
 
-async function queueDreaming(userId, conversationId, userText) {
-  if (
-    !userId ||
-    !userText ||
-    !process.env.SUPABASE_URL ||
-    !process.env.SUPABASE_SECRET_KEY
-  ) {
-    return;
-  }
+// Combined function to save user and assistant messages, and queue dream job
+async function saveConversationEvent(userId, conversationId, role, content) {
+  if (!userId || !content) return;
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return;
 
   const safeUserId = String(userId).slice(0, 200);
-  const content = String(userText).trim().slice(0, 5000);
-
-  if (!content) return;
+  const safeContent = String(content).trim().slice(0, 10000);
+  if (!safeContent) return;
 
   try {
     await supabaseRequest('conversation_events', {
@@ -259,37 +253,33 @@ async function queueDreaming(userId, conversationId, userText) {
       },
       body: JSON.stringify({
         user_id: safeUserId,
-        conversation_id: conversationId
-          ? String(conversationId).slice(0, 200)
-          : null,
-        role: 'user',
-        content
+        conversation_id: conversationId ? String(conversationId).slice(0, 200) : null,
+        role: role === 'assistant' ? 'assistant' : 'user',
+        content: safeContent
       })
     });
 
-    const pending = await supabaseRequest(
-      `dream_jobs?user_id=eq.${encodeURIComponent(safeUserId)}&status=eq.pending&select=id&limit=1`
-    );
+    // Queue dream job only when a new user message arrives
+    if (role === 'user') {
+      const pending = await supabaseRequest(
+        `dream_jobs?user_id=eq.${encodeURIComponent(safeUserId)}&status=eq.pending&select=id&limit=1`
+      );
 
-    if (!Array.isArray(pending) || pending.length === 0) {
-      await supabaseRequest('dream_jobs', {
-        method: 'POST',
-        headers: {
-          Prefer: 'return=minimal'
-        },
-        body: JSON.stringify({
-          user_id: safeUserId,
-          status: 'pending'
-        })
-      });
+      if (!Array.isArray(pending) || pending.length === 0) {
+        await supabaseRequest('dream_jobs', {
+          method: 'POST',
+          headers: {
+            Prefer: 'return=minimal'
+          },
+          body: JSON.stringify({
+            user_id: safeUserId,
+            status: 'pending'
+          })
+        });
+      }
     }
-
-    console.log('Quantum Dreaming job queued.');
   } catch (error) {
-    console.error(
-      'Quantum Dreaming queue failed:',
-      error?.message || error
-    );
+    console.error(`[Supabase] Failed to save ${role} event:`, error?.message || error);
   }
 }
 
@@ -882,17 +872,21 @@ export default async function handler(req) {
   const activeMode = body?.mode || 'fast';
   const clientInstruction = body?.systemInstruction?.parts?.[0]?.text || '';
   const userText = getLatestUserText(contents);
+  
+  // Extract conversation ID
+  const conversationId = body?.conversationId || body?.conversation_id || body?.chatId || body?.chat_id || '';
 
   if (!contents.length || !userText) {
     return json({ error: 'Invalid request' }, 400);
   }
 
-  // Persist the newest user message and queue memory processing. This is non-fatal.
-  await queueDreaming(userId, body?.conversationId || body?.conversation_id || body?.chatId || body?.chat_id, userText);
+  // Persist the newest user message and queue memory processing.
+  await saveConversationEvent(userId, conversationId, 'user', userText);
 
   // 🛡️ IDENTITY SHIELD
   const identityReply = getIdentityResponse(userText, clientInstruction);
   if (identityReply) {
+    await saveConversationEvent(userId, conversationId, 'assistant', identityReply);
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start(controller) {
@@ -971,9 +965,12 @@ export default async function handler(req) {
           try {
             const diagramText = await generateDiagramWithRepair(contents, finalInstruction, generationConfig);
             send({ type: 'chunk', text: diagramText });
+            await saveConversationEvent(userId, conversationId, 'assistant', diagramText);
           } catch (diagramError) {
             console.error('Diagram generation failed:', diagramError?.message || diagramError);
-            send({ type: 'chunk', text: 'I could not generate a valid diagram after three attempts. Please try a simpler diagram request.' });
+            const errMsg = 'I could not generate a valid diagram after three attempts. Please try a simpler diagram request.';
+            send({ type: 'chunk', text: errMsg });
+            await saveConversationEvent(userId, conversationId, 'assistant', errMsg);
           }
           send({ type: 'done' });
           controller.close();
@@ -996,6 +993,7 @@ export default async function handler(req) {
               const reader = radoxRes.body.getReader();
               const decoder = new TextDecoder();
               let buffer = '';
+              let fullAiResponse = ''; // Accumulator
 
               while (true) {
                 const { done, value } = await reader.read();
@@ -1011,7 +1009,10 @@ export default async function handler(req) {
                   try {
                     const parsed = JSON.parse(raw);
                     const delta = parsed.choices?.[0]?.delta?.content;
-                    if (delta) scrubber.push(delta);
+                    if (delta) {
+                      scrubber.push(delta);
+                      fullAiResponse += delta;
+                    }
                   } catch {}
                 }
               }
@@ -1021,11 +1022,15 @@ export default async function handler(req) {
                   try {
                     const parsed = JSON.parse(raw);
                     const delta = parsed.choices?.[0]?.delta?.content;
-                    if (delta) scrubber.push(delta);
+                    if (delta) {
+                      scrubber.push(delta);
+                      fullAiResponse += delta;
+                    }
                   } catch {}
                 }
               }
               scrubber.flush();
+              await saveConversationEvent(userId, conversationId, 'assistant', fullAiResponse);
               send({ type: 'done' });
               succeeded = true;
               controller.close();
@@ -1056,6 +1061,7 @@ export default async function handler(req) {
               const reader = geminiRes.body.getReader();
               const decoder = new TextDecoder();
               let buffer = '';
+              let fullAiResponse = ''; // Accumulator
 
               while (true) {
                 const { done, value } = await reader.read();
@@ -1071,7 +1077,10 @@ export default async function handler(req) {
                   try {
                     const parsed = JSON.parse(raw);
                     const text = extractModelText(parsed);
-                    if (text) scrubber.push(text);
+                    if (text) {
+                      scrubber.push(text);
+                      fullAiResponse += text;
+                    }
                   } catch {}
                 }
               }
@@ -1081,11 +1090,15 @@ export default async function handler(req) {
                   try {
                     const parsed = JSON.parse(raw);
                     const finalText = extractModelText(parsed);
-                    if (finalText) scrubber.push(finalText);
+                    if (finalText) {
+                      scrubber.push(finalText);
+                      fullAiResponse += finalText;
+                    }
                   } catch {}
                 }
               }
               scrubber.flush();
+              await saveConversationEvent(userId, conversationId, 'assistant', fullAiResponse);
               send({ type: 'done' });
               succeeded = true;
               controller.close();
