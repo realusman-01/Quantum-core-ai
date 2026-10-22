@@ -73,60 +73,37 @@ function getLatestUserText(contents) {
 
 function isDiagramRequest(text) {
   if (!text) return false;
-
   const t = String(text).toLowerCase();
-
   const keywords = [
     'diagram', 'flowchart', 'flow chart', 'chart',
     'visual', 'mindmap', 'graph', 'mermaid',
     'draw a', 'draw the', 'naksha', 'chitra'
   ];
-
   return keywords.some(k => t.includes(k));
 }
 
 // Answer identity questions without corrupting normal factual answers.
 function getIdentityResponse(text, clientInstruction = '') {
   if (!text) return null;
-
   const t = String(text).toLowerCase().trim();
 
   const identityPatterns = [
-    /\bwho are you\b/,
-    /\bwhat are you\b/,
-    /\byour name\b/,
-    /\bwhat is your name\b/,
-    /tum\s+kaun\s+ho/,
-    /tum\s+kon\s+ho/,
-    /tumhara\s+naam/,
-    /apka\s+naam/,
-    /who\s+(made|created|built|trained)\s+you/,
-    /your\s+(creator|developer|model)/,
-    /kisne\s+banaya/,
-    /kis\s+ne\s+banaya/,
-    /tumhara\s+(developer|creator|model)/,
+    /\bwho are you\b/, /\bwhat are you\b/, /\byour name\b/, /\bwhat is your name\b/,
+    /tum\s+kaun\s+ho/, /tum\s+kon\s+ho/, /tumhara\s+naam/, /apka\s+naam/,
+    /who\s+(made|created|built|trained)\s+you/, /your\s+(creator|developer|model)/,
+    /kisne\s+banaya/, /kis\s+ne\s+banaya/, /tumhara\s+(developer|creator|model)/,
     /which\s+model\s+(are\s+you|do\s+you\s+use|powers\s+you|is\s+this)\b/,
     /what\s+model\s+(are\s+you|do\s+you\s+use|powers\s+you|is\s+this)\b/,
     /are\s+you\s+(gpt|claude|gemini|deepseek)/
   ];
 
-  if (!identityPatterns.some(p => p.test(t))) {
-    return null;
-  }
+  if (!identityPatterns.some(p => p.test(t))) return null;
 
-  const urduSetting =
-    /respond ONLY in Urdu/i.test(clientInstruction);
+  const urduSetting = /respond ONLY in Urdu/i.test(clientInstruction);
+  const englishSetting = /respond ONLY in English/i.test(clientInstruction);
+  const asksProvider = /\b(model|base model|powered by|provider|trained|gpt|claude|gemini|deepseek)\b|model|train|kisne|kis ne/i.test(t);
 
-  const englishSetting =
-    /respond ONLY in English/i.test(clientInstruction);
-
-  const asksProvider =
-    /\b(model|base model|powered by|provider|trained|gpt|claude|gemini|deepseek)\b|model|train|kisne|kis ne/i.test(t);
-
-  if (
-    urduSetting ||
-    (!englishSetting && /[\u0600-\u06FF]/.test(t))
-  ) {
+  if (urduSetting || (!englishSetting && /[\u0600-\u06FF]/.test(t))) {
     return asksProvider
       ? 'Main **Quantum Core AI** app hoon, jise **Usman Saleem** ne banaya hai. Jawab generate karne ke liye app mein configure kiye gaye AI providers/models use hote hain; exact model request ke hisaab se badal sakta hai.'
       : 'Mera naam **Quantum Core AI** hai. Is app ko **Usman Saleem** ne banaya hai. Main aapki kya madad kar sakta hoon?';
@@ -137,7 +114,6 @@ function getIdentityResponse(text, clientInstruction = '') {
     : 'My name is **Quantum Core AI**. The app was built by **Usman Saleem**. How can I help?';
 }
 
-// Do not globally replace provider names in ordinary answers.
 function scrubIdentity(text) {
   return text == null ? text : String(text);
 }
@@ -149,14 +125,11 @@ function makeScrubber(send) {
   return {
     push(text) {
       if (!text) return;
-
       heldBack += text;
-
       if (heldBack.length < 50) return;
 
       const safeLen = heldBack.length - HOLD_BACK;
       let splitAt = safeLen;
-
       const spaceIdx = heldBack.lastIndexOf(' ', safeLen);
       const newlineIdx = heldBack.lastIndexOf('\n', safeLen);
       const bestIdx = Math.max(spaceIdx, newlineIdx);
@@ -167,214 +140,150 @@ function makeScrubber(send) {
 
       const toSend = heldBack.slice(0, splitAt);
       heldBack = heldBack.slice(splitAt);
-
       const scrubbed = scrubIdentity(toSend);
 
       if (scrubbed) {
-        send({
-          type: 'chunk',
-          text: scrubbed
-        });
+        send({ type: 'chunk', text: scrubbed });
       }
     },
-
     flush() {
       if (heldBack) {
         const scrubbed = scrubIdentity(heldBack);
-
         if (scrubbed) {
-          send({
-            type: 'chunk',
-            text: scrubbed
-          });
+          send({ type: 'chunk', text: scrubbed });
         }
-
         heldBack = '';
       }
     }
   };
 }
 
-async function supabaseRequest(path, options = {}) {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
-
-  if (!supabaseUrl || !secretKey) {
-    throw new Error(
-      'Supabase environment variables are missing.'
-    );
-  }
-
-  const response = await fetchWithTimeout(
-    `${supabaseUrl}/rest/v1/${path}`,
-    {
-      ...options,
-      headers: {
-        apikey: secretKey,
-        Authorization: `Bearer ${secretKey}`,
-        'Content-Type': 'application/json',
-        ...(options.headers || {})
-      }
-    },
-    7000
-  );
-
-  const responseText = await response.text();
-
-  if (!response.ok) {
-    throw new Error(
-      `Supabase ${response.status}: ${responseText.slice(0, 300)}`
-    );
-  }
-
-  if (!responseText) return null;
-
-  try {
-    return JSON.parse(responseText);
-  } catch {
-    return responseText;
-  }
-}
-
-// Combined function to save user and assistant messages, and queue dream job
+// 🚀 NAYA: Combined function to save messages with detailed logging
 async function saveConversationEvent(userId, conversationId, role, content) {
-  if (!userId || !content) return;
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return;
+  if (!userId || !content) {
+    console.log("[Supabase] Missing userId or content. Skipping save.");
+    return;
+  }
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
+    console.log("[Supabase] Missing environment variables. Skipping save.");
+    return;
+  }
 
   const safeUserId = String(userId).slice(0, 200);
   const safeContent = String(content).trim().slice(0, 10000);
-  if (!safeContent) return;
+  const safeConvId = conversationId ? String(conversationId).slice(0, 200) : "default_chat";
 
   try {
-    await supabaseRequest('conversation_events', {
+    console.log(`[Supabase] Attempting to save ${role} message for user: ${safeUserId}`);
+
+    const response = await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/conversation_events`, {
       method: 'POST',
       headers: {
-        Prefer: 'return=minimal'
+        apikey: process.env.SUPABASE_SECRET_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
       },
       body: JSON.stringify({
         user_id: safeUserId,
-        conversation_id: conversationId ? String(conversationId).slice(0, 200) : null,
+        conversation_id: safeConvId,
         role: role === 'assistant' ? 'assistant' : 'user',
         content: safeContent
       })
-    });
+    }, 8000);
+
+    const responseText = await response.text();
+    
+    if (!response.ok) {
+      console.error(`[Supabase Error] Status ${response.status}:`, responseText);
+      return;
+    }
+
+    console.log(`[Supabase Success] Saved ${role} event.`);
 
     // Queue dream job only when a new user message arrives
     if (role === 'user') {
-      const pending = await supabaseRequest(
-        `dream_jobs?user_id=eq.${encodeURIComponent(safeUserId)}&status=eq.pending&select=id&limit=1`
+      const pendingRes = await fetchWithTimeout(
+        `${process.env.SUPABASE_URL}/rest/v1/dream_jobs?user_id=eq.${encodeURIComponent(safeUserId)}&status=eq.pending&select=id&limit=1`,
+        {
+          method: 'GET',
+          headers: {
+            apikey: process.env.SUPABASE_SECRET_KEY,
+            Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`
+          }
+        }, 6000
       );
+      
+      const pending = await pendingRes.json();
 
       if (!Array.isArray(pending) || pending.length === 0) {
-        await supabaseRequest('dream_jobs', {
+        await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/dream_jobs`, {
           method: 'POST',
           headers: {
-            Prefer: 'return=minimal'
+            apikey: process.env.SUPABASE_SECRET_KEY,
+            Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
           },
-          body: JSON.stringify({
-            user_id: safeUserId,
-            status: 'pending'
-          })
-        });
+          body: JSON.stringify({ user_id: safeUserId, status: 'pending' })
+        }, 6000);
+        console.log("[Supabase] Dream job queued.");
       }
     }
   } catch (error) {
-    console.error(`[Supabase] Failed to save ${role} event:`, error?.message || error);
+    console.error(`[Supabase Network Error]`, error?.message || error);
   }
 }
 
 async function fetchMemories(userId, userText) {
-  if (
-    !userId ||
-    !process.env.SUPABASE_URL ||
-    !process.env.SUPABASE_SECRET_KEY
-  ) {
-    return [];
-  }
+  if (!userId || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return [];
 
   try {
-    const url =
-      `${process.env.SUPABASE_URL}/rest/v1/memories` +
-      `?user_id=eq.${encodeURIComponent(userId)}` +
-      '&select=*&order=importance.desc&limit=100';
-
-    const response = await fetchWithTimeout(
-      url,
-      {
-        method: 'GET',
-        headers: {
-          apikey: process.env.SUPABASE_SECRET_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`
-        }
-      },
-      6000
-    );
+    const url = `${process.env.SUPABASE_URL}/rest/v1/memories?user_id=eq.${encodeURIComponent(userId)}&select=*&order=importance.desc&limit=100`;
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        apikey: process.env.SUPABASE_SECRET_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`
+      }
+    }, 6000);
 
     if (!response.ok) return [];
-
     const memories = await response.json();
+    if (!Array.isArray(memories) || !memories.length) return [];
 
-    if (!Array.isArray(memories) || !memories.length) {
-      return [];
-    }
-
-    const importantOnes = memories
-      .filter(m => Number(m.importance) >= 0.7)
-      .slice(0, 6);
-
+    const importantOnes = memories.filter(m => Number(m.importance) >= 0.7).slice(0, 6);
     const text = String(userText || '').toLowerCase();
-
-    const words = text
-      .split(/\s+/)
-      .filter(w => w.length >= 4);
+    const words = text.split(/\s+/).filter(w => w.length >= 4);
 
     const scored = memories.map(memory => {
-      const searchable = [
-        memory.memory_key,
-        memory.memory_type,
-        memory.content
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
+      const searchable = [memory.memory_key, memory.memory_type, memory.content].filter(Boolean).join(' ').toLowerCase();
       let score = 0;
-
       for (const w of words) {
         if (searchable.includes(w)) score++;
       }
-
       score += Number(memory.importance || 0) * 0.5;
-
-      return {
-        memory,
-        score
-      };
+      return { memory, score };
     });
 
     scored.sort((a, b) => b.score - a.score);
-
-    const matched = scored
-      .filter(s => s.score > 0.5)
-      .slice(0, 10)
-      .map(i => i.memory);
-
+    const matched = scored.filter(s => s.score > 0.5).slice(0, 10).map(i => i.memory);
+    
     const seen = new Set();
     const merged = [];
-
     for (const m of [...importantOnes, ...matched]) {
       if (m && m.id && !seen.has(m.id)) {
         seen.add(m.id);
         merged.push(m);
       }
     }
-
     return merged.slice(0, 15);
   } catch (e) {
     console.error('Memory error:', e?.message || e);
     return [];
   }
 }
+
 function buildMemoryContext(memories) {
   if (!memories.length) return '';
   const lines = memories.map(m => {
@@ -555,6 +464,7 @@ async function duckDuckGoSearch(query) {
     return { results, error: null };
   } catch (err) { return { results: [], error: err.message }; }
 }
+
 async function wikipediaSearch(query) {
   try {
     const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=3&origin=*`;
@@ -873,20 +783,21 @@ export default async function handler(req) {
   const clientInstruction = body?.systemInstruction?.parts?.[0]?.text || '';
   const userText = getLatestUserText(contents);
   
-  // Extract conversation ID
   const conversationId = body?.conversationId || body?.conversation_id || body?.chatId || body?.chat_id || '';
 
   if (!contents.length || !userText) {
     return json({ error: 'Invalid request' }, 400);
   }
 
-  // Persist the newest user message and queue memory processing.
+  // 1. Save User Message to Supabase
   await saveConversationEvent(userId, conversationId, 'user', userText);
 
   // 🛡️ IDENTITY SHIELD
   const identityReply = getIdentityResponse(userText, clientInstruction);
   if (identityReply) {
+    // 2. Save Assistant Response to Supabase
     await saveConversationEvent(userId, conversationId, 'assistant', identityReply);
+    
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start(controller) {
@@ -965,6 +876,7 @@ export default async function handler(req) {
           try {
             const diagramText = await generateDiagramWithRepair(contents, finalInstruction, generationConfig);
             send({ type: 'chunk', text: diagramText });
+            // 3. Save Diagram Response to Supabase
             await saveConversationEvent(userId, conversationId, 'assistant', diagramText);
           } catch (diagramError) {
             console.error('Diagram generation failed:', diagramError?.message || diagramError);
@@ -1030,6 +942,7 @@ export default async function handler(req) {
                 }
               }
               scrubber.flush();
+              // 4. Save Radox Response to Supabase
               await saveConversationEvent(userId, conversationId, 'assistant', fullAiResponse);
               send({ type: 'done' });
               succeeded = true;
@@ -1098,6 +1011,7 @@ export default async function handler(req) {
                 }
               }
               scrubber.flush();
+              // 5. Save Gemini Response to Supabase
               await saveConversationEvent(userId, conversationId, 'assistant', fullAiResponse);
               send({ type: 'done' });
               succeeded = true;
