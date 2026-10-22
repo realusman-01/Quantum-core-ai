@@ -82,7 +82,6 @@ function isDiagramRequest(text) {
   return keywords.some(k => t.includes(k));
 }
 
-// Answer identity questions without corrupting normal factual answers.
 function getIdentityResponse(text, clientInstruction = '') {
   if (!text) return null;
   const t = String(text).toLowerCase().trim();
@@ -158,7 +157,6 @@ function makeScrubber(send) {
   };
 }
 
-// 🚀 NAYA: Combined function to save messages with detailed logging
 async function saveConversationEvent(userId, conversationId, role, content) {
   if (!userId || !content) {
     console.log("[Supabase] Missing userId or content. Skipping save.");
@@ -201,7 +199,6 @@ async function saveConversationEvent(userId, conversationId, role, content) {
 
     console.log(`[Supabase Success] Saved ${role} event.`);
 
-    // Queue dream job only when a new user message arrives
     if (role === 'user') {
       const pendingRes = await fetchWithTimeout(
         `${process.env.SUPABASE_URL}/rest/v1/dream_jobs?user_id=eq.${encodeURIComponent(safeUserId)}&status=eq.pending&select=id&limit=1`,
@@ -326,7 +323,8 @@ function looksLikeFreshInfoQuestion(text) {
     'weather','score','scores','result','results','release date','released','available now',
     'who won','current president','current prime minister','aaj','abhi','kab','kab release',
     'kya hua','breaking','live','as of today','this year','stock price','exchange rate',
-    'latest version','current version','current status','real-time','real time'
+    'latest version','current version','current status','real-time','real time',
+    'season', 'episode', 'kab aayega', 'kab aayegi', 'release ho', 'aayega kya', 'aaya kya', 'new season', 'new episode'
   ];
   return patterns.some(p => t.includes(p));
 }
@@ -789,13 +787,11 @@ export default async function handler(req) {
     return json({ error: 'Invalid request' }, 400);
   }
 
-  // 1. Save User Message to Supabase
   await saveConversationEvent(userId, conversationId, 'user', userText);
 
   // 🛡️ IDENTITY SHIELD
   const identityReply = getIdentityResponse(userText, clientInstruction);
   if (identityReply) {
-    // 2. Save Assistant Response to Supabase
     await saveConversationEvent(userId, conversationId, 'assistant', identityReply);
     
     const encoder = new TextEncoder();
@@ -853,14 +849,16 @@ export default async function handler(req) {
         const memoryContext = buildMemoryContext(memories);
         const searchContext = buildSearchContext(searchResults);
         const currentDateTime = getCurrentDateTimeContext();
+        
+        // 🚨 REAL-TIME STRICT INSTRUCTIONS
         const finalInstruction = IDENTITY_ENFORCEMENT + '\n\n' + clientInstruction + '\n\n' +
           currentDateTime + '\n' + memoryContext + '\n' + searchContext + '\n' +
           FORMAT_INSTRUCTION + '\n' + DIAGRAM_INSTRUCTION + '\n' +
-          '=== CURRENT INFORMATION RULES ===\n' +
+          '=== 🔴 CURRENT INFORMATION RULES (CRITICAL) ===\n' +
           '- Treat the injected date/time as the current local date/time for Pakistan (Asia/Karachi).\n' +
-          '- Never use a stale hard-coded date; use the current date/time supplied above.\n' +
-          '- For questions about latest events, current facts, prices, news, releases, or changing information, use the web search results when available.\n' +
-          '- If search returns no useful sources, clearly say you could not verify the latest information; do not invent live facts.\n' +
+          '- NEVER use your internal training data for questions about releases (anime, movies, games), news, latest versions, or current events.\n' +
+          '- You MUST rely STRICTLY on the provided "WEB SEARCH RESULTS" for these queries.\n' +
+          '- If the search results are empty or do not contain the answer, you MUST say: "Mujhe iski latest information nahi mil rahi, please Google par check karein." Do NOT guess or hallucinate.\n' +
           '- When web results are used, cite sources as [1], [2], etc.\n' +
           '=== GENERAL RULES ===\n' +
           '- Be accurate and helpful.\n' +
@@ -876,7 +874,6 @@ export default async function handler(req) {
           try {
             const diagramText = await generateDiagramWithRepair(contents, finalInstruction, generationConfig);
             send({ type: 'chunk', text: diagramText });
-            // 3. Save Diagram Response to Supabase
             await saveConversationEvent(userId, conversationId, 'assistant', diagramText);
           } catch (diagramError) {
             console.error('Diagram generation failed:', diagramError?.message || diagramError);
@@ -892,7 +889,6 @@ export default async function handler(req) {
         let succeeded = false;
 
         if (!isDiagram) {
-          // Try Radox Models (GPT/Claude)
           const radoxChain = RADOX_MODELS[activeMode] || RADOX_MODELS.fast;
           const openaiMessages = contentsToMessages(contents);
 
@@ -905,7 +901,7 @@ export default async function handler(req) {
               const reader = radoxRes.body.getReader();
               const decoder = new TextDecoder();
               let buffer = '';
-              let fullAiResponse = ''; // Accumulator
+              let fullAiResponse = '';
 
               while (true) {
                 const { done, value } = await reader.read();
@@ -942,7 +938,6 @@ export default async function handler(req) {
                 }
               }
               scrubber.flush();
-              // 4. Save Radox Response to Supabase
               await saveConversationEvent(userId, conversationId, 'assistant', fullAiResponse);
               send({ type: 'done' });
               succeeded = true;
@@ -955,7 +950,6 @@ export default async function handler(req) {
           }
         }
 
-        // If Diagram Request OR All Radox Failed -> Use Gemini
         if (!succeeded) {
           if (isDiagram) {
             console.log('Diagram request detected. Using Gemini directly.');
@@ -974,7 +968,7 @@ export default async function handler(req) {
               const reader = geminiRes.body.getReader();
               const decoder = new TextDecoder();
               let buffer = '';
-              let fullAiResponse = ''; // Accumulator
+              let fullAiResponse = '';
 
               while (true) {
                 const { done, value } = await reader.read();
@@ -1011,7 +1005,6 @@ export default async function handler(req) {
                 }
               }
               scrubber.flush();
-              // 5. Save Gemini Response to Supabase
               await saveConversationEvent(userId, conversationId, 'assistant', fullAiResponse);
               send({ type: 'done' });
               succeeded = true;
