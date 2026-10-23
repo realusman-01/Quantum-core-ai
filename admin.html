@@ -15,44 +15,31 @@
     --border: #1e2942;
     --danger: #ef4444;
     --success: #10b981;
+    --warning: #f59e0b;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
   body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
   
   /* Login Screen */
-  #login-screen {
-    position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
-  }
-  .login-box {
-    background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid var(--border); text-align: center; width: 90%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  }
+  #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+  .login-box { background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid var(--border); text-align: center; width: 90%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
   .login-box h2 { color: var(--primary); margin-bottom: 20px; font-size: 24px; letter-spacing: 1px; }
-  .login-box input {
-    width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 15px; outline: none; font-size: 16px;
-  }
+  .login-box input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 15px; outline: none; font-size: 16px; }
   .login-box input:focus { border-color: var(--primary); }
-  .login-box button {
-    width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s;
-  }
+  .login-box button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
   .login-box button:hover { background: #2563eb; }
   .error-text { color: var(--danger); font-size: 13px; margin-bottom: 10px; display: none; }
 
   /* Sidebar */
-  .sidebar {
-    width: 260px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0;
-  }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
   .sidebar h1 { font-size: 18px; color: var(--primary); margin-bottom: 30px; letter-spacing: 2px; text-align: center; }
-  .nav-item {
-    padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 10px;
-  }
+  .nav-item { padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
   .nav-item:hover, .nav-item.active { background: var(--primary); color: white; }
   .logout-btn { margin-top: auto; color: var(--danger); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.2s; }
   .logout-btn:hover { background: var(--danger); color: white; }
 
   /* Main Content */
-  .main-content {
-    flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column;
-  }
+  .main-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
   .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
   .header h2 { font-size: 22px; }
   .refresh-btn { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
@@ -78,6 +65,17 @@
   .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
   .badge-user { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
   .badge-bot { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+  .badge-banned { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+  .badge-limited { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+  
+  /* Action Buttons */
+  .action-btn { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; color: white; margin-right: 5px; transition: 0.2s; }
+  .btn-ban { background: var(--danger); }
+  .btn-ban:hover { background: #dc2626; }
+  .btn-unban { background: var(--success); }
+  .btn-unban:hover { background: #059669; }
+  .btn-limit { background: var(--warning); color: #000; }
+  .btn-limit:hover { background: #d97706; }
 
   .loading { color: var(--muted); font-style: italic; display: flex; align-items: center; gap: 10px; }
   .error { color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 10px; border-radius: 8px; border: 1px solid var(--danger); margin-top: 10px; display: none; }
@@ -111,7 +109,7 @@
 <div class="sidebar" id="sidebar" style="display:none;">
   <h1>QUANTUM ADMIN</h1>
   <div class="nav-item active" onclick="switchTab('dashboard', this)"><i class="fa-solid fa-chart-pie"></i> Dashboard</div>
-  <div class="nav-item" onclick="switchTab('users', this)"><i class="fa-solid fa-users"></i> Users</div>
+  <div class="nav-item" onclick="switchTab('users', this)"><i class="fa-solid fa-users-gear"></i> User Management</div>
   <div class="nav-item" onclick="switchTab('events', this)"><i class="fa-solid fa-comments"></i> Recent Events</div>
   <div class="nav-item" onclick="switchTab('memories', this)"><i class="fa-solid fa-brain"></i> Memories</div>
   <div class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</div>
@@ -128,18 +126,19 @@
     </div>
     <div class="error" id="error-msg"></div>
     <div class="stats-grid">
-      <div class="stat-card"><h3>Total Events (Last 20)</h3><div class="value" id="stat-events">-</div></div>
+      <div class="stat-card"><h3>Total Events (Last 50)</h3><div class="value" id="stat-events">-</div></div>
       <div class="stat-card"><h3>Total Memories</h3><div class="value" id="stat-memories">-</div></div>
-      <div class="stat-card"><h3>Pending Dream Jobs</h3><div class="value" id="stat-jobs">-</div></div>
+      <div class="stat-card"><h3>Banned Users</h3><div class="value" id="stat-banned" style="color:var(--danger);">-</div></div>
     </div>
   </div>
 
-  <!-- USERS TAB -->
+  <!-- USER MANAGEMENT TAB -->
   <div id="tab-users" class="data-section">
-    <div class="header"><h2>Active Users</h2></div>
+    <div class="header"><h2>User Management</h2></div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Yahan se users ko ban karein, unban karein ya limits set karein.</p>
     <table>
-      <thead><tr><th>User ID</th><th>Last Activity</th></tr></thead>
-      <tbody id="users-table-body"><tr><td colspan="2" class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading users...</td></tr></tbody>
+      <thead><tr><th>User ID</th><th>Status</th><th>Daily Limit</th><th>Actions</th></tr></thead>
+      <tbody id="users-table-body"><tr><td colspan="4" class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading users...</td></tr></tbody>
     </table>
   </div>
 
@@ -167,52 +166,57 @@
   // ==========================================
   // 🔴 YAHAN APNI DETAILS DAALO 🔴
   // ==========================================
-  const SUPABASE_URL = "https://lxykguzcbduihevdnqxo.supabase.co"; // Apna URL dalein
-  const SUPABASE_ANON_KEY = "sb_publishable_MB2IQunxTua-G4oLkweSWw_qDOZalQg"; // Supabase Dashboard -> Settings -> API -> anon public key
+  const SUPABASE_URL = "https://1xykguzcbd...supabase.co"; // Apna URL
+  const SUPABASE_ANON_KEY = "sb_publishable_..."; // Apni Anon Key
   // ==========================================
-// 🔒 SECURE LOGIN VIA VERCEL API 🔒
-// ==========================================
-async function checkPassword() {
-  const pass = document.getElementById('admin-pass').value;
-  if (!pass) return;
 
-  const btn = document.querySelector('.login-box button');
-  btn.innerText = "Checking...";
+  let adminPassword = ""; // Memory mein password save karne ke liye
 
-  try {
-    // Vercel API ko call kar raha hai password check karne ke liye
-    const response = await fetch('/api/admin-login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pass })
-    });
+  async function checkPassword() {
+    const pass = document.getElementById('admin-pass').value;
+    if (!pass) return;
 
-    const data = await response.json();
+    const btn = document.querySelector('.login-box button');
+    btn.innerText = "Checking...";
 
-    if (data.success) {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('sidebar').style.display = 'flex';
-      document.getElementById('main-content').style.display = 'flex';
-      localStorage.setItem('qc_admin_auth', 'true');
-      fetchData();
-    } else {
-      document.getElementById('login-error').style.display = 'block';
-      setTimeout(() => document.getElementById('login-error').style.display = 'none', 3000);
+    try {
+      const response = await fetch('/api/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pass })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        adminPassword = pass; // Save for actions
+        localStorage.setItem('qc_admin_auth', 'true');
+        // Password ko memory mein rakhne ke liye (sessionStorage use karte hain taake refresh pe na mare)
+        sessionStorage.setItem('qc_admin_pass_temp', pass);
+        
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('sidebar').style.display = 'flex';
+        document.getElementById('main-content').style.display = 'flex';
+        fetchData();
+      } else {
+        document.getElementById('login-error').style.display = 'block';
+        setTimeout(() => document.getElementById('login-error').style.display = 'none', 3000);
+      }
+    } catch (error) {
+      alert("Server error: " + error.message);
+    } finally {
+      btn.innerText = "Unlock Dashboard";
     }
-  } catch (error) {
-    alert("Server error: " + error.message);
-  } finally {
-    btn.innerText = "Unlock Dashboard";
   }
-}
 
-function logout() {
-  localStorage.removeItem('qc_admin_auth');
-  location.reload();
-}
+  function logout() {
+    localStorage.removeItem('qc_admin_auth');
+    sessionStorage.removeItem('qc_admin_pass_temp');
+    location.reload();
+  }
 
   // Auto Login Check
   if (localStorage.getItem('qc_admin_auth') === 'true') {
+    adminPassword = sessionStorage.getItem('qc_admin_pass_temp') || "";
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('sidebar').style.display = 'flex';
     document.getElementById('main-content').style.display = 'flex';
@@ -226,42 +230,71 @@ function logout() {
     navEl.classList.add('active');
   }
 
+  // 🚀 UNIFIED FETCH DATA
   async function fetchData() {
     const errorEl = document.getElementById('error-msg');
     errorEl.style.display = 'none';
     
-    // Check if keys are set
-    if (SUPABASE_URL.includes("YOUR_PROJECT_ID") || SUPABASE_ANON_KEY.includes("YOUR_ANON_KEY")) {
-      errorEl.innerText = "Error: Please open the code and enter your Supabase URL and Anon Key first!";
+    if (SUPABASE_URL.includes("YOUR_PROJECT") || SUPABASE_ANON_KEY.includes("YOUR_ANON")) {
+      errorEl.innerText = "Error: Supabase URL ya Key nahi dali gayi!";
       errorEl.style.display = 'block';
       return;
     }
 
-    const headers = {
-      "apikey": SUPABASE_ANON_KEY,
-      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-    };
+    const headers = { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` };
 
     try {
-      // 1. Fetch Events (Limit 20)
-      const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/conversation_events?select=*&order=created_at.desc&limit=20`, { headers });
-      if (!eventsRes.ok) throw new Error(`Events API Error: ${eventsRes.status}`);
-      const events = await eventsRes.json();
-      
-      // 2. Fetch Memories (Limit 20)
-      const memRes = await fetch(`${SUPABASE_URL}/rest/v1/memories?select=*&order=created_at.desc&limit=20`, { headers });
-      if (!memRes.ok) throw new Error(`Memories API Error: ${memRes.status}`);
-      const memories = await memRes.json();
+      // Fetch all needed data simultaneously
+      const [eventsRes, memRes, bansRes, limitsRes] = await Promise.all([
+        fetch(`${SUPABASE_URL}/rest/v1/conversation_events?select=*&order=created_at.desc&limit=50`, { headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/memories?select=*&order=created_at.desc&limit=20`, { headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/blocked_users?select=*`, { headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/user_limits?select=*`, { headers })
+      ]);
 
-      // 3. Fetch Dream Jobs (Pending)
-      const jobsRes = await fetch(`${SUPABASE_URL}/rest/v1/dream_jobs?select=*&status=eq.pending`, { headers });
-      if (!jobsRes.ok) throw new Error(`Jobs API Error: ${jobsRes.status}`);
-      const jobs = await jobsRes.json();
+      const events = eventsRes.ok ? await eventsRes.json() : [];
+      const memories = memRes.ok ? await memRes.json() : [];
+      const bans = bansRes.ok ? await bansRes.json() : [];
+      const limits = limitsRes.ok ? await limitsRes.json() : [];
 
-      // Update Stats
+      // Update Dashboard Stats
       document.getElementById('stat-events').innerText = events.length || 0;
       document.getElementById('stat-memories').innerText = memories.length || 0;
-      document.getElementById('stat-jobs').innerText = jobs.length || 0;
+      document.getElementById('stat-banned').innerText = bans.length || 0;
+
+      // Extract unique User IDs
+      const uniqueUsers = [...new Set(events.map(e => e.user_id))];
+
+      // Render User Management Table
+      document.getElementById('users-table-body').innerHTML = uniqueUsers.length ? uniqueUsers.map(uId => {
+        const banInfo = bans.find(b => b.user_id === uId);
+        const limitInfo = limits.find(l => l.user_id === uId);
+        
+        let statusBadge = '<span class="badge badge-bot">Active</span>';
+        if (banInfo) {
+          statusBadge = `<span class="badge badge-banned">${banInfo.ban_type === 'permanent' ? 'Banned (Perm)' : 'Banned (Temp)'}</span>`;
+        } else if (limitInfo) {
+          statusBadge = `<span class="badge badge-limited">Limited (${limitInfo.current_usage}/${limitInfo.daily_limit})</span>`;
+        }
+
+        let actionBtns = '';
+        if (banInfo) {
+          actionBtns += `<button class="action-btn btn-unban" onclick="handleAction('unban', '${uId}')">Unban</button>`;
+        } else {
+          actionBtns += `<button class="action-btn btn-ban" onclick="handleAction('ban_permanent', '${uId}')">Ban Perm</button>`;
+          actionBtns += `<button class="action-btn btn-ban" onclick="handleAction('ban_temporary', '${uId}')">Ban Temp</button>`;
+        }
+        actionBtns += `<button class="action-btn btn-limit" onclick="handleAction('set_limit', '${uId}')">Set Limit</button>`;
+
+        return `
+          <tr>
+            <td><small>${uId}</small></td>
+            <td>${statusBadge}</td>
+            <td>${limitInfo ? limitInfo.daily_limit + ' msgs/day' : 'Default'}</td>
+            <td>${actionBtns}</td>
+          </tr>
+        `;
+      }).join('') : '<tr><td colspan="4" class="loading">No users found in DB.</td></tr>';
 
       // Populate Events Table
       document.getElementById('events-table-body').innerHTML = events.length ? events.map(e => `
@@ -270,7 +303,7 @@ function logout() {
           <td><span class="badge ${e.role === 'user' ? 'badge-user' : 'badge-bot'}">${e.role}</span></td>
           <td>${e.content ? e.content.replace(/</g, "&lt;") : ''}</td>
         </tr>
-      `).join('') : '<tr><td colspan="3" class="loading">No events found in DB</td></tr>';
+      `).join('') : '<tr><td colspan="3" class="loading">No events found.</td></tr>';
 
       // Populate Memories Table
       document.getElementById('memories-table-body').innerHTML = memories.length ? memories.map(m => `
@@ -279,20 +312,57 @@ function logout() {
           <td><span style="color:var(--primary);font-weight:bold;">${m.memory_type || 'N/A'}</span></td>
           <td>${m.content ? m.content.replace(/</g, "&lt;") : ''}</td>
         </tr>
-      `).join('') : '<tr><td colspan="3" class="loading">No memories found</td></tr>';
-
-      // Populate Users Table (Unique users from events)
-      const uniqueUsers = [...new Set(events.map(e => e.user_id))];
-      document.getElementById('users-table-body').innerHTML = uniqueUsers.length ? uniqueUsers.map(u => `
-        <tr>
-          <td><small>${u}</small></td>
-          <td><span class="badge badge-bot">Active</span></td>
-        </tr>
-      `).join('') : '<tr><td colspan="2" class="loading">No users found</td></tr>';
+      `).join('') : '<tr><td colspan="3" class="loading">No memories found.</td></tr>';
 
     } catch (err) {
-      errorEl.innerText = "Fetch Error: " + err.message + ". (Kya aapne Supabase mein RLS Policy 'Allow Read' set ki hai?)";
+      errorEl.innerText = "Fetch Error: " + err.message;
       errorEl.style.display = 'block';
+    }
+  }
+
+  // 🚨 ADMIN ACTIONS (Ban, Unban, Limit)
+  async function handleAction(action, userId) {
+    if (!adminPassword) {
+      alert("Session expired. Please logout and login again.");
+      return;
+    }
+
+    let payload = { password: adminPassword, action: action, userId: userId };
+    
+    if (action === 'ban_permanent') {
+      if(!confirm(`Kya aap ${userId} ko PERMANENTLY ban karna chahte hain?`)) return;
+    } 
+    else if (action === 'ban_temporary') {
+      const hours = prompt("Kitne ghante ke liye ban karna hai? (e.g., 24)", "24");
+      if (!hours) return;
+      payload.durationHours = parseInt(hours);
+      payload.reason = "Temporary Cool Down";
+    }
+    else if (action === 'set_limit') {
+      const limit = prompt("Kitni daily limit set karni hai? (e.g., 50)", "50");
+      if (!limit) return;
+      payload.limit = parseInt(limit);
+    }
+    else if (action === 'unban') {
+      if(!confirm(`Kya aap ${userId} ko unban karna chahte hain?`)) return;
+    }
+
+    try {
+      const res = await fetch('/api/admin-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert(`Success: ${data.msg}`);
+        fetchData(); // Refresh data immediately
+      } else {
+        alert("Failed: " + (data.error || "Unknown error"));
+      }
+    } catch (e) {
+      alert("Network Error: " + e.message);
     }
   }
 </script>
