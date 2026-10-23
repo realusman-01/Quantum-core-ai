@@ -169,12 +169,27 @@
   // ==========================================
   const SUPABASE_URL = "https://lxykguzcbduihevdnqxo.supabase.co"; // Apna URL dalein
   const SUPABASE_ANON_KEY = "sb_publishable_MB2IQunxTua-G4oLkweSWw_qDOZalQg"; // Supabase Dashboard -> Settings -> API -> anon public key
-  const ADMIN_PASSWORD = "realusman444"; // 👈 Apna Password yahan set karein
   // ==========================================
+// 🔒 SECURE LOGIN VIA VERCEL API 🔒
+// ==========================================
+async function checkPassword() {
+  const pass = document.getElementById('admin-pass').value;
+  if (!pass) return;
 
-  function checkPassword() {
-    const pass = document.getElementById('admin-pass').value;
-    if (pass === ADMIN_PASSWORD) {
+  const btn = document.querySelector('.login-box button');
+  btn.innerText = "Checking...";
+
+  try {
+    // Vercel API ko call kar raha hai password check karne ke liye
+    const response = await fetch('/api/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('sidebar').style.display = 'flex';
       document.getElementById('main-content').style.display = 'flex';
@@ -184,12 +199,17 @@
       document.getElementById('login-error').style.display = 'block';
       setTimeout(() => document.getElementById('login-error').style.display = 'none', 3000);
     }
+  } catch (error) {
+    alert("Server error: " + error.message);
+  } finally {
+    btn.innerText = "Unlock Dashboard";
   }
+}
 
-  function logout() {
-    localStorage.removeItem('qc_admin_auth');
-    location.reload();
-  }
+function logout() {
+  localStorage.removeItem('qc_admin_auth');
+  location.reload();
+}
 
   // Auto Login Check
   if (localStorage.getItem('qc_admin_auth') === 'true') {
