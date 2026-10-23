@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Admin Panel - Quantum Core AI</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --card: #151b2e;
+    --primary: #3b82f6;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --border: #1e2942;
+    --danger: #ef4444;
+    --success: #10b981;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+  
+  /* Login Screen */
+  #login-screen {
+    position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
+  }
+  .login-box {
+    background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid var(--border); text-align: center; width: 90%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .login-box h2 { color: var(--primary); margin-bottom: 20px; font-size: 24px; letter-spacing: 1px; }
+  .login-box input {
+    width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 15px; outline: none; font-size: 16px;
+  }
+  .login-box input:focus { border-color: var(--primary); }
+  .login-box button {
+    width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s;
+  }
+  .login-box button:hover { background: #2563eb; }
+  .error-text { color: var(--danger); font-size: 13px; margin-bottom: 10px; display: none; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 260px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0;
+  }
+  .sidebar h1 { font-size: 18px; color: var(--primary); margin-bottom: 30px; letter-spacing: 2px; text-align: center; }
+  .nav-item {
+    padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 10px;
+  }
+  .nav-item:hover, .nav-item.active { background: var(--primary); color: white; }
+  .logout-btn { margin-top: auto; color: var(--danger); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.2s; }
+  .logout-btn:hover { background: var(--danger); color: white; }
+
+  /* Main Content */
+  .main-content {
+    flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column;
+  }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .header h2 { font-size: 22px; }
+  .refresh-btn { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+  .refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
+  
+  /* Stats Cards */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+  .stat-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+  .stat-card h3 { font-size: 13px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .stat-card .value { font-size: 28px; font-weight: bold; color: var(--primary); }
+
+  /* Tables */
+  .data-section { display: none; background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+  .data-section.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  
+  table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13.5px; }
+  th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+  tr:hover { background: rgba(255,255,255,0.02); }
+  td { word-break: break-word; max-width: 300px; }
+  
+  .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+  .badge-user { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+  .badge-bot { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+
+  .loading { color: var(--muted); font-style: italic; display: flex; align-items: center; gap: 10px; }
+  .error { color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 10px; border-radius: 8px; border: 1px solid var(--danger); margin-top: 10px; display: none; }
+
+  /* Mobile Responsive */
+  @media (max-width: 768px) {
+    body { flex-direction: column; }
+    .sidebar { width: 100%; padding: 10px; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); align-items: center; }
+    .sidebar h1 { display: none; }
+    .nav-item { margin-bottom: 0; margin-right: 8px; white-space: nowrap; padding: 8px 12px; font-size: 13px; }
+    .logout-btn { margin-top: 0; margin-left: auto; padding: 8px 12px; font-size: 12px; }
+    .main-content { padding: 15px; }
+    .stats-grid { grid-template-columns: 1fr; }
+    table { display: block; overflow-x: auto; white-space: nowrap; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2><i class="fa-solid fa-shield-halved"></i> ADMIN LOGIN</h2>
+    <div class="error-text" id="login-error">Incorrect Password!</div>
+    <input type="password" id="admin-pass" placeholder="Enter Admin Password" onkeypress="if(event.key === 'Enter') checkPassword()">
+    <button onclick="checkPassword()">Unlock Dashboard</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar" style="display:none;">
+  <h1>QUANTUM ADMIN</h1>
+  <div class="nav-item active" onclick="switchTab('dashboard', this)"><i class="fa-solid fa-chart-pie"></i> Dashboard</div>
+  <div class="nav-item" onclick="switchTab('users', this)"><i class="fa-solid fa-users"></i> Users</div>
+  <div class="nav-item" onclick="switchTab('events', this)"><i class="fa-solid fa-comments"></i> Recent Events</div>
+  <div class="nav-item" onclick="switchTab('memories', this)"><i class="fa-solid fa-brain"></i> Memories</div>
+  <div class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main-content" id="main-content" style="display:none;">
+  
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard" class="data-section active">
+    <div class="header">
+      <h2>Dashboard Overview</h2>
+      <button class="refresh-btn" onclick="fetchData()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+    </div>
+    <div class="error" id="error-msg"></div>
+    <div class="stats-grid">
+      <div class="stat-card"><h3>Total Events (Last 20)</h3><div class="value" id="stat-events">-</div></div>
+      <div class="stat-card"><h3>Total Memories</h3><div class="value" id="stat-memories">-</div></div>
+      <div class="stat-card"><h3>Pending Dream Jobs</h3><div class="value" id="stat-jobs">-</div></div>
+    </div>
+  </div>
+
+  <!-- USERS TAB -->
+  <div id="tab-users" class="data-section">
+    <div class="header"><h2>Active Users</h2></div>
+    <table>
+      <thead><tr><th>User ID</th><th>Last Activity</th></tr></thead>
+      <tbody id="users-table-body"><tr><td colspan="2" class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading users...</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- EVENTS TAB -->
+  <div id="tab-events" class="data-section">
+    <div class="header"><h2>Recent Conversation Events</h2></div>
+    <table>
+      <thead><tr><th>User ID</th><th>Role</th><th>Content</th></tr></thead>
+      <tbody id="events-table-body"><tr><td colspan="3" class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading events...</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- MEMORIES TAB -->
+  <div id="tab-memories" class="data-section">
+    <div class="header"><h2>AI Memories (Quantum Dreaming)</h2></div>
+    <table>
+      <thead><tr><th>User ID</th><th>Type</th><th>Memory Content</th></tr></thead>
+      <tbody id="memories-table-body"><tr><td colspan="3" class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading memories...</td></tr></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  // ==========================================
+  // 🔴 YAHAN APNI DETAILS DAALO 🔴
+  // ==========================================
+  const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co"; // Apna URL dalein
+  const SUPABASE_ANON_KEY = "YOUR_ANON_KEY_HERE"; // Supabase Dashboard -> Settings -> API -> anon public key
+  const ADMIN_PASSWORD = "Usman@2026"; // 👈 Apna Password yahan set karein
+  // ==========================================
+
+  function checkPassword() {
+    const pass = document.getElementById('admin-pass').value;
+    if (pass === ADMIN_PASSWORD) {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('sidebar').style.display = 'flex';
+      document.getElementById('main-content').style.display = 'flex';
+      localStorage.setItem('qc_admin_auth', 'true');
+      fetchData();
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+      setTimeout(() => document.getElementById('login-error').style.display = 'none', 3000);
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('qc_admin_auth');
+    location.reload();
+  }
+
+  // Auto Login Check
+  if (localStorage.getItem('qc_admin_auth') === 'true') {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('sidebar').style.display = 'flex';
+    document.getElementById('main-content').style.display = 'flex';
+    fetchData();
+  }
+
+  function switchTab(tabId, navEl) {
+    document.querySelectorAll('.data-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    navEl.classList.add('active');
+  }
+
+  async function fetchData() {
+    const errorEl = document.getElementById('error-msg');
+    errorEl.style.display = 'none';
+    
+    // Check if keys are set
+    if (SUPABASE_URL.includes("YOUR_PROJECT_ID") || SUPABASE_ANON_KEY.includes("YOUR_ANON_KEY")) {
+      errorEl.innerText = "Error: Please open the code and enter your Supabase URL and Anon Key first!";
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const headers = {
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+    };
+
+    try {
+      // 1. Fetch Events (Limit 20)
+      const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/conversation_events?select=*&order=created_at.desc&limit=20`, { headers });
+      if (!eventsRes.ok) throw new Error(`Events API Error: ${eventsRes.status}`);
+      const events = await eventsRes.json();
+      
+      // 2. Fetch Memories (Limit 20)
+      const memRes = await fetch(`${SUPABASE_URL}/rest/v1/memories?select=*&order=created_at.desc&limit=20`, { headers });
+      if (!memRes.ok) throw new Error(`Memories API Error: ${memRes.status}`);
+      const memories = await memRes.json();
+
+      // 3. Fetch Dream Jobs (Pending)
+      const jobsRes = await fetch(`${SUPABASE_URL}/rest/v1/dream_jobs?select=*&status=eq.pending`, { headers });
+      if (!jobsRes.ok) throw new Error(`Jobs API Error: ${jobsRes.status}`);
+      const jobs = await jobsRes.json();
+
+      // Update Stats
+      document.getElementById('stat-events').innerText = events.length || 0;
+      document.getElementById('stat-memories').innerText = memories.length || 0;
+      document.getElementById('stat-jobs').innerText = jobs.length || 0;
+
+      // Populate Events Table
+      document.getElementById('events-table-body').innerHTML = events.length ? events.map(e => `
+        <tr>
+          <td><small>${e.user_id ? e.user_id.slice(0,15) : 'N/A'}...</small></td>
+          <td><span class="badge ${e.role === 'user' ? 'badge-user' : 'badge-bot'}">${e.role}</span></td>
+          <td>${e.content ? e.content.replace(/</g, "&lt;") : ''}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="3" class="loading">No events found in DB</td></tr>';
+
+      // Populate Memories Table
+      document.getElementById('memories-table-body').innerHTML = memories.length ? memories.map(m => `
+        <tr>
+          <td><small>${m.user_id ? m.user_id.slice(0,15) : 'N/A'}...</small></td>
+          <td><span style="color:var(--primary);font-weight:bold;">${m.memory_type || 'N/A'}</span></td>
+          <td>${m.content ? m.content.replace(/</g, "&lt;") : ''}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="3" class="loading">No memories found</td></tr>';
+
+      // Populate Users Table (Unique users from events)
+      const uniqueUsers = [...new Set(events.map(e => e.user_id))];
+      document.getElementById('users-table-body').innerHTML = uniqueUsers.length ? uniqueUsers.map(u => `
+        <tr>
+          <td><small>${u}</small></td>
+          <td><span class="badge badge-bot">Active</span></td>
+        </tr>
+      `).join('') : '<tr><td colspan="2" class="loading">No users found</td></tr>';
+
+    } catch (err) {
+      errorEl.innerText = "Fetch Error: " + err.message + ". (Kya aapne Supabase mein RLS Policy 'Allow Read' set ki hai?)";
+      errorEl.style.display = 'block';
+    }
+  }
+</script>
+</body>
+</html>
