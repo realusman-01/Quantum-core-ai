@@ -72,7 +72,15 @@
   .logout-btn:hover { background: var(--danger); color: white; }
 
   /* Main Content */
-  .main-content { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; scroll-behavior: smooth; }
+  .main-content { 
+    flex: 1; 
+    padding: 30px; 
+    overflow-y: auto; 
+    display: flex; 
+    flex-direction: column; 
+    scroll-behavior: smooth; 
+    min-height: 0; /* 🛠️ YEH LINE SCROLL FIX KAREGI */
+  }
   .main-content::-webkit-scrollbar { width: 6px; }
   .main-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
   
@@ -102,12 +110,25 @@
   .stat-card .value { font-size: 36px; font-weight: 800; color: var(--text); }
 
   /* Tables */
-  .data-section { display: none; background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border); backdrop-filter: blur(10px); overflow: hidden; }
+  .data-section { 
+    display: none; 
+    background: var(--card-bg); 
+    border-radius: 16px; 
+    border: 1px solid var(--border); 
+    backdrop-filter: blur(10px); 
+  }
   .data-section.active { display: block; animation: fadeInUp 0.4s ease; }
-  .table-wrapper { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { padding: 16px 20px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; background: rgba(0,0,0,0.2); position: sticky; top: 0; backdrop-filter: blur(5px); }
+  
+  /* Table Wrapper for Mobile Scroll */
+  .table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
+  th, td { padding: 16px 20px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; background: rgba(0,0,0,0.2); }
   tr { transition: 0.2s; }
   tr:hover { background: rgba(255,255,255,0.03); }
   td { color: #e2e8f0; }
@@ -120,20 +141,20 @@
   
   /* Action Buttons */
   .action-btn { 
-    padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700; 
+    padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700; 
     color: white; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; margin: 2px;
   }
   .action-btn:hover { transform: translateY(-2px); }
   .btn-ban { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
   .btn-ban:hover { background: var(--danger); color: white; border-color: var(--danger); }
-  .btn-unban { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); animation: pulseGlow 2s infinite; }
-  .btn-unban:hover { background: var(--success); color: white; border-color: var(--success); animation: none; }
+  .btn-unban { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+  .btn-unban:hover { background: var(--success); color: white; border-color: var(--success); }
   .btn-limit { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
   .btn-limit:hover { background: var(--warning); color: #000; border-color: var(--warning); }
 
   .error-box { color: #f87171; background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 10px; border: 1px solid var(--danger); margin-bottom: 20px; display: none; font-weight: 600; }
 
-  /* Modals */
+  /* Custom Modals */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 10000; }
   .modal-overlay.active { display: flex; }
   .modal-box { background: var(--card-bg); padding: 30px; border-radius: 20px; border: 1px solid var(--border); width: 90%; max-width: 400px; animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
@@ -148,14 +169,34 @@
   .btn-confirm { background: var(--primary); color: white; box-shadow: 0 5px 15px var(--primary-glow); }
   .btn-confirm:hover { background: #2563eb; transform: translateY(-2px); }
 
+  /* Toast Popup */
+  #toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: var(--warning); color: #000; padding: 12px 24px; border-radius: 12px;
+    font-weight: 800; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    opacity: 0; pointer-events: none; transition: 0.3s; z-index: 99999;
+  }
+  #toast.show { opacity: 1; bottom: 50px; }
+  #toast.success { background: var(--success); color: white; }
+  #toast.danger { background: var(--danger); color: white; }
+
   /* Mobile */
   @media (max-width: 768px) {
     body { flex-direction: column; }
-    .sidebar { width: 100%; padding: 10px; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); align-items: center; background: var(--bg); }
+    .sidebar { 
+      width: 100%; padding: 10px; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); 
+      align-items: center; background: var(--bg); min-height: 60px; 
+    }
     .sidebar h1 { display: none; }
-    .nav-item { margin-bottom: 0; margin-right: 10px; white-space: nowrap; padding: 10px 15px; font-size: 13px; border-radius: 20px;}
-    .logout-btn { margin-top: 0; margin-left: auto; padding: 10px 15px; font-size: 12px; border-radius: 20px; white-space: nowrap;}
-    .main-content { padding: 20px 15px; }
+    .nav-item { margin-bottom: 0; margin-right: 10px; white-space: nowrap; padding: 8px 15px; font-size: 13px; border-radius: 20px; }
+    .logout-btn { margin-top: 0; margin-left: auto; padding: 8px 15px; font-size: 12px; border-radius: 20px; white-space: nowrap; }
+    
+    /* 🛠️ SCROLL FIX FOR MOBILE */
+    .main-content { 
+      padding: 15px; 
+      height: calc(100vh - 60px); /* 60px is navbar height */
+      overflow-y: auto; 
+    }
     .stats-grid { grid-template-columns: 1fr; }
     .header h2 { font-size: 22px; }
     .action-btn { padding: 6px 10px; font-size: 11px; margin-bottom: 5px; }
@@ -254,7 +295,7 @@
 
 </div>
 
-<!-- CUSTOM MODAL FOR INPUT (Ban Temp / Set Limit) -->
+<!-- CUSTOM MODAL -->
 <div id="action-modal" class="modal-overlay">
   <div class="modal-box">
     <h3 id="modal-title">Action</h3>
@@ -267,6 +308,9 @@
   </div>
 </div>
 
+<!-- TOAST POPUP -->
+<div id="toast">This user is not banned</div>
+
 <script>
   // ==========================================
   // 🔴 YAHAN APNI DETAILS DAALO 🔴
@@ -278,6 +322,7 @@
   let adminPassword = ""; 
   let currentAction = null;
   let currentUserId = null;
+  let globalBans = []; // To check ban status locally before sending request
 
   async function checkPassword() {
     const pass = document.getElementById('admin-pass').value;
@@ -335,6 +380,16 @@
     navEl.classList.add('active');
   }
 
+  // 🍞 Custom Toast Logic
+  function showToast(msg, type = 'warning') {
+    const toast = document.getElementById('toast');
+    toast.innerText = msg;
+    toast.className = 'show ' + type;
+    setTimeout(() => {
+      toast.className = '';
+    }, 3000);
+  }
+
   async function fetchData() {
     const errorEl = document.getElementById('error-msg');
     const refreshBtn = document.getElementById('refresh-btn');
@@ -362,13 +417,15 @@
       const memories = memRes.ok ? await memRes.json() : [];
       const bans = bansRes.ok ? await bansRes.json() : [];
       const limits = limitsRes.ok ? await limitsRes.json() : [];
+      
+      globalBans = bans; // Save for local check
 
       // 🚨 UPDATE STATS
       document.getElementById('stat-events').innerText = events.length || 0;
       document.getElementById('stat-memories').innerText = memories.length || 0;
       document.getElementById('stat-banned').innerText = bans.length || 0;
 
-      // 🚨 MERGE UNIQUE USERS (Events + Bans + Limits) - Fix for Missing Banned Users
+      // 🚨 MERGE UNIQUE USERS
       const eventUsers = events.map(e => e.user_id);
       const banUsers = bans.map(b => b.user_id);
       const limitUsers = limits.map(l => l.user_id);
@@ -384,14 +441,15 @@
 
         if (banInfo) {
           statusBadge = `<span class="badge badge-banned">${banInfo.ban_type === 'permanent' ? 'Banned Perm' : 'Banned Temp'}</span>`;
-          // 🔥 UNBAN BUTTON
-          actionBtns += `<button class="action-btn btn-unban" onclick="promptAction('unban', '${uId}')"><i class="fa-solid fa-unlock"></i> Unban</button>`;
-        } else {
-          if (limitInfo) {
-            statusBadge = `<span class="badge badge-limited">Limited (${limitInfo.current_usage}/${limitInfo.daily_limit})</span>`;
-          } else {
-            statusBadge = `<span class="badge badge-bot">Active</span>`;
-          }
+        } else if (limitInfo) {
+          statusBadge = `<span class="badge badge-limited">Limited (${limitInfo.current_usage}/${limitInfo.daily_limit})</span>`;
+        }
+
+        // 🔥 HAMESHA UNBAN BUTTON (As requested)
+        actionBtns += `<button class="action-btn btn-unban" onclick="promptAction('unban', '${uId}')"><i class="fa-solid fa-unlock"></i> Unban</button>`;
+
+        // Agar user banned NAHI hai, toh baaki buttons dikhao
+        if (!banInfo) {
           actionBtns += `<button class="action-btn btn-ban" onclick="promptAction('ban_permanent', '${uId}')">Ban Perm</button>`;
           actionBtns += `<button class="action-btn btn-ban" onclick="promptAction('ban_temporary', '${uId}')">Ban Temp</button>`;
           actionBtns += `<button class="action-btn btn-limit" onclick="promptAction('set_limit', '${uId}')">Limit</button>`;
@@ -438,8 +496,19 @@
     }
   }
 
-  // 🚨 MODAL LOGIC (Replaces ugly prompt/alert)
+  // 🚨 MODAL LOGIC
   function promptAction(action, userId) {
+    // Check if user is actually banned before unbanning
+    if (action === 'unban') {
+      const isBanned = globalBans.some(b => b.user_id === userId);
+      if (!isBanned) {
+        showToast("This user is not banned", "warning"); // 👈 Pyara sa popup
+        return;
+      }
+      executeAction(action, userId, "Are you sure you want to unban this user?", null);
+      return;
+    }
+
     currentAction = action;
     currentUserId = userId;
     
@@ -464,9 +533,6 @@
       input.value = "50";
       input.style.display = 'block';
       modal.classList.add('active');
-    }
-    else if (action === 'unban') {
-      executeAction(action, userId, "Are you sure you want to unban this user?", null);
     }
   }
 
@@ -501,17 +567,16 @@
       
       const data = await res.json();
       if (data.success) {
-        // Custom success toast (optional, using alert for now)
-        alert(`✅ Success: ${data.msg}`);
+        showToast(`Success: ${data.msg}`, "success");
         closeModal();
-        fetchData(); // Refresh immediately
+        fetchData(); 
       } else {
-        alert("❌ Failed: " + (data.error || "Unknown error"));
+        showToast("Failed: " + (data.error || "Unknown error"), "danger");
       }
     } catch (e) {
-      alert("⚠️ Network Error: " + e.message);
+      showToast("Network Error: " + e.message, "danger");
     }
   }
 </script>
 </body>
-</html>9
+</html>
