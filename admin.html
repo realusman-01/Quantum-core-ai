@@ -552,7 +552,16 @@
       executeAction(currentAction, currentUserId, null, { limit: parseInt(val) });
     }
   }
-
+    if (!adminPassword) {
+    adminPassword = prompt("Session expired. Please enter Admin Password to confirm:");
+    if (!adminPassword) return; // Agar user cancel kar de toh ruk jao
+    sessionStorage.setItem('qc_admin_pass_temp', adminPassword); // Wapis save karo
+    }
+    
+    const payload = { password: adminPassword, action: action, userId: userId, ...extraPayload };
+    
+    try {
+    const res = await fetch('/api/admin-action', {
   async function executeAction(action, userId, confirmMsg, extraPayload = {}) {
     if (confirmMsg && !confirm(confirmMsg)) return;
 
