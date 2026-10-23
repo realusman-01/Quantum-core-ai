@@ -3,93 +3,162 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>Admin Panel - Quantum Core AI</title>
+<title>Quantum Admin - Control Room</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0e1a;
-    --card: #151b2e;
+    --bg: #050810;
+    --card-bg: rgba(21, 27, 46, 0.7);
     --primary: #3b82f6;
+    --primary-glow: rgba(59, 130, 246, 0.4);
     --text: #f8fafc;
     --muted: #94a3b8;
-    --border: #1e2942;
+    --border: rgba(255, 255, 255, 0.08);
     --danger: #ef4444;
     --success: #10b981;
     --warning: #f59e0b;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-  body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
   
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+  
+  body { 
+    background: var(--bg); 
+    color: var(--text); 
+    display: flex; 
+    height: 100vh; 
+    overflow: hidden; 
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(239, 68, 68, 0.05), transparent 25%);
+  }
+
+  /* Animations */
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 10px var(--primary-glow); } 50% { box-shadow: 0 0 20px var(--primary-glow); } }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+  @keyframes modalPop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
   /* Login Screen */
-  #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
-  .login-box { background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid var(--border); text-align: center; width: 90%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-  .login-box h2 { color: var(--primary); margin-bottom: 20px; font-size: 24px; letter-spacing: 1px; }
-  .login-box input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 15px; outline: none; font-size: 16px; }
-  .login-box input:focus { border-color: var(--primary); }
-  .login-box button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
-  .login-box button:hover { background: #2563eb; }
-  .error-text { color: var(--danger); font-size: 13px; margin-bottom: 10px; display: none; }
+  #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .login-box { 
+    background: var(--card-bg); padding: 40px; border-radius: 20px; border: 1px solid var(--border); 
+    text-align: center; width: 90%; max-width: 400px; backdrop-filter: blur(12px); animation: fadeInUp 0.5s ease;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  }
+  .login-box h2 { color: var(--primary); margin-bottom: 25px; font-size: 26px; font-weight: 800; letter-spacing: 1px; }
+  .login-box input { width: 100%; padding: 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: white; border-radius: 12px; margin-bottom: 20px; font-size: 16px; transition: 0.3s; }
+  .login-box input:focus { border-color: var(--primary); box-shadow: 0 0 15px var(--primary-glow); outline: none; }
+  .login-box button { 
+    width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 12px; 
+    font-weight: 800; cursor: pointer; font-size: 16px; transition: 0.3s; animation: pulseGlow 2s infinite;
+  }
+  .login-box button:hover { transform: translateY(-2px); background: #2563eb; }
 
   /* Sidebar */
-  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
-  .sidebar h1 { font-size: 18px; color: var(--primary); margin-bottom: 30px; letter-spacing: 2px; text-align: center; }
-  .nav-item { padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
-  .nav-item:hover, .nav-item.active { background: var(--primary); color: white; }
-  .logout-btn { margin-top: auto; color: var(--danger); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.2s; }
+  .sidebar { 
+    width: 260px; background: var(--card-bg); backdrop-filter: blur(10px); border-right: 1px solid var(--border); 
+    display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; z-index: 10;
+  }
+  .sidebar h1 { font-size: 20px; color: var(--text); margin-bottom: 30px; letter-spacing: 2px; text-align: center; font-weight: 800;}
+  .sidebar h1 span { color: var(--primary); }
+  .nav-item { 
+    padding: 14px 18px; margin-bottom: 10px; border-radius: 12px; cursor: pointer; color: var(--muted); 
+    font-weight: 600; transition: 0.3s; display: flex; align-items: center; gap: 12px; border: 1px solid transparent;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  .nav-item.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 5px 15px var(--primary-glow); }
+  .logout-btn { margin-top: auto; color: var(--danger); border: 1px solid var(--danger); padding: 12px; border-radius: 12px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.3s; }
   .logout-btn:hover { background: var(--danger); color: white; }
 
   /* Main Content */
-  .main-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
-  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .header h2 { font-size: 22px; }
-  .refresh-btn { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
-  .refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .main-content { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; scroll-behavior: smooth; }
+  .main-content::-webkit-scrollbar { width: 6px; }
+  .main-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; animation: fadeInUp 0.4s ease; }
+  .header h2 { font-size: 28px; font-weight: 800; letter-spacing: 0.5px;}
+  .refresh-btn { 
+    background: var(--card-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 20px; 
+    border-radius: 10px; cursor: pointer; transition: 0.3s; font-weight: 600; display: flex; align-items: center; gap: 8px;
+  }
+  .refresh-btn:hover { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 15px var(--primary-glow); }
+  .refresh-btn i { transition: 0.5s; }
+  .refresh-btn.loading i { animation: spin 1s infinite; }
   
   /* Stats Cards */
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
-  .stat-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
-  .stat-card h3 { font-size: 13px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
-  .stat-card .value { font-size: 28px; font-weight: bold; color: var(--primary); }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+  .stat-card { 
+    background: var(--card-bg); padding: 25px; border-radius: 16px; border: 1px solid var(--border); 
+    backdrop-filter: blur(10px); transition: 0.3s; position: relative; overflow: hidden; animation: fadeInUp 0.5s ease backwards;
+  }
+  .stat-card:nth-child(1) { animation-delay: 0.1s; }
+  .stat-card:nth-child(2) { animation-delay: 0.2s; }
+  .stat-card:nth-child(3) { animation-delay: 0.3s; }
+  .stat-card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); }
+  .stat-card.danger::before { background: var(--danger); }
+  .stat-card h3 { font-size: 13px; color: var(--muted); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+  .stat-card .value { font-size: 36px; font-weight: 800; color: var(--text); }
 
   /* Tables */
-  .data-section { display: none; background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
-  .data-section.active { display: block; animation: fadeIn 0.3s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .data-section { display: none; background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border); backdrop-filter: blur(10px); overflow: hidden; }
+  .data-section.active { display: block; animation: fadeInUp 0.4s ease; }
+  .table-wrapper { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 16px 20px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; background: rgba(0,0,0,0.2); position: sticky; top: 0; backdrop-filter: blur(5px); }
+  tr { transition: 0.2s; }
+  tr:hover { background: rgba(255,255,255,0.03); }
+  td { color: #e2e8f0; }
   
-  table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13.5px; }
-  th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
-  tr:hover { background: rgba(255,255,255,0.02); }
-  td { word-break: break-word; max-width: 300px; }
-  
-  .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-  .badge-user { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-  .badge-bot { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-  .badge-banned { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
-  .badge-limited { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+  .badge { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }
+  .badge-user { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+  .badge-bot { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+  .badge-banned { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .badge-limited { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
   
   /* Action Buttons */
-  .action-btn { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; color: white; margin-right: 5px; transition: 0.2s; margin-bottom: 5px;}
-  .btn-ban { background: var(--danger); }
-  .btn-ban:hover { background: #dc2626; }
-  .btn-unban { background: var(--success); }
-  .btn-unban:hover { background: #059669; }
-  .btn-limit { background: var(--warning); color: #000; }
-  .btn-limit:hover { background: #d97706; }
+  .action-btn { 
+    padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700; 
+    color: white; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; margin: 2px;
+  }
+  .action-btn:hover { transform: translateY(-2px); }
+  .btn-ban { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+  .btn-ban:hover { background: var(--danger); color: white; border-color: var(--danger); }
+  .btn-unban { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); animation: pulseGlow 2s infinite; }
+  .btn-unban:hover { background: var(--success); color: white; border-color: var(--success); animation: none; }
+  .btn-limit { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+  .btn-limit:hover { background: var(--warning); color: #000; border-color: var(--warning); }
 
-  .loading { color: var(--muted); font-style: italic; display: flex; align-items: center; gap: 10px; }
-  .error { color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 10px; border-radius: 8px; border: 1px solid var(--danger); margin-top: 10px; display: none; }
+  .error-box { color: #f87171; background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 10px; border: 1px solid var(--danger); margin-bottom: 20px; display: none; font-weight: 600; }
 
-  /* Mobile Responsive */
+  /* Modals */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 10000; }
+  .modal-overlay.active { display: flex; }
+  .modal-box { background: var(--card-bg); padding: 30px; border-radius: 20px; border: 1px solid var(--border); width: 90%; max-width: 400px; animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+  .modal-box h3 { font-size: 20px; margin-bottom: 15px; color: var(--text); }
+  .modal-box p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  .modal-box input { width: 100%; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: white; border-radius: 10px; margin-bottom: 20px; font-size: 15px; outline: none; transition: 0.3s; }
+  .modal-box input:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-actions button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; transition: 0.3s; font-size: 14px;}
+  .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
+  .btn-cancel:hover { background: rgba(255,255,255,0.2); }
+  .btn-confirm { background: var(--primary); color: white; box-shadow: 0 5px 15px var(--primary-glow); }
+  .btn-confirm:hover { background: #2563eb; transform: translateY(-2px); }
+
+  /* Mobile */
   @media (max-width: 768px) {
     body { flex-direction: column; }
-    .sidebar { width: 100%; padding: 10px; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); align-items: center; }
+    .sidebar { width: 100%; padding: 10px; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); align-items: center; background: var(--bg); }
     .sidebar h1 { display: none; }
-    .nav-item { margin-bottom: 0; margin-right: 8px; white-space: nowrap; padding: 8px 12px; font-size: 13px; }
-    .logout-btn { margin-top: 0; margin-left: auto; padding: 8px 12px; font-size: 12px; }
-    .main-content { padding: 15px; }
+    .nav-item { margin-bottom: 0; margin-right: 10px; white-space: nowrap; padding: 10px 15px; font-size: 13px; border-radius: 20px;}
+    .logout-btn { margin-top: 0; margin-left: auto; padding: 10px 15px; font-size: 12px; border-radius: 20px; white-space: nowrap;}
+    .main-content { padding: 20px 15px; }
     .stats-grid { grid-template-columns: 1fr; }
-    table { display: block; overflow-x: auto; white-space: nowrap; }
+    .header h2 { font-size: 22px; }
+    .action-btn { padding: 6px 10px; font-size: 11px; margin-bottom: 5px; }
   }
 </style>
 </head>
@@ -98,8 +167,9 @@
 <!-- LOGIN SCREEN -->
 <div id="login-screen">
   <div class="login-box">
-    <h2><i class="fa-solid fa-shield-halved"></i> ADMIN LOGIN</h2>
-    <div class="error-text" id="login-error">Incorrect Password!</div>
+    <h2><i class="fa-solid fa-shield-halved" style="color:var(--primary)"></i> QUANTUM ADMIN</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:14px;">Enter your secret password to access the control room.</p>
+    <div id="login-error" style="color:var(--danger); font-size:13px; margin-bottom:10px; display:none; font-weight:600;">Incorrect Password!</div>
     <input type="password" id="admin-pass" placeholder="Enter Admin Password" onkeypress="if(event.key === 'Enter') checkPassword()">
     <button onclick="checkPassword()">Unlock Dashboard</button>
   </div>
@@ -107,12 +177,12 @@
 
 <!-- SIDEBAR -->
 <div class="sidebar" id="sidebar" style="display:none;">
-  <h1>QUANTUM ADMIN</h1>
+  <h1>QUANTUM <span>ADMIN</span></h1>
   <div class="nav-item active" onclick="switchTab('dashboard', this)"><i class="fa-solid fa-chart-pie"></i> Dashboard</div>
-  <div class="nav-item" onclick="switchTab('users', this)"><i class="fa-solid fa-users-gear"></i> User Management</div>
-  <div class="nav-item" onclick="switchTab('events', this)"><i class="fa-solid fa-comments"></i> Recent Events</div>
-  <div class="nav-item" onclick="switchTab('memories', this)"><i class="fa-solid fa-brain"></i> Memories</div>
-  <div class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</div>
+  <div class="nav-item" onclick="switchTab('users', this)"><i class="fa-solid fa-users-gear"></i> User Control</div>
+  <div class="nav-item" onclick="switchTab('events', this)"><i class="fa-solid fa-comments"></i> Live Logs</div>
+  <div class="nav-item" onclick="switchTab('memories', this)"><i class="fa-solid fa-brain"></i> AI Memories</div>
+  <div class="logout-btn" onclick="logout()"><i class="fa-solid fa-power-off"></i> Logout</div>
 </div>
 
 <!-- MAIN CONTENT -->
@@ -122,44 +192,79 @@
   <div id="tab-dashboard" class="data-section active">
     <div class="header">
       <h2>Dashboard Overview</h2>
-      <button class="refresh-btn" onclick="fetchData()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+      <button class="refresh-btn" id="refresh-btn" onclick="fetchData()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
     </div>
-    <div class="error" id="error-msg"></div>
+    <div class="error-box" id="error-msg"></div>
+    
     <div class="stats-grid">
-      <div class="stat-card"><h3>Total Events (Last 50)</h3><div class="value" id="stat-events">-</div></div>
-      <div class="stat-card"><h3>Total Memories</h3><div class="value" id="stat-memories">-</div></div>
-      <div class="stat-card"><h3>Banned Users</h3><div class="value" id="stat-banned" style="color:var(--danger);">-</div></div>
+      <div class="stat-card">
+        <h3>Total Live Events</h3>
+        <div class="value" id="stat-events">-</div>
+      </div>
+      <div class="stat-card">
+        <h3>AI Memories Built</h3>
+        <div class="value" id="stat-memories">-</div>
+      </div>
+      <div class="stat-card danger">
+        <h3>Banned Users</h3>
+        <div class="value" id="stat-banned" style="color:var(--danger);">-</div>
+      </div>
     </div>
   </div>
 
   <!-- USER MANAGEMENT TAB -->
   <div id="tab-users" class="data-section">
-    <div class="header"><h2>User Management</h2></div>
-    <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Manage bans, unbans, and daily limits here.</p>
-    <table>
-      <thead><tr><th>User ID</th><th>Status</th><th>Daily Limit</th><th>Est. Tokens</th><th>Actions</th></tr></thead>
-      <tbody id="users-table-body"><tr><td colspan="4" class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading users...</td></tr></tbody>
-    </table>
+    <div class="header" style="padding: 20px 20px 0 20px;">
+      <h2>User Control</h2>
+    </div>
+    <p style="color:var(--muted); font-size:14px; padding: 0 20px 15px 20px;">Manage bans, unbans, and daily limits here.</p>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>User ID</th><th>Status</th><th>Daily Limit</th><th>Est. Tokens</th><th>Actions</th></tr></thead>
+        <tbody id="users-table-body"><tr><td colspan="5" style="text-align:center; padding:30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px; color:var(--primary)"></i></td></tr></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- EVENTS TAB -->
   <div id="tab-events" class="data-section">
-    <div class="header"><h2>Recent Conversation Events</h2></div>
-    <table>
-      <thead><tr><th>User ID</th><th>Role</th><th>Content</th></tr></thead>
-      <tbody id="events-table-body"><tr><td colspan="3" class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading events...</td></tr></tbody>
-    </table>
+    <div class="header" style="padding: 20px 20px 0 20px;">
+      <h2>Live Logs</h2>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>User ID</th><th>Role</th><th>Content</th></tr></thead>
+        <tbody id="events-table-body"><tr><td colspan="3" style="text-align:center; padding:30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px; color:var(--primary)"></i></td></tr></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- MEMORIES TAB -->
   <div id="tab-memories" class="data-section">
-    <div class="header"><h2>AI Memories (Quantum Dreaming)</h2></div>
-    <table>
-      <thead><tr><th>User ID</th><th>Type</th><th>Memory Content</th></tr></thead>
-      <tbody id="memories-table-body"><tr><td colspan="3" class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading memories...</td></tr></tbody>
-    </table>
+    <div class="header" style="padding: 20px 20px 0 20px;">
+      <h2>AI Memories (Dreaming)</h2>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>User ID</th><th>Type</th><th>Memory Content</th></tr></thead>
+        <tbody id="memories-table-body"><tr><td colspan="3" style="text-align:center; padding:30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px; color:var(--primary)"></i></td></tr></tbody>
+      </table>
+    </div>
   </div>
 
+</div>
+
+<!-- CUSTOM MODAL FOR INPUT (Ban Temp / Set Limit) -->
+<div id="action-modal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modal-title">Action</h3>
+    <p id="modal-desc">Please enter a value below.</p>
+    <input type="number" id="modal-input" placeholder="Enter value...">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" id="modal-confirm-btn" onclick="submitModalAction()">Confirm</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -171,13 +276,15 @@
   // ==========================================
 
   let adminPassword = ""; 
+  let currentAction = null;
+  let currentUserId = null;
 
   async function checkPassword() {
     const pass = document.getElementById('admin-pass').value;
     if (!pass) return;
 
     const btn = document.querySelector('.login-box button');
-    btn.innerText = "Checking...";
+    btn.innerText = "Authenticating...";
 
     try {
       const response = await fetch('/api/admin-login', {
@@ -199,10 +306,10 @@
       } else {
         document.getElementById('login-error').style.display = 'block';
         setTimeout(() => document.getElementById('login-error').style.display = 'none', 3000);
+        btn.innerText = "Unlock Dashboard";
       }
     } catch (error) {
       alert("Server error: " + error.message);
-    } finally {
       btn.innerText = "Unlock Dashboard";
     }
   }
@@ -230,11 +337,14 @@
 
   async function fetchData() {
     const errorEl = document.getElementById('error-msg');
+    const refreshBtn = document.getElementById('refresh-btn');
     errorEl.style.display = 'none';
+    refreshBtn.classList.add('loading');
     
     if (SUPABASE_URL.includes("YOUR_PROJECT") || SUPABASE_ANON_KEY.includes("YOUR_ANON")) {
       errorEl.innerText = "Error: Supabase URL or Key is missing!";
       errorEl.style.display = 'block';
+      refreshBtn.classList.remove('loading');
       return;
     }
 
@@ -253,96 +363,134 @@
       const bans = bansRes.ok ? await bansRes.json() : [];
       const limits = limitsRes.ok ? await limitsRes.json() : [];
 
+      // 🚨 UPDATE STATS
       document.getElementById('stat-events').innerText = events.length || 0;
       document.getElementById('stat-memories').innerText = memories.length || 0;
       document.getElementById('stat-banned').innerText = bans.length || 0;
 
-      const uniqueUsers = [...new Set(events.map(e => e.user_id))];
+      // 🚨 MERGE UNIQUE USERS (Events + Bans + Limits) - Fix for Missing Banned Users
+      const eventUsers = events.map(e => e.user_id);
+      const banUsers = bans.map(b => b.user_id);
+      const limitUsers = limits.map(l => l.user_id);
+      const uniqueUsers = [...new Set([...eventUsers, ...banUsers, ...limitUsers])].filter(Boolean);
 
-      // Render User Management Table
+      // RENDER USERS TABLE
       document.getElementById('users-table-body').innerHTML = uniqueUsers.length ? uniqueUsers.map(uId => {
         const banInfo = bans.find(b => b.user_id === uId);
         const limitInfo = limits.find(l => l.user_id === uId);
-// 🪙 Calculate Estimated Tokens (1 token = ~4 chars)
-const userEvents = events.filter(e => e.user_id === uId);
-const estTokens = userEvents.reduce((sum, e) => sum + Math.ceil((e.content ? e.content.length : 0) / 4), 0);
+        
         let statusBadge = '<span class="badge badge-bot">Active</span>';
         let actionBtns = '';
 
         if (banInfo) {
-          statusBadge = `<span class="badge badge-banned">${banInfo.ban_type === 'permanent' ? 'Banned (Perm)' : 'Banned (Temp)'}</span>`;
-          // 🔥 THIS IS THE UNBAN BUTTON
-          actionBtns += `<button class="action-btn btn-unban" onclick="handleAction('unban', '${uId}')"><i class="fa-solid fa-unlock"></i> Unban</button>`;
+          statusBadge = `<span class="badge badge-banned">${banInfo.ban_type === 'permanent' ? 'Banned Perm' : 'Banned Temp'}</span>`;
+          // 🔥 UNBAN BUTTON
+          actionBtns += `<button class="action-btn btn-unban" onclick="promptAction('unban', '${uId}')"><i class="fa-solid fa-unlock"></i> Unban</button>`;
         } else {
           if (limitInfo) {
             statusBadge = `<span class="badge badge-limited">Limited (${limitInfo.current_usage}/${limitInfo.daily_limit})</span>`;
+          } else {
+            statusBadge = `<span class="badge badge-bot">Active</span>`;
           }
-          actionBtns += `<button class="action-btn btn-ban" onclick="handleAction('ban_permanent', '${uId}')">Ban Perm</button>`;
-          actionBtns += `<button class="action-btn btn-ban" onclick="handleAction('ban_temporary', '${uId}')">Ban Temp</button>`;
-          actionBtns += `<button class="action-btn btn-limit" onclick="handleAction('set_limit', '${uId}')">Set Limit</button>`;
+          actionBtns += `<button class="action-btn btn-ban" onclick="promptAction('ban_permanent', '${uId}')">Ban Perm</button>`;
+          actionBtns += `<button class="action-btn btn-ban" onclick="promptAction('ban_temporary', '${uId}')">Ban Temp</button>`;
+          actionBtns += `<button class="action-btn btn-limit" onclick="promptAction('set_limit', '${uId}')">Limit</button>`;
         }
 
-        return `
-  <tr>
-    <td><small>${uId}</small></td>
-    <td>${statusBadge}</td>
-    <td>${limitInfo ? limitInfo.daily_limit + ' msgs/day' : 'Default'}</td>
-    <td><strong style="color:var(--primary); font-size:14px;">~${estTokens}</strong></td>
-    <td>${actionBtns}</td>
-  </tr>
-`;
-      }).join('') : '<tr><td colspan="5" class="loading">No users found in DB.</td></tr>';
+        // Token Calc
+        const userEvents = events.filter(e => e.user_id === uId);
+        const estTokens = userEvents.reduce((sum, e) => sum + Math.ceil((e.content ? e.content.length : 0) / 4), 0);
 
-      // Populate Events Table
+        return `
+          <tr>
+            <td><small>${uId}</small></td>
+            <td>${statusBadge}</td>
+            <td>${limitInfo ? limitInfo.daily_limit + ' msgs/day' : 'Default'}</td>
+            <td><strong style="color:var(--primary); font-size:14px;">~${estTokens}</strong></td>
+            <td>${actionBtns}</td>
+          </tr>
+        `;
+      }).join('') : '<tr><td colspan="5" style="text-align:center; color:var(--muted);">No users found.</td></tr>';
+
+      // RENDER EVENTS
       document.getElementById('events-table-body').innerHTML = events.length ? events.map(e => `
         <tr>
           <td><small>${e.user_id ? e.user_id.slice(0,15) : 'N/A'}...</small></td>
           <td><span class="badge ${e.role === 'user' ? 'badge-user' : 'badge-bot'}">${e.role}</span></td>
-          <td>${e.content ? e.content.replace(/</g, "&lt;") : ''}</td>
+          <td style="white-space: normal; max-width: 400px;">${e.content ? e.content.replace(/</g, "&lt;") : ''}</td>
         </tr>
-      `).join('') : '<tr><td colspan="3" class="loading">No events found.</td></tr>';
+      `).join('') : '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No events found.</td></tr>';
 
-      // Populate Memories Table
+      // RENDER MEMORIES
       document.getElementById('memories-table-body').innerHTML = memories.length ? memories.map(m => `
         <tr>
           <td><small>${m.user_id ? m.user_id.slice(0,15) : 'N/A'}...</small></td>
-          <td><span style="color:var(--primary);font-weight:bold;">${m.memory_type || 'N/A'}</span></td>
-          <td>${m.content ? m.content.replace(/</g, "&lt;") : ''}</td>
+          <td><span style="color:var(--primary);font-weight:800;">${m.memory_type || 'N/A'}</span></td>
+          <td style="white-space: normal; max-width: 400px;">${m.content ? m.content.replace(/</g, "&lt;") : ''}</td>
         </tr>
-      `).join('') : '<tr><td colspan="3" class="loading">No memories found.</td></tr>';
+      `).join('') : '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No memories found.</td></tr>';
 
     } catch (err) {
-      errorEl.innerText = "Fetch Error: " + err.message;
+      errorEl.innerText = "Fetch Error: " + err.message + " (Did you set the RLS Policy in Supabase?)";
       errorEl.style.display = 'block';
+    } finally {
+      refreshBtn.classList.remove('loading');
     }
   }
 
-  // 🚨 ADMIN ACTIONS (English Alerts)
-  async function handleAction(action, userId) {
-    if (!adminPassword) {
-      alert("Session expired. Please logout and login again.");
-      return;
-    }
-
-    let payload = { password: adminPassword, action: action, userId: userId };
+  // 🚨 MODAL LOGIC (Replaces ugly prompt/alert)
+  function promptAction(action, userId) {
+    currentAction = action;
+    currentUserId = userId;
     
+    const modal = document.getElementById('action-modal');
+    const title = document.getElementById('modal-title');
+    const desc = document.getElementById('modal-desc');
+    const input = document.getElementById('modal-input');
+
     if (action === 'ban_permanent') {
-      if(!confirm(`Are you sure you want to PERMANENTLY ban user: ${userId}?`)) return;
+      executeAction(action, userId, "Are you sure you want to PERMANENTLY ban this user?", null);
     } 
     else if (action === 'ban_temporary') {
-      const hours = prompt("How many hours for the temporary ban? (e.g., 24)", "24");
-      if (!hours) return;
-      payload.durationHours = parseInt(hours);
-      payload.reason = "Temporary Cool Down";
+      title.innerText = "Temporary Ban";
+      desc.innerText = "How many hours should the user be banned for?";
+      input.value = "24";
+      input.style.display = 'block';
+      modal.classList.add('active');
     }
     else if (action === 'set_limit') {
-      const limit = prompt("Set daily message limit? (e.g., 50)", "50");
-      if (!limit) return;
-      payload.limit = parseInt(limit);
+      title.innerText = "Set Daily Limit";
+      desc.innerText = "How many messages per day is allowed?";
+      input.value = "50";
+      input.style.display = 'block';
+      modal.classList.add('active');
     }
     else if (action === 'unban') {
-      if(!confirm(`Are you sure you want to unban user: ${userId}?`)) return;
+      executeAction(action, userId, "Are you sure you want to unban this user?", null);
     }
+  }
+
+  function closeModal() {
+    document.getElementById('action-modal').classList.remove('active');
+    currentAction = null;
+    currentUserId = null;
+  }
+
+  function submitModalAction() {
+    const val = document.getElementById('modal-input').value;
+    if (!val) return;
+    
+    if (currentAction === 'ban_temporary') {
+      executeAction(currentAction, currentUserId, null, { durationHours: parseInt(val), reason: "Temporary Cool Down" });
+    } else if (currentAction === 'set_limit') {
+      executeAction(currentAction, currentUserId, null, { limit: parseInt(val) });
+    }
+  }
+
+  async function executeAction(action, userId, confirmMsg, extraPayload = {}) {
+    if (confirmMsg && !confirm(confirmMsg)) return;
+
+    const payload = { password: adminPassword, action: action, userId: userId, ...extraPayload };
 
     try {
       const res = await fetch('/api/admin-action', {
@@ -353,15 +501,17 @@ const estTokens = userEvents.reduce((sum, e) => sum + Math.ceil((e.content ? e.c
       
       const data = await res.json();
       if (data.success) {
-        alert(`Success: ${data.msg}`);
-        fetchData(); // Refresh data immediately
+        // Custom success toast (optional, using alert for now)
+        alert(`✅ Success: ${data.msg}`);
+        closeModal();
+        fetchData(); // Refresh immediately
       } else {
-        alert("Failed: " + (data.error || "Unknown error"));
+        alert("❌ Failed: " + (data.error || "Unknown error"));
       }
     } catch (e) {
-      alert("Network Error: " + e.message);
+      alert("⚠️ Network Error: " + e.message);
     }
   }
 </script>
 </body>
-</html>
+</html>9
