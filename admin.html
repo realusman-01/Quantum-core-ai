@@ -69,7 +69,7 @@
   .badge-limited { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
   
   /* Action Buttons */
-  .action-btn { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; color: white; margin-right: 5px; transition: 0.2s; }
+  .action-btn { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; color: white; margin-right: 5px; transition: 0.2s; margin-bottom: 5px;}
   .btn-ban { background: var(--danger); }
   .btn-ban:hover { background: #dc2626; }
   .btn-unban { background: var(--success); }
@@ -135,9 +135,9 @@
   <!-- USER MANAGEMENT TAB -->
   <div id="tab-users" class="data-section">
     <div class="header"><h2>User Management</h2></div>
-    <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Yahan se users ko ban karein, unban karein ya limits set karein.</p>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Manage bans, unbans, and daily limits here.</p>
     <table>
-      <thead><tr><th>User ID</th><th>Status</th><th>Daily Limit</th><th>Actions</th></tr></thead>
+      <thead><tr><th>User ID</th><th>Status</th><th>Daily Limit</th><th>Est. Tokens</th><th>Actions</th></tr></thead>
       <tbody id="users-table-body"><tr><td colspan="4" class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading users...</td></tr></tbody>
     </table>
   </div>
@@ -170,7 +170,7 @@
   const SUPABASE_ANON_KEY = "sb_publishable_MB2IQunxTua-G4oLkweSWw_qDOZalQg"; // Apni Anon Key
   // ==========================================
 
-  let adminPassword = ""; // Memory mein password save karne ke liye
+  let adminPassword = ""; 
 
   async function checkPassword() {
     const pass = document.getElementById('admin-pass').value;
@@ -188,9 +188,8 @@
       const data = await response.json();
 
       if (data.success) {
-        adminPassword = pass; // Save for actions
+        adminPassword = pass; 
         localStorage.setItem('qc_admin_auth', 'true');
-        // Password ko memory mein rakhne ke liye (sessionStorage use karte hain taake refresh pe na mare)
         sessionStorage.setItem('qc_admin_pass_temp', pass);
         
         document.getElementById('login-screen').style.display = 'none';
@@ -214,7 +213,6 @@
     location.reload();
   }
 
-  // Auto Login Check
   if (localStorage.getItem('qc_admin_auth') === 'true') {
     adminPassword = sessionStorage.getItem('qc_admin_pass_temp') || "";
     document.getElementById('login-screen').style.display = 'none';
@@ -230,13 +228,12 @@
     navEl.classList.add('active');
   }
 
-  // 🚀 UNIFIED FETCH DATA
   async function fetchData() {
     const errorEl = document.getElementById('error-msg');
     errorEl.style.display = 'none';
     
     if (SUPABASE_URL.includes("YOUR_PROJECT") || SUPABASE_ANON_KEY.includes("YOUR_ANON")) {
-      errorEl.innerText = "Error: Supabase URL ya Key nahi dali gayi!";
+      errorEl.innerText = "Error: Supabase URL or Key is missing!";
       errorEl.style.display = 'block';
       return;
     }
@@ -244,7 +241,6 @@
     const headers = { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` };
 
     try {
-      // Fetch all needed data simultaneously
       const [eventsRes, memRes, bansRes, limitsRes] = await Promise.all([
         fetch(`${SUPABASE_URL}/rest/v1/conversation_events?select=*&order=created_at.desc&limit=50`, { headers }),
         fetch(`${SUPABASE_URL}/rest/v1/memories?select=*&order=created_at.desc&limit=20`, { headers }),
@@ -257,44 +253,45 @@
       const bans = bansRes.ok ? await bansRes.json() : [];
       const limits = limitsRes.ok ? await limitsRes.json() : [];
 
-      // Update Dashboard Stats
       document.getElementById('stat-events').innerText = events.length || 0;
       document.getElementById('stat-memories').innerText = memories.length || 0;
       document.getElementById('stat-banned').innerText = bans.length || 0;
 
-      // Extract unique User IDs
       const uniqueUsers = [...new Set(events.map(e => e.user_id))];
 
       // Render User Management Table
       document.getElementById('users-table-body').innerHTML = uniqueUsers.length ? uniqueUsers.map(uId => {
         const banInfo = bans.find(b => b.user_id === uId);
         const limitInfo = limits.find(l => l.user_id === uId);
-        
+// 🪙 Calculate Estimated Tokens (1 token = ~4 chars)
+const userEvents = events.filter(e => e.user_id === uId);
+const estTokens = userEvents.reduce((sum, e) => sum + Math.ceil((e.content ? e.content.length : 0) / 4), 0);
         let statusBadge = '<span class="badge badge-bot">Active</span>';
+        let actionBtns = '';
+
         if (banInfo) {
           statusBadge = `<span class="badge badge-banned">${banInfo.ban_type === 'permanent' ? 'Banned (Perm)' : 'Banned (Temp)'}</span>`;
-        } else if (limitInfo) {
-          statusBadge = `<span class="badge badge-limited">Limited (${limitInfo.current_usage}/${limitInfo.daily_limit})</span>`;
-        }
-
-        let actionBtns = '';
-        if (banInfo) {
-          actionBtns += `<button class="action-btn btn-unban" onclick="handleAction('unban', '${uId}')">Unban</button>`;
+          // 🔥 THIS IS THE UNBAN BUTTON
+          actionBtns += `<button class="action-btn btn-unban" onclick="handleAction('unban', '${uId}')"><i class="fa-solid fa-unlock"></i> Unban</button>`;
         } else {
+          if (limitInfo) {
+            statusBadge = `<span class="badge badge-limited">Limited (${limitInfo.current_usage}/${limitInfo.daily_limit})</span>`;
+          }
           actionBtns += `<button class="action-btn btn-ban" onclick="handleAction('ban_permanent', '${uId}')">Ban Perm</button>`;
           actionBtns += `<button class="action-btn btn-ban" onclick="handleAction('ban_temporary', '${uId}')">Ban Temp</button>`;
+          actionBtns += `<button class="action-btn btn-limit" onclick="handleAction('set_limit', '${uId}')">Set Limit</button>`;
         }
-        actionBtns += `<button class="action-btn btn-limit" onclick="handleAction('set_limit', '${uId}')">Set Limit</button>`;
 
         return `
-          <tr>
-            <td><small>${uId}</small></td>
-            <td>${statusBadge}</td>
-            <td>${limitInfo ? limitInfo.daily_limit + ' msgs/day' : 'Default'}</td>
-            <td>${actionBtns}</td>
-          </tr>
-        `;
-      }).join('') : '<tr><td colspan="4" class="loading">No users found in DB.</td></tr>';
+  <tr>
+    <td><small>${uId}</small></td>
+    <td>${statusBadge}</td>
+    <td>${limitInfo ? limitInfo.daily_limit + ' msgs/day' : 'Default'}</td>
+    <td><strong style="color:var(--primary); font-size:14px;">~${estTokens}</strong></td>
+    <td>${actionBtns}</td>
+  </tr>
+`;
+      }).join('') : '<tr><td colspan="5" class="loading">No users found in DB.</td></tr>';
 
       // Populate Events Table
       document.getElementById('events-table-body').innerHTML = events.length ? events.map(e => `
@@ -320,7 +317,7 @@
     }
   }
 
-  // 🚨 ADMIN ACTIONS (Ban, Unban, Limit)
+  // 🚨 ADMIN ACTIONS (English Alerts)
   async function handleAction(action, userId) {
     if (!adminPassword) {
       alert("Session expired. Please logout and login again.");
@@ -330,21 +327,21 @@
     let payload = { password: adminPassword, action: action, userId: userId };
     
     if (action === 'ban_permanent') {
-      if(!confirm(`Kya aap ${userId} ko PERMANENTLY ban karna chahte hain?`)) return;
+      if(!confirm(`Are you sure you want to PERMANENTLY ban user: ${userId}?`)) return;
     } 
     else if (action === 'ban_temporary') {
-      const hours = prompt("Kitne ghante ke liye ban karna hai? (e.g., 24)", "24");
+      const hours = prompt("How many hours for the temporary ban? (e.g., 24)", "24");
       if (!hours) return;
       payload.durationHours = parseInt(hours);
       payload.reason = "Temporary Cool Down";
     }
     else if (action === 'set_limit') {
-      const limit = prompt("Kitni daily limit set karni hai? (e.g., 50)", "50");
+      const limit = prompt("Set daily message limit? (e.g., 50)", "50");
       if (!limit) return;
       payload.limit = parseInt(limit);
     }
     else if (action === 'unban') {
-      if(!confirm(`Kya aap ${userId} ko unban karna chahte hain?`)) return;
+      if(!confirm(`Are you sure you want to unban user: ${userId}?`)) return;
     }
 
     try {
