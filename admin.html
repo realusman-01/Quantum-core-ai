@@ -3,83 +3,126 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>Admin Panel - Quantum Core AI</title>
+<title>Quantum Admin - Control Room</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0e1a; --card: #151b2e; --primary: #3b82f6; --text: #f8fafc;
-    --muted: #94a3b8; --border: #1e2942; --danger: #ef4444;
-    --success: #10b981; --warning: #f59e0b;
+    --bg: #050810;
+    --card: #111625;
+    --primary: #3b82f6;
+    --primary-glow: rgba(59, 130, 246, 0.3);
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --border: #1e2942;
+    --danger: #ef4444;
+    --success: #10b981;
+    --warning: #f59e0b;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; -webkit-tap-highlight-color: transparent; }
+  
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
   body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
   
-  /* Login */
+  /* Animations */
+  @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes modalPop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+  @keyframes pulseBtn { 0%, 100% { box-shadow: 0 0 0 0 var(--primary-glow); } 50% { box-shadow: 0 0 10px 2px var(--primary-glow); } }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+
+  /* Login Screen */
   #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-  .login-box { background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid var(--border); text-align: center; width: 90%; max-width: 350px; }
-  .login-box h2 { color: var(--primary); margin-bottom: 20px; }
-  .login-box input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 15px; outline: none; }
-  .login-box button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+  .login-box { background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid var(--border); text-align: center; width: 90%; max-width: 350px; animation: slideUp 0.4s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .login-box h2 { color: var(--primary); margin-bottom: 20px; font-size: 22px; }
+  .login-box input { width: 100%; padding: 14px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 10px; margin-bottom: 20px; font-size: 16px; outline: none; transition: 0.2s; }
+  .login-box input:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+  .login-box button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; font-size: 16px; transition: 0.2s; animation: pulseBtn 2s infinite; }
+  .login-box button:hover { background: #2563eb; }
 
   /* Sidebar */
-  .sidebar { width: 250px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
-  .sidebar h1 { font-size: 18px; color: var(--primary); margin-bottom: 30px; letter-spacing: 2px; text-align: center; }
-  .nav-item { padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
-  .nav-item:hover, .nav-item.active { background: var(--primary); color: white; }
-  .logout-btn { margin-top: auto; color: var(--danger); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; font-weight: bold; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; z-index: 10; }
+  .sidebar h1 { font-size: 18px; color: var(--primary); margin-bottom: 30px; letter-spacing: 2px; text-align: center; font-weight: 800; }
+  .nav-item { padding: 12px 15px; margin-bottom: 8px; border-radius: 10px; cursor: pointer; color: var(--muted); font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 12px; }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  .nav-item.active { background: var(--primary); color: white; box-shadow: 0 4px 12px var(--primary-glow); }
+  .logout-btn { margin-top: auto; color: var(--danger); border: 1px solid var(--danger); padding: 12px; border-radius: 10px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.2s; }
+  .logout-btn:hover { background: var(--danger); color: white; }
 
   /* Main Content */
   .main-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
-  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .refresh-btn { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; cursor: pointer; }
-  
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; animation: slideUp 0.3s ease; }
+  .header h2 { font-size: 22px; font-weight: 800; }
+  .refresh-btn { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+  .refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .refresh-btn.loading i { animation: spin 1s infinite; }
+
   /* Stats */
   .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-  .stat-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
-  .stat-card h3 { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; }
-  .stat-card .value { font-size: 28px; font-weight: bold; color: var(--primary); }
+  .stat-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); animation: slideUp 0.4s ease backwards; transition: 0.2s; }
+  .stat-card:hover { border-color: var(--primary); transform: translateY(-3px); }
+  .stat-card h3 { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .stat-card .value { font-size: 28px; font-weight: 800; color: var(--primary); }
 
-  /* Tables */
-  .data-section { display: none; background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+  /* Tables (FIXED SQUISHING) */
+  .data-section { display: none; background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 20px; animation: slideUp 0.4s ease; }
   .data-section.active { display: block; }
+  
   .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 600px; }
-  th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; }
-  td { word-break: break-word; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 700px; } /* Prevents squishing */
+  th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; } /* No wrapping */
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; background: var(--bg); }
+  td { color: #e2e8f0; }
+  
+  /* Long Text Handling */
+  .text-wrap { white-space: normal; max-width: 350px; word-break: break-word; }
 
-  /* Badges & Buttons */
-  .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-  .badge-user { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-  .badge-bot { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-  .badge-banned { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
-  .badge-limited { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+  /* Badges */
+  .badge { padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; white-space: nowrap; }
+  .badge-user { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+  .badge-bot { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+  .badge-banned { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .badge-limited { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
 
-  .action-btn { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; color: white; margin-right: 5px; margin-bottom: 5px; }
+  /* Buttons */
+  .action-btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; color: white; margin-right: 6px; margin-bottom: 5px; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px; }
+  .action-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
   .btn-ban { background: var(--danger); }
   .btn-unban { background: var(--success); }
   .btn-limit { background: var(--warning); color: #000; }
+  .btn-reset { background: #8b5cf6; }
   .btn-edit { background: var(--primary); }
   .btn-delete { background: var(--danger); }
 
-  /* Modal */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 10000; }
+  /* Modals */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 10000; padding: 20px;}
   .modal-overlay.active { display: flex; }
-  .modal-box { background: var(--card); padding: 25px; border-radius: 16px; border: 1px solid var(--border); width: 90%; max-width: 400px; }
-  .modal-box h3 { margin-bottom: 15px; color: var(--primary); }
-  .modal-box textarea { width: 100%; height: 100px; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 15px; outline: none; font-size: 14px; resize: vertical; }
+  .modal-box { background: var(--card); padding: 25px; border-radius: 16px; border: 1px solid var(--border); width: 100%; max-width: 400px; animation: modalPop 0.3s ease; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+  .modal-box h3 { margin-bottom: 10px; color: var(--text); font-size: 18px; }
+  .modal-box p { color: var(--muted); font-size: 13px; margin-bottom: 20px; line-height: 1.5; }
+  .modal-box input, .modal-box textarea { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 20px; outline: none; font-size: 14px; transition: 0.2s; }
+  .modal-box input:focus, .modal-box textarea:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+  .modal-box textarea { height: 100px; resize: vertical; }
   .modal-actions { display: flex; gap: 10px; }
-  .modal-actions button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-  .btn-cancel { background: var(--border); color: white; }
-  .btn-save { background: var(--primary); color: white; }
+  .modal-actions button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 14px;}
+  .btn-cancel { background: var(--border); color: var(--text); }
+  .btn-cancel:hover { background: #2a3a5a; }
+  .btn-save { background: var(--primary); color: white; box-shadow: 0 4px 15px var(--primary-glow); }
+  .btn-save:hover { background: #2563eb; transform: translateY(-2px); }
+  .btn-danger { background: var(--danger); color: white; box-shadow: 0 4px 15px rgba(239,68,68,0.3); }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--success); color: white; padding: 12px 24px; border-radius: 10px; font-weight: 700; font-size: 13px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 99999; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.error { background: var(--danger); }
 
   @media (max-width: 768px) {
     body { flex-direction: column; }
-    .sidebar { width: 100%; padding: 10px; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    .sidebar { width: 100%; padding: 10px; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); align-items: center; min-height: 60px; }
     .sidebar h1 { display: none; }
-    .nav-item { margin-bottom: 0; margin-right: 10px; white-space: nowrap; padding: 8px 12px; font-size: 13px; }
-    .logout-btn { margin-top: 0; margin-left: auto; padding: 8px 12px; font-size: 12px; }
-    .main-content { padding: 15px; height: calc(100vh - 60px); }
+    .nav-item { margin-bottom: 0; margin-right: 10px; white-space: nowrap; padding: 8px 15px; font-size: 13px; border-radius: 20px; }
+    .logout-btn { margin-top: 0; margin-left: auto; padding: 8px 15px; font-size: 12px; border-radius: 20px; white-space: nowrap; }
+    .main-content { padding: 15px; height: calc(100vh - 60px); overflow-y: auto; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .header h2 { font-size: 20px; }
   }
 </style>
 </head>
@@ -88,8 +131,9 @@
 <!-- LOGIN SCREEN -->
 <div id="login-screen">
   <div class="login-box">
-    <h2><i class="fa-solid fa-shield-halved"></i> ADMIN LOGIN</h2>
-    <div id="login-error" style="color:var(--danger); font-size:13px; margin-bottom:10px; display:none;">Incorrect Password!</div>
+    <h2><i class="fa-solid fa-shield-halved" style="color:var(--primary)"></i> QUANTUM ADMIN</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px;">Enter your secret password to access the control room.</p>
+    <div id="login-error" style="color:var(--danger); font-size:13px; margin-bottom:10px; display:none; font-weight:600;">Incorrect Password!</div>
     <input type="password" id="admin-pass" placeholder="Enter Admin Password" onkeypress="if(event.key === 'Enter') checkPassword()">
     <button onclick="checkPassword()">Unlock Dashboard</button>
   </div>
@@ -112,7 +156,7 @@
   <div id="tab-dashboard" class="data-section active">
     <div class="header">
       <h2>Dashboard Overview</h2>
-      <button class="refresh-btn" onclick="fetchData()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+      <button class="refresh-btn" id="refresh-btn" onclick="fetchData()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
     </div>
     <div class="error" id="error-msg" style="color:var(--danger); margin-bottom:15px; display:none;"></div>
     <div class="stats-grid">
@@ -128,7 +172,7 @@
     <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Manage bans, unbans, and limits.</p>
     <div class="table-wrapper">
       <table>
-        <thead><tr><th>User ID</th><th>Status</th><th>Daily Limit</th><th>Est. Tokens</th><th>Actions</th></tr></thead>
+        <thead><tr><th>USER ID</th><th>STATUS</th><th>DAILY LIMIT</th><th>EST. TOKENS</th><th>ACTIONS</th></tr></thead>
         <tbody id="users-table-body"><tr><td colspan="5" style="text-align:center;">Loading...</td></tr></tbody>
       </table>
     </div>
@@ -140,7 +184,7 @@
     <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Edit or Delete what the AI remembers about users.</p>
     <div class="table-wrapper">
       <table>
-        <thead><tr><th>User ID</th><th>Type</th><th>Content</th><th>Actions</th></tr></thead>
+        <thead><tr><th>USER ID</th><th>TYPE</th><th>CONTENT</th><th>ACTIONS</th></tr></thead>
         <tbody id="memories-table-body"><tr><td colspan="4" style="text-align:center;">Loading...</td></tr></tbody>
       </table>
     </div>
@@ -151,7 +195,7 @@
     <div class="header"><h2>Live Logs</h2></div>
     <div class="table-wrapper">
       <table>
-        <thead><tr><th>User ID</th><th>Role</th><th>Content</th></tr></thead>
+        <thead><tr><th>USER ID</th><th>ROLE</th><th>CONTENT</th></tr></thead>
         <tbody id="events-table-body"><tr><td colspan="3" style="text-align:center;">Loading...</td></tr></tbody>
       </table>
     </div>
@@ -159,10 +203,24 @@
 
 </div>
 
-<!-- EDIT MEMORY MODAL -->
+<!-- 🚨 UNIVERSAL MODAL (Replaces Prompt & Confirm) -->
+<div id="universal-modal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modal-title">Title</h3>
+    <p id="modal-desc">Description</p>
+    <input type="text" id="modal-input" style="display:none;" placeholder="Enter value...">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="modal-confirm-btn" onclick="confirmModal()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🚨 EDIT MEMORY MODAL -->
 <div id="memory-modal" class="modal-overlay">
   <div class="modal-box">
     <h3>Edit Memory</h3>
+    <p>Update what the AI remembers:</p>
     <textarea id="memory-edit-input" placeholder="Enter new memory content..."></textarea>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeMemoryModal()">Cancel</button>
@@ -171,19 +229,27 @@
   </div>
 </div>
 
+<!-- TOAST -->
+<div id="toast">Action Successful</div>
+
 <script>
-  const SUPABASE_URL = "https://lxykguzcbduihevdnqxo.supabase.co"; 
-  const SUPABASE_ANON_KEY = "sb_publishable_MB2IQunxTua-G4oLkweSWw_qDOZalQg"; 
+  // 🔴 APNI DETAILS YAHAN DAALO
+  const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co"; 
+  const SUPABASE_ANON_KEY = "YOUR_ANON_KEY_HERE"; 
 
   let adminPassword = ""; 
   let globalBans = [];
   let currentEditMemoryId = null;
+  
+  // Modal State
+  let modalAction = null;
+  let modalUserId = null;
 
   async function checkPassword() {
     const pass = document.getElementById('admin-pass').value;
     if (!pass) return;
     const btn = document.querySelector('.login-box button');
-    btn.innerText = "Checking...";
+    btn.innerText = "Authenticating...";
 
     try {
       const response = await fetch('/api/admin-login', {
@@ -206,7 +272,7 @@
         btn.innerText = "Unlock Dashboard";
       }
     } catch (error) {
-      alert("Server error: " + error.message);
+      showToast("Server error: " + error.message, true);
       btn.innerText = "Unlock Dashboard";
     }
   }
@@ -232,9 +298,61 @@
     navEl.classList.add('active');
   }
 
+  // 🚨 TOAST NOTIFICATION
+  function showToast(msg, isError = false) {
+    const toast = document.getElementById('toast');
+    toast.innerText = msg;
+    toast.className = isError ? 'show error' : 'show';
+    setTimeout(() => { toast.className = ''; }, 3000);
+  }
+
+  // 🚨 UNIVERSAL MODAL LOGIC
+  function showModal(title, desc, action, userId, isPrompt, defaultVal = '') {
+    document.getElementById('modal-title').innerText = title;
+    document.getElementById('modal-desc').innerText = desc;
+    const input = document.getElementById('modal-input');
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+    
+    if (isPrompt) {
+      input.style.display = 'block';
+      input.value = defaultVal;
+      input.focus();
+      confirmBtn.className = 'btn-save';
+    } else {
+      input.style.display = 'none';
+      confirmBtn.className = 'btn-danger'; // Red for confirmations
+    }
+    
+    modalAction = action;
+    modalUserId = userId;
+    document.getElementById('universal-modal').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('universal-modal').classList.remove('active');
+    modalAction = null;
+    modalUserId = null;
+  }
+
+  async function confirmModal() {
+    if (!modalAction || !modalUserId) return;
+    const inputVal = document.getElementById('modal-input').value;
+    
+    // If it's a prompt and empty, don't proceed
+    if (document.getElementById('modal-input').style.display === 'block' && !inputVal) {
+      showToast("Please enter a value", true); return;
+    }
+    
+    closeModal();
+    await executeAction(modalAction, modalUserId, inputVal);
+  }
+
+  // 🚨 FETCH DATA
   async function fetchData() {
     const errorEl = document.getElementById('error-msg');
+    const refreshBtn = document.getElementById('refresh-btn');
     errorEl.style.display = 'none';
+    refreshBtn.classList.add('loading');
     
     const headers = { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` };
 
@@ -264,32 +382,39 @@
       const uniqueUsers = [...new Set([...eventUsers, ...banUsers, ...limitUsers])].filter(Boolean);
 
       // Render Users
-      document.getElementById('users-table-body').innerHTML = uniqueUsers.length ? uniqueUsers.map(uId => {
+      document.getElementById('users-table-body').innerHTML = uniqueUsers.length ? uniqueUsers.map((uId, i) => {
         const banInfo = bans.find(b => b.user_id === uId);
         const limitInfo = limits.find(l => l.user_id === uId);
         
-        let statusBadge = '<span class="badge badge-bot">Active</span>';
+        let statusBadge = '<span class="badge badge-bot">ACTIVE</span>';
         let actionBtns = '';
 
         if (banInfo) {
-          statusBadge = `<span class="badge badge-banned">${banInfo.ban_type === 'permanent' ? 'Banned Perm' : 'Banned Temp'}</span>`;
+          statusBadge = `<span class="badge badge-banned">${banInfo.ban_type === 'permanent' ? 'BANNED PERM' : 'BANNED TEMP'}</span>`;
+        } else if (limitInfo && limitInfo.current_usage >= limitInfo.daily_limit) {
+          statusBadge = `<span class="badge badge-limited">LIMITED (${limitInfo.current_usage}/${limitInfo.daily_limit})</span>`;
         } else if (limitInfo) {
-          statusBadge = `<span class="badge badge-limited">Limited (${limitInfo.current_usage}/${limitInfo.daily_limit})</span>`;
+          statusBadge = `<span class="badge badge-limited" style="background:rgba(245,158,11,0.1); border-color:rgba(245,158,11,0.2); color:#f59e0b;">${limitInfo.current_usage}/${limitInfo.daily_limit}</span>`;
         }
 
-        actionBtns += `<button class="action-btn btn-unban" onclick="handleAction('unban', '${uId}')"><i class="fa-solid fa-unlock"></i> Unban</button>`;
+        actionBtns += `<button class="action-btn btn-unban" onclick="triggerAction('unban', '${uId}')"><i class="fa-solid fa-unlock"></i> Unban</button>`;
 
         if (!banInfo) {
-          actionBtns += `<button class="action-btn btn-ban" onclick="handleAction('ban_permanent', '${uId}')">Ban</button>`;
-          actionBtns += `<button class="action-btn btn-ban" onclick="handleAction('ban_temporary', '${uId}')">Temp</button>`;
-          actionBtns += `<button class="action-btn btn-limit" onclick="handleAction('set_limit', '${uId}')">Limit</button>`;
+          actionBtns += `<button class="action-btn btn-ban" onclick="triggerAction('ban_permanent', '${uId}')">Ban</button>`;
+          actionBtns += `<button class="action-btn btn-ban" onclick="triggerAction('ban_temporary', '${uId}')">Temp</button>`;
+          actionBtns += `<button class="action-btn btn-limit" onclick="triggerAction('set_limit', '${uId}')">Limit</button>`;
+        }
+        
+        // Reset Button (Only show if they have a limit set)
+        if (limitInfo) {
+          actionBtns += `<button class="action-btn btn-reset" onclick="triggerAction('reset_limit', '${uId}')"><i class="fa-solid fa-rotate-left"></i> Reset</button>`;
         }
 
         const userEvents = events.filter(e => e.user_id === uId);
         const estTokens = userEvents.reduce((sum, e) => sum + Math.ceil((e.content ? e.content.length : 0) / 4), 0);
 
         return `
-          <tr>
+          <tr style="animation: slideUp 0.3s ease ${i * 0.05}s both;">
             <td><small>${uId}</small></td>
             <td>${statusBadge}</td>
             <td>${limitInfo ? limitInfo.daily_limit + ' msgs' : 'Default'}</td>
@@ -299,35 +424,89 @@
         `;
       }).join('') : '<tr><td colspan="5" style="text-align:center; color:var(--muted);">No users found.</td></tr>';
 
-      // Render Memories (NEW!)
-      document.getElementById('memories-table-body').innerHTML = memories.length ? memories.map(m => `
-        <tr>
-          <td><small>${m.user_id}</small></td>
+      // Render Memories
+      document.getElementById('memories-table-body').innerHTML = memories.length ? memories.map((m, i) => `
+        <tr style="animation: slideUp 0.3s ease ${i * 0.05}s both;">
+          <td><small>${m.user_id.slice(0, 15)}...</small></td>
           <td><span class="badge badge-user">${m.memory_type || 'Memory'}</span></td>
-          <td>${m.content}</td>
+          <td class="text-wrap">${m.content}</td>
           <td>
-            <button class="action-btn btn-edit" onclick="openEditMemory('${m.id}', \`${m.content.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)"><i class="fa-solid fa-pen"></i></button>
+            <button class="action-btn btn-edit" onclick="openEditMemory('${m.id}', \`${m.content.replace(/`/g, '\\`').replace(/\$/g, '\\$').replace(/"/g, '&quot;')}\`)"><i class="fa-solid fa-pen"></i></button>
             <button class="action-btn btn-delete" onclick="deleteMemory('${m.id}')"><i class="fa-solid fa-trash"></i></button>
           </td>
         </tr>
       `).join('') : '<tr><td colspan="4" style="text-align:center; color:var(--muted);">No memories found.</td></tr>';
 
       // Render Events
-      document.getElementById('events-table-body').innerHTML = events.length ? events.map(e => `
-        <tr>
-          <td><small>${e.user_id ? e.user_id.slice(0,12) : 'N/A'}...</small></td>
-          <td><span class="badge ${e.role === 'user' ? 'badge-user' : 'badge-bot'}">${e.role}</span></td>
-          <td style="white-space: normal; max-width: 300px;">${e.content ? e.content.replace(/</g, "&lt;") : ''}</td>
+      document.getElementById('events-table-body').innerHTML = events.length ? events.map((e, i) => `
+        <tr style="animation: slideUp 0.3s ease ${i * 0.05}s both;">
+          <td><small>${e.user_id ? e.user_id.slice(0,15) : 'N/A'}...</small></td>
+          <td><span class="badge ${e.role === 'user' ? 'badge-user' : 'badge-bot'}">${e.role.toUpperCase()}</span></td>
+          <td class="text-wrap">${e.content ? e.content.replace(/</g, "&lt;") : ''}</td>
         </tr>
       `).join('') : '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No events found.</td></tr>';
 
     } catch (err) {
       errorEl.innerText = "Fetch Error: " + err.message;
       errorEl.style.display = 'block';
+    } finally {
+      refreshBtn.classList.remove('loading');
     }
   }
 
-  // 🚨 EDIT MEMORY LOGIC
+  // 🚨 ACTION TRIGGER LOGIC (Using Custom Modals)
+  function triggerAction(action, userId) {
+    if (action === 'ban_permanent') {
+      showModal("Permanent Ban", `Are you sure you want to PERMANENTLY ban user: ${userId}?`, action, userId, false);
+    } 
+    else if (action === 'ban_temporary') {
+      showModal("Temporary Ban", "How many hours should the user be banned for?", action, userId, true, "24");
+    }
+    else if (action === 'set_limit') {
+      showModal("Set Daily Limit", "How many messages per day is allowed?", action, userId, true, "50");
+    }
+    else if (action === 'unban') {
+      const isBanned = globalBans.some(b => b.user_id === userId);
+      if (!isBanned) { showToast("This user is not banned!", true); return; }
+      showModal("Unban User", `Are you sure you want to unban this user?`, action, userId, false);
+    }
+    else if (action === 'reset_limit') {
+      showModal("Reset Limit", `Reset today's message count for this user?`, action, userId, false);
+    }
+  }
+
+  // 🚨 EXECUTE API ACTION
+  async function executeAction(action, userId, inputVal) {
+    if (!adminPassword) {
+      adminPassword = prompt("Session expired. Enter Admin Password to confirm:");
+      if (!adminPassword) return;
+      sessionStorage.setItem('qc_admin_pass_temp', adminPassword);
+    }
+
+    let payload = { password: adminPassword, action: action, userId: userId };
+    
+    if (action === 'ban_temporary') payload.durationHours = parseInt(inputVal);
+    if (action === 'set_limit') payload.limit = parseInt(inputVal);
+
+    try {
+      const res = await fetch('/api/admin-action', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.msg);
+        fetchData(); 
+      } else {
+        showToast("Failed: " + (data.error || "Unknown error"), true);
+      }
+    } catch (e) {
+      showToast("Network Error: " + e.message, true);
+    }
+  }
+
+  // 🚨 EDIT / DELETE MEMORY LOGIC
   function openEditMemory(id, content) {
     currentEditMemoryId = id;
     document.getElementById('memory-edit-input').value = content;
@@ -343,7 +522,7 @@
     const newContent = document.getElementById('memory-edit-input').value.trim();
     if (!newContent || !currentEditMemoryId) return;
     
-    const btn = document.querySelector('.btn-save');
+    const btn = document.querySelector('#memory-modal .btn-save');
     btn.innerText = "Saving...";
     
     await sendAdminAction('update_memory', null, { memoryId: currentEditMemoryId, newContent: newContent });
@@ -353,45 +532,12 @@
   }
 
   async function deleteMemory(id) {
-    if (!confirm("Are you sure you want to permanently delete this memory from the AI's brain?")) return;
-    await sendAdminAction('delete_memory', null, { memoryId: id });
-    fetchData();
-  }
-
-  // 🚨 GENERAL ADMIN ACTIONS
-  async function handleAction(action, userId) {
-    if (!adminPassword) {
-      adminPassword = prompt("Session expired. Enter Admin Password to confirm:");
-      if (!adminPassword) return;
-      sessionStorage.setItem('qc_admin_pass_temp', adminPassword);
-    }
-
-    let payload = { password: adminPassword, action: action, userId: userId };
-    
-    if (action === 'ban_permanent') {
-      if(!confirm(`Are you sure you want to PERMANENTLY ban user: ${userId}?`)) return;
-    } 
-    else if (action === 'ban_temporary') {
-      const hours = prompt("How many hours for the temporary ban? (e.g., 24)", "24");
-      if (!hours) return;
-      payload.durationHours = parseInt(hours);
-      payload.reason = "Temporary Cool Down";
-    }
-    else if (action === 'set_limit') {
-      const limit = prompt("Set daily message limit? (e.g., 50)", "50");
-      if (!limit) return;
-      payload.limit = parseInt(limit);
-    }
-    else if (action === 'unban') {
-      if(!confirm(`Are you sure you want to unban user: ${userId}?`)) return;
-    }
-
-    await sendAdminAction(action, userId, payload);
+    showModal("Delete Memory", "Are you sure you want to permanently delete this memory from the AI's brain?", 'delete_memory', 'MEMORY_PLACEHOLDER', false);
+    // Override modal user ID for memory
+    modalUserId = { isMemory: true, id: id }; 
   }
 
   async function sendAdminAction(action, userId, extraPayload = {}) {
-    if (!adminPassword) return;
-    
     let payload = { password: adminPassword, action: action, userId: userId, ...extraPayload };
 
     try {
@@ -402,13 +548,25 @@
       
       const data = await res.json();
       if (data.success) {
-        alert(`Success: ${data.msg}`);
+        showToast(data.msg);
         fetchData(); 
       } else {
-        alert("Failed: " + (data.error || "Unknown error"));
+        showToast("Failed: " + (data.error || "Unknown error"), true);
       }
     } catch (e) {
-      alert("Network Error: " + e.message);
+      showToast("Network Error: " + e.message, true);
+    }
+  }
+
+  // Override Confirm for Memory Deletion
+  const originalConfirmModal = confirmModal;
+  confirmModal = async function() {
+    if (modalAction === 'delete_memory' && modalUserId && modalUserId.isMemory) {
+      const memId = modalUserId.id;
+      closeModal();
+      await sendAdminAction('delete_memory', null, { memoryId: memId });
+    } else {
+      originalConfirmModal();
     }
   }
 </script>
