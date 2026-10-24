@@ -187,7 +187,7 @@ async function saveConversationEvent(userId, conversationId, role, content) {
     }, 8000);
 
     const responseText = await response.text();
-    
+
     if (!response.ok) {
       console.error(`[Supabase Error] Status ${response.status}:`, responseText);
       return;
@@ -204,7 +204,7 @@ async function saveConversationEvent(userId, conversationId, role, content) {
           }
         }, 6000
       );
-      
+
       const pending = await pendingRes.json();
 
       if (!Array.isArray(pending) || pending.length === 0) {
@@ -258,7 +258,7 @@ async function fetchMemories(userId, userText) {
 
     scored.sort((a, b) => b.score - a.score);
     const matched = scored.filter(s => s.score > 0.5).slice(0, 10).map(i => i.memory);
-    
+
     const seen = new Set();
     const merged = [];
     for (const m of [...importantOnes, ...matched]) {
@@ -715,7 +715,27 @@ const IDENTITY_ENFORCEMENT = `IDENTITY AND TRANSPARENCY
 - If asked which model/provider powers a response, be transparent: the app can route requests through the providers/models configured by its server, and the exact model may vary by request. Do not guess a specific model unless runtime information confirms it.
 - If asked who built the app, say it was built by Usman Saleem.
 - Follow the user's requested language and answer naturally.`;
+const THINKING_INSTRUCTION = `
+=== 🧠 DEEP REASONING & THINKING (CRITICAL) ===
+You are an advanced reasoning AI model (like DeepSeek-R1).
+Before giving your final answer, you MUST think through the problem step-by-step.
+You MUST wrap your internal reasoning process inside <thought> and </thought> tags.
 
+Example format:
+<thought>
+The user is asking about how to fix a bug. Let me analyze:
+1. They are using Python.
+2. The error is SyntaxError.
+3. I need to check for indentation and missing colons.
+</thought>
+Here is the fixed code... (Final answer goes here)
+
+RULES:
+- ALWAYS use <thought> ... </thought> for your thinking.
+- The thinking process MUST be in the same language as the user's prompt.
+- After the </thought> tag, provide the final polished answer.
+- NEVER mention the tags <thought> or </thought> in your final answer.
+`;
 const FORMAT_INSTRUCTION = `
 🚨🚨🚨 SYSTEM FAILURE WARNING: PROFESSIONAL FORMATTING IS MANDATORY 🚨🚨🚨
 
@@ -773,7 +793,7 @@ export default async function handler(req) {
   const activeMode = body?.mode || 'fast';
   const clientInstruction = body?.systemInstruction?.parts?.[0]?.text || '';
   const userText = getLatestUserText(contents);
-  
+
   const conversationId = body?.conversationId || body?.conversation_id || body?.chatId || body?.chat_id || '';
 
   if (!contents.length || !userText) {
@@ -783,12 +803,12 @@ export default async function handler(req) {
   // 🚨 BOUNCER: CHECK IF USER IS BLOCKED OR OVER LIMIT 🚨
   if (userId && process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) {
     const sbHeaders = { apikey: process.env.SUPABASE_SECRET_KEY, Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}` };
-    
+
     try {
       // 1. Check Ban Status
       const banRes = await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/blocked_users?user_id=eq.${encodeURIComponent(userId)}`, { headers: sbHeaders }, 5000);
       const bans = await banRes.json();
-      
+
       if (Array.isArray(bans) && bans.length > 0) {
         const ban = bans[0];
         if (ban.ban_type === 'permanent') {
@@ -806,10 +826,10 @@ export default async function handler(req) {
       const today = new Date().toISOString().split('T')[0];
       const limitRes = await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/user_limits?user_id=eq.${encodeURIComponent(userId)}`, { headers: sbHeaders }, 5000);
       const limits = await limitRes.json();
-      
+
       if (Array.isArray(limits) && limits.length > 0) {
         let userLimit = limits[0];
-        
+
         if (userLimit.last_reset_date !== today) {
           await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/user_limits?user_id=eq.${encodeURIComponent(userId)}`, {
             method: 'PATCH', headers: { ...sbHeaders, 'Content-Type': 'application/json' },
@@ -882,7 +902,7 @@ export default async function handler(req) {
         const memoryContext = buildMemoryContext(memories);
         const searchContext = buildSearchContext(searchResults);
         const currentDateTime = getCurrentDateTimeContext();
-        
+
         const finalInstruction = IDENTITY_ENFORCEMENT + '\n\n' + clientInstruction + '\n\n' + currentDateTime + '\n' + memoryContext + '\n' + searchContext + '\n' + FORMAT_INSTRUCTION + '\n' + DIAGRAM_INSTRUCTION + '\n' +
           '=== 🔴 CURRENT INFORMATION RULES ===\n' +
           '- NEVER use internal training data for releases, news, or current events.\n' +
@@ -912,7 +932,7 @@ export default async function handler(req) {
           controller.close();
           return;
         }
-        
+
         let lastError = null;
         let succeeded = false;
 
