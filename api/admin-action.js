@@ -3,7 +3,7 @@ export const config = { runtime: 'edge' };
 export default async function handler(req) {
   if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
 
-  const { password, action, userId, reason, durationHours, limit } = await req.json();
+  const { password, action, userId, memoryId, newContent, reason, durationHours, limit } = await req.json();
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
@@ -49,7 +49,6 @@ export default async function handler(req) {
 
     // 4. SET LIMITS
     if (action === 'set_limit') {
-      // Check if user exists in limits table
       const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/user_limits?user_id=eq.${userId}`, { headers });
       const existing = await checkRes.json();
       
@@ -65,6 +64,21 @@ export default async function handler(req) {
         });
       }
       return new Response(JSON.stringify({ success: true, msg: `Limit set to ${limit}` }), { status: 200 });
+    }
+
+    // 5. DELETE MEMORY
+    if (action === 'delete_memory') {
+      await fetch(`${SUPABASE_URL}/rest/v1/memories?id=eq.${memoryId}`, { method: 'DELETE', headers });
+      return new Response(JSON.stringify({ success: true, msg: 'Memory Deleted from AI' }), { status: 200 });
+    }
+
+    // 6. UPDATE MEMORY
+    if (action === 'update_memory') {
+      await fetch(`${SUPABASE_URL}/rest/v1/memories?id=eq.${memoryId}`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ content: newContent })
+      });
+      return new Response(JSON.stringify({ success: true, msg: 'Memory Updated' }), { status: 200 });
     }
 
     return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400 });
