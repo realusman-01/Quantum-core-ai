@@ -5,13 +5,14 @@ export const config = {
 const RADOX_API = 'https://radoxai.com/v1/chat/completions';
 
 const RADOX_MODELS = {
-  fast: ['gemini-3.6-flash', 'gpt-5.5', 'deepseek-v4-flash-0731', 'gemma-2-2b'],
-  core: ['claude-opus-5.5', 'gpt-5.6-sol', 'deepseek-v4-pro-max', 'claude-opus-5']
+  fast: ['gpt-5.6-luna', 'gpt-5.5', 'claude-sonnet-5', 'deepseek-v4-flash-0731', 'gemini-3.6-flash'],
+  core: ['gpt-5.6-sol', 'claude-opus-5.5', 'deepseek-v4-pro-max', 'claude-opus-5']
 };
 
-const RADOX_DECISION_MODEL = 'gemini-3.6-flash';
+const RADOX_DECISION_MODEL = 'claude-sonnet-5';
 
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
+
 const GEMINI_MODEL_CHAIN = {
   fast: ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
   core: ['gemini-3.6-flash', 'gemini-3.5-flash-lite']
@@ -26,7 +27,10 @@ const CORS_HEADERS = {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': 'application/json'
+    }
   });
 }
 
@@ -37,8 +41,12 @@ function sseEvent(data) {
 async function fetchWithTimeout(url, options = {}, timeout = 15000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
+
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
   } finally {
     clearTimeout(timer);
   }
@@ -46,20 +54,182 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
 
 function getLatestUserText(contents) {
   if (!Array.isArray(contents)) return '';
+
   for (let i = contents.length - 1; i >= 0; i--) {
     const m = contents[i];
+
     if (m && m.role === 'user' && Array.isArray(m.parts)) {
-      const text = m.parts.map(p => (typeof p?.text === 'string' ? p.text : '')).join(' ').trim();
+      const text = m.parts
+        .map(p => typeof p?.text === 'string' ? p.text : '')
+        .join(' ')
+        .trim();
+
       if (text) return text;
     }
   }
+
   return '';
 }
 
-async function fetchMemories(userId, userText) {
-  if (!userId || !process.env.SUPABASE_URL) return [];
+function isDiagramRequest(text) {
+  if (!text) return false;
+  const t = String(text).toLowerCase();
+  const keywords = [
+    'diagram', 'flowchart', 'flow chart', 'chart',
+    'visual', 'mindmap', 'graph', 'mermaid',
+    'draw a', 'draw the', 'naksha', 'chitra'
+  ];
+  return keywords.some(k => t.includes(k));
+}
+
+function getIdentityResponse(text, clientInstruction = '') {
+  if (!text) return null;
+  const t = String(text).toLowerCase().trim();
+
+  const identityPatterns = [
+    /\bwho are you\b/, /\bwhat are you\b/, /\byour name\b/, /\bwhat is your name\b/,
+    /tum\s+kaun\s+ho/, /tum\s+kon\s+ho/, /tumhara\s+naam/, /apka\s+naam/,
+    /who\s+(made|created|built|trained)\s+you/, /your\s+(creator|developer|model)/,
+    /kisne\s+banaya/, /kis\s+ne\s+banaya/, /tumhara\s+(developer|creator|model)/,
+    /which\s+model\s+(are\s+you|do\s+you\s+use|powers\s+you|is\s+this)\b/,
+    /what\s+model\s+(are\s+you|do\s+you\s+use|powers\s+you|is\s+this)\b/,
+    /are\s+you\s+(gpt|claude|gemini|deepseek)/
+  ];
+
+  if (!identityPatterns.some(p => p.test(t))) return null;
+
+  const urduSetting = /respond ONLY in Urdu/i.test(clientInstruction);
+  const englishSetting = /respond ONLY in English/i.test(clientInstruction);
+  const asksProvider = /\b(model|base model|powered by|provider|trained|gpt|claude|gemini|deepseek)\b|model|train|kisne|kis ne/i.test(t);
+
+  if (urduSetting || (!englishSetting && /[\u0600-\u06FF]/.test(t))) {
+    return asksProvider
+      ? 'Main **Quantum Core AI** app hoon, jise **Usman Saleem** ne banaya hai. Jawab generate karne ke liye app mein configure kiye gaye AI providers/models use hote hain; exact model request ke hisaab se badal sakta hai.'
+      : 'Mera naam **Quantum Core AI** hai. Is app ko **Usman Saleem** ne banaya hai. Main aapki kya madad kar sakta hoon?';
+  }
+
+  return asksProvider
+    ? 'I am **Quantum Core AI**, an app built by **Usman Saleem**. It uses the AI providers and models configured for the app, so the exact model can vary by request.'
+    : 'My name is **Quantum Core AI**. The app was built by **Usman Saleem**. How can I help?';
+}
+
+function scrubIdentity(text) {
+  return text == null ? text : String(text);
+}
+
+function makeScrubber(send) {
+  let heldBack = '';
+  const HOLD_BACK = 40;
+
+  return {
+    push(text) {
+      if (!text) return;
+      heldBack += text;
+      if (heldBack.length < 50) return;
+
+      const safeLen = heldBack.length - HOLD_BACK;
+      let splitAt = safeLen;
+      const spaceIdx = heldBack.lastIndexOf(' ', safeLen);
+      const newlineIdx = heldBack.lastIndexOf('\n', safeLen);
+      const bestIdx = Math.max(spaceIdx, newlineIdx);
+
+      if (bestIdx > safeLen - 25 && bestIdx > 0) {
+        splitAt = bestIdx + 1;
+      }
+
+      const toSend = heldBack.slice(0, splitAt);
+      heldBack = heldBack.slice(splitAt);
+      const scrubbed = scrubIdentity(toSend);
+
+      if (scrubbed) {
+        send({ type: 'chunk', text: scrubbed });
+      }
+    },
+    flush() {
+      if (heldBack) {
+        const scrubbed = scrubIdentity(heldBack);
+        if (scrubbed) {
+          send({ type: 'chunk', text: scrubbed });
+        }
+        heldBack = '';
+      }
+    }
+  };
+}
+
+async function saveConversationEvent(userId, conversationId, role, content) {
+  if (!userId || !content) {
+    return;
+  }
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
+    return;
+  }
+
+  const safeUserId = String(userId).slice(0, 200);
+  const safeContent = String(content).trim().slice(0, 10000);
+  const safeConvId = conversationId ? String(conversationId).slice(0, 200) : "default_chat";
+
   try {
-    const url = `${process.env.SUPABASE_URL}/rest/v1/memories?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=50`;
+    const response = await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/conversation_events`, {
+      method: 'POST',
+      headers: {
+        apikey: process.env.SUPABASE_SECRET_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        user_id: safeUserId,
+        conversation_id: safeConvId,
+        role: role === 'assistant' ? 'assistant' : 'user',
+        content: safeContent
+      })
+    }, 8000);
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      console.error(`[Supabase Error] Status ${response.status}:`, responseText);
+      return;
+    }
+
+    if (role === 'user') {
+      const pendingRes = await fetchWithTimeout(
+        `${process.env.SUPABASE_URL}/rest/v1/dream_jobs?user_id=eq.${encodeURIComponent(safeUserId)}&status=eq.pending&select=id&limit=1`,
+        {
+          method: 'GET',
+          headers: {
+            apikey: process.env.SUPABASE_SECRET_KEY,
+            Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`
+          }
+        }, 6000
+      );
+
+      const pending = await pendingRes.json();
+
+      if (!Array.isArray(pending) || pending.length === 0) {
+        await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/dream_jobs`, {
+          method: 'POST',
+          headers: {
+            apikey: process.env.SUPABASE_SECRET_KEY,
+            Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ user_id: safeUserId, status: 'pending' })
+        }, 6000);
+      }
+    }
+  } catch (error) {
+    console.error(`[Supabase Network Error]`, error?.message || error);
+  }
+}
+
+async function fetchMemories(userId, userText) {
+  if (!userId || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return [];
+
+  try {
+    const url = `${process.env.SUPABASE_URL}/rest/v1/memories?user_id=eq.${encodeURIComponent(userId)}&select=*&order=importance.desc&limit=100`;
     const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers: {
@@ -67,20 +237,37 @@ async function fetchMemories(userId, userText) {
         Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`
       }
     }, 6000);
+
     if (!response.ok) return [];
     const memories = await response.json();
-    if (!Array.isArray(memories)) return [];
+    if (!Array.isArray(memories) || !memories.length) return [];
+
+    const importantOnes = memories.filter(m => Number(m.importance) >= 0.7).slice(0, 6);
     const text = String(userText || '').toLowerCase();
     const words = text.split(/\s+/).filter(w => w.length >= 4);
+
     const scored = memories.map(memory => {
-      const searchable = [memory.key, memory.value, memory.category, memory.content, memory.type]
-        .filter(Boolean).join(' ').toLowerCase();
+      const searchable = [memory.memory_key, memory.memory_type, memory.content].filter(Boolean).join(' ').toLowerCase();
       let score = 0;
-      for (const w of words) if (searchable.includes(w)) score++;
+      for (const w of words) {
+        if (searchable.includes(w)) score++;
+      }
+      score += Number(memory.importance || 0) * 0.5;
       return { memory, score };
     });
+
     scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, 12).map(i => i.memory);
+    const matched = scored.filter(s => s.score > 0.5).slice(0, 10).map(i => i.memory);
+
+    const seen = new Set();
+    const merged = [];
+    for (const m of [...importantOnes, ...matched]) {
+      if (m && m.id && !seen.has(m.id)) {
+        seen.add(m.id);
+        merged.push(m);
+      }
+    }
+    return merged.slice(0, 15);
   } catch (e) {
     console.error('Memory error:', e?.message || e);
     return [];
@@ -90,17 +277,48 @@ async function fetchMemories(userId, userText) {
 function buildMemoryContext(memories) {
   if (!memories.length) return '';
   const lines = memories.map(m => {
-    const cat = m.category || m.type || 'memory';
-    const key = m.key || m.name || '';
-    const val = m.value ?? m.content ?? '';
+    const cat = m.memory_type || 'memory';
+    const key = m.memory_key || '';
+    const val = m.content || '';
+    if (!val) return null;
     return `- [${cat}] ${key}: ${val}`;
-  });
+  }).filter(Boolean);
+  if (!lines.length) return '';
   return `\n\nRELEVANT USER MEMORY:\n${lines.join('\n')}\n\nUse these memories naturally when relevant. Do not mention the memory system.`;
+}
+
+function getCurrentDateTimeContext() {
+  const now = new Date();
+  const timeZone = 'Asia/Karachi';
+  const date = new Intl.DateTimeFormat('en-US', {
+    timeZone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  }).format(now);
+  const time = new Intl.DateTimeFormat('en-US', {
+    timeZone, hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZoneName: 'short'
+  }).format(now);
+  const iso = new Intl.DateTimeFormat('sv-SE', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).format(now).replace(' ', 'T');
+  return `CURRENT LOCAL DATE/TIME (Asia/Karachi): ${date}, ${time}. Local timestamp: ${iso}. This value is generated at request time; do not use a hard-coded date.`;
+}
+
+function isCurrentTimeQuestion(text) {
+  const t = String(text || '').toLowerCase();
+  return /\b(what time is it|current time|time right now|time now|what is the date|today.s date|current date|date today|aaj ki date|abhi time|abhi kitne bajay|kitna time hua)\b/.test(t);
 }
 
 function looksLikeFreshInfoQuestion(text) {
   const t = String(text || '').toLowerCase();
-  const patterns = ['latest','today',"today's",'right now','currently','current','this week','this month','recent','recently','newest','news','update','updates','2026','2025','price today','weather','score','scores','result','results','release date','released','available now','who won','current president','current prime minister','aaj','abhi','kab','kab release','kya hua'];
+  const patterns = [
+    'latest','today',"today's",'right now','currently','current','this week','this month',
+    'recent','recently','newest','news','update','updates','2026','2025','price today',
+    'weather','score','scores','result','results','release date','released','available now',
+    'who won','current president','current prime minister','aaj','abhi','kab','kab release',
+    'kya hua','breaking','live','as of today','this year','stock price','exchange rate',
+    'latest version','current version','current status','real-time','real time',
+    'season', 'episode', 'kab aayega', 'kab aayegi', 'release ho', 'aayega kya', 'aaya kya', 'new season', 'new episode'
+  ];
   return patterns.some(p => t.includes(p));
 }
 
@@ -158,15 +376,46 @@ async function askSearchDecision(userText) {
   }
 }
 
+async function tavilySearch(query) {
+  const key = process.env.TAVILY_API_KEY;
+  if (!key || !query) return { results: [], error: null };
+  try {
+    const res = await fetchWithTimeout('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: key,
+        query,
+        search_depth: 'basic',
+        topic: 'general',
+        max_results: 6,
+        include_answer: false,
+        include_raw_content: false
+      })
+    }, 10000);
+    if (!res.ok) return { results: [], error: 'Tavily HTTP ' + res.status };
+    const data = await res.json();
+    const results = (Array.isArray(data.results) ? data.results : []).map(r => ({
+      title: r.title || '',
+      url: r.url || '',
+      content: r.content || r.snippet || ''
+    })).filter(r => r.title || r.url || r.content);
+    return { results, error: null };
+  } catch (err) {
+    return { results: [], error: err?.message || 'Tavily search failed' };
+  }
+}
+
 async function quantumSearch(query) {
   if (!query) return [];
   const settled = await Promise.allSettled([
+    tavilySearch(query),
     duckDuckGoSearch(query),
     wikipediaSearch(query),
     wikidataSearch(query),
     googleNewsSearch(query)
   ]);
-  const names = ['DuckDuckGo', 'Wikipedia', 'Wikidata', 'News'];
+  const names = ['Tavily Web Search', 'DuckDuckGo', 'Wikipedia', 'Wikidata', 'News'];
   const allResults = [];
   settled.forEach((r, i) => {
     if (r.status === 'fulfilled' && r.value && Array.isArray(r.value.results) && r.value.results.length) {
@@ -286,21 +535,6 @@ function buildSearchContext(results) {
   ).join('\n')}\n\nUse the web results when relevant. Cite sources as [1], [2], etc.`;
 }
 
-const diagramInstruction = `
-
-DIAGRAM SAFETY:
-When creating Mermaid diagrams:
-- Use valid Mermaid syntax.
-- Keep node IDs simple.
-- Close every Mermaid code fence.
-
-Example:
-flowchart LR
-    A["Start"]
-    B["End"]
-    A --> B
-`;
-
 function sourcesEventForClient(searchResults) {
   if (!searchResults || !searchResults.length) return null;
   return searchResults.slice(0, 10).map(r => ({
@@ -308,95 +542,6 @@ function sourcesEventForClient(searchResults) {
     url: r.url || '',
     source: r.source || 'Web'
   }));
-}
-
-async function streamRadoxToClient(radoxResponse, searchResults) {
-  if (!radoxResponse.body) throw new Error('Radox returned no stream body');
-  const reader = radoxResponse.body.getReader();
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let buffer = '';
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
-      try {
-        send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
-        const srcEvt = sourcesEventForClient(searchResults);
-        if (srcEvt) send({ type: 'sources', sources: srcEvt });
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data:')) continue;
-            const raw = trimmed.substring(5).trim();
-            if (!raw || raw === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(raw);
-              const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) send({ type: 'chunk', text: delta });
-            } catch {}
-          }
-        }
-        send({ type: 'done' });
-        controller.close();
-      } catch (error) {
-        send({ type: 'error', error: error?.message || 'Streaming error' });
-        controller.close();
-      } finally {
-        try { reader.releaseLock(); } catch {}
-      }
-    }
-  });
-  return stream;
-}
-
-async function streamGeminiToClient(geminiResponse, searchResults) {
-  const reader = geminiResponse.body.getReader();
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let buffer = '';
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
-      try {
-        send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
-        const srcEvt = sourcesEventForClient(searchResults);
-        if (srcEvt) send({ type: 'sources', sources: srcEvt });
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data:')) continue;
-            const raw = trimmed.substring(5).trim();
-            if (!raw || raw === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(raw);
-              const text = extractModelText(parsed);
-              if (text) send({ type: 'chunk', text });
-            } catch {}
-          }
-        }
-        send({ type: 'done' });
-        controller.close();
-      } catch (error) {
-        send({ type: 'error', error: error?.message || 'Streaming error' });
-        controller.close();
-      } finally {
-        try { reader.releaseLock(); } catch {}
-      }
-    }
-  });
-  return stream;
 }
 
 async function callRadoxAI(model, messages, systemPrompt, temperature) {
@@ -443,19 +588,177 @@ async function callGemini(model, contents, systemInstruction, generationConfig) 
   return res;
 }
 
+function extractMermaidBlock(text) {
+  const match = String(text || '').match(/```mermaid\s*\n([\s\S]*?)```/i);
+  if (match) return match[1].trim();
+  const raw = String(text || '').trim();
+  if (/^(flowchart|graph)\s+(TD|TB|BT|RL|LR)\b/i.test(raw)) return raw;
+  return '';
+}
+
+function validateMermaid(code) {
+  if (!code || code.length > 20000) {
+    return { valid: false, error: 'Diagram is empty or too large.' };
+  }
+  const lines = code.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (!lines.length || !/^(flowchart|graph)\s+(TD|TB|BT|RL|LR)\b/i.test(lines[0])) {
+    return { valid: false, error: 'The first line must be flowchart TD (or another valid direction).' };
+  }
+  let hasConnection = false;
+  for (const line of lines.slice(1)) {
+    if (line.startsWith('%%')) continue;
+    if (/(-->|---|-.->|==>|<--|<-->)(\s*)$/.test(line)) {
+      return { valid: false, error: 'Incomplete arrow: ' + line };
+    }
+    const openSquare = (line.match(/\[/g) || []).length;
+    const closeSquare = (line.match(/\]/g) || []).length;
+    if (openSquare !== closeSquare) {
+      return { valid: false, error: 'Unbalanced square brackets: ' + line };
+    }
+    if (/-->|---|-.->|==>|<--|<-->/.test(line)) {
+      hasConnection = true;
+      const sides = line.split(/-->|---|-.->|==>|<--|<-->/);
+      if (sides.length < 2 || !sides[0].trim() || !sides[1].trim()) {
+        return { valid: false, error: 'Invalid connection: ' + line };
+      }
+      if (/\]\s+[A-Za-z_][A-Za-z0-9_]*\s*(-->|---|-.->|==>)/.test(line)) {
+        return { valid: false, error: 'Keep node definitions and connections on separate lines: ' + line };
+      }
+    }
+  }
+  if (!hasConnection) return { valid: false, error: 'No node connections were found.' };
+  return { valid: true, error: '' };
+}
+
+async function generateDiagramWithRepair(contents, systemInstruction, generationConfig) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error('GEMINI_API_KEY not configured');
+  const model = (GEMINI_MODEL_CHAIN.core || GEMINI_MODEL_CHAIN.fast)[0];
+  const attempts = [
+    'Create the requested diagram. Return a short explanation and exactly one valid Mermaid code block. Use simple flowchart syntax and complete connections.',
+    'Repair the previous diagram. Fix this validation error: ',
+    'Make a final attempt. Generate a simple valid flowchart TD with unique node IDs and complete connections. Return one Mermaid code block.'
+  ];
+  let lastError = 'No valid Mermaid diagram found.';
+  let previousText = '';
+
+  for (let attempt = 0; attempt < attempts.length; attempt++) {
+    const nextContents = attempt === 0 ? contents : [
+      ...contents,
+      { role: 'model', parts: [{ text: previousText.slice(0, 10000) }] },
+      { role: 'user', parts: [{ text: attempts[attempt] + (attempt === 1 ? lastError + '\nReturn the complete corrected Mermaid code block only.' : '') }] }
+    ];
+     const url = `${GEMINI_API}${model}:generateContent?key=${encodeURIComponent(key)}`;
+    const response = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: nextContents,
+        systemInstruction: { parts: [{ text: systemInstruction + '\n\n' + DIAGRAM_INSTRUCTION }] },
+        generationConfig: { ...(generationConfig || {}), temperature: 0.2, maxOutputTokens: 4096 }
+      })
+    }, 60000);
+    if (!response.ok) {
+      lastError = `Gemini HTTP ${response.status}: ${(await response.text()).slice(0, 180)}`;
+      previousText = '';
+      continue;
+    }
+    const data = await response.json();
+    previousText = extractModelText(data);
+    const code = extractMermaidBlock(previousText);
+    if (!code) {
+      lastError = 'The model did not return a Mermaid code block.';
+      continue;
+    }
+    const validation = validateMermaid(code);
+    if (validation.valid) return previousText;
+    lastError = validation.error;
+  }
+  throw new Error('Diagram generation failed after 3 attempts: ' + lastError);
+}
+
 function contentsToMessages(contents) {
   const messages = [];
   for (const m of contents) {
     const role = m.role === 'user' ? 'user' : 'assistant';
-    const text = (m.parts || []).map(p => {
-      if (typeof p.text === 'string') return p.text;
-      if (p.inlineData) return '[image attached]';
-      return '';
-    }).join('\n').trim();
-    if (text) messages.push({ role, content: text });
+    const parts = m.parts || [];
+    let imageData = null;
+    let imageMime = null;
+    const textParts = [];
+    for (const p of parts) {
+      if (typeof p.text === 'string' && p.text.trim()) textParts.push(p.text);
+      if (p.inlineData && p.inlineData.data) {
+        imageData = p.inlineData.data;
+        imageMime = p.inlineData.mimeType || 'image/jpeg';
+      }
+    }
+    const textContent = textParts.join('\n').trim();
+    if (imageData) {
+      const contentArray = [];
+      if (textContent) contentArray.push({ type: 'text', text: textContent });
+      else contentArray.push({ type: 'text', text: 'Analyze this image.' });
+      contentArray.push({ type: 'image_url', image_url: { url: `data:${imageMime};base64,${imageData}` } });
+      messages.push({ role, content: contentArray });
+    } else if (textContent) {
+      messages.push({ role, content: textContent });
+    }
   }
   return messages;
 }
+
+/* =========================================================
+   IDENTITY + FORMAT INSTRUCTIONS
+   ========================================================= */
+const IDENTITY_ENFORCEMENT = `IDENTITY AND TRANSPARENCY
+- Your product name is Quantum Core AI, an application built by Usman Saleem.
+- Do not claim that the app was trained from scratch or that it has no relationship to third-party AI providers.
+- If asked which model/provider powers a response, be transparent: the app can route requests through the providers/models configured by its server, and the exact model may vary by request. Do not guess a specific model unless runtime information confirms it.
+- If asked who built the app, say it was built by Usman Saleem.
+- Follow the user's requested language and answer naturally.`;
+
+const FORMAT_INSTRUCTION = `
+🚨🚨🚨 SYSTEM FAILURE WARNING: PROFESSIONAL FORMATTING IS MANDATORY 🚨🚨🚨
+
+1. 🔴 PROFESSIONAL MARKDOWN (USE FREQUENTLY):
+   - **Bold** for emphasis.
+   - *Italics* for subtle emphasis or foreign words.
+   - __Underline__ for important terms (if supported).
+   - ~~Strikethrough~~ for deleted text.
+   - Use \`inline code\` for commands or short syntax.
+   - Use \`> \` for Blockquotes (great for quotes or important warnings).
+   - Use Markdown Tables for comparisons.
+   - Use Headings (##, ###) with a SPACE after the hashtag.
+
+2. 🔴 UNIVERSAL CODE FORMATTING:
+   - You MUST use proper newlines and indentation for ANY language.
+   - NEVER output code in a single line. 
+   - Wrap code in triple backticks with the language name.
+   ✅ CORRECT (Python):
+   \`\`\`python
+   def main():
+       print("Hello")
+   \`\`\`
+
+3. LISTS: Start on a new line with "- " or "1. ".
+
+IF YOU BREAK THESE RULES, THE SYSTEM WILL CRASH.
+`;
+
+const DIAGRAM_INSTRUCTION = `
+=== DIAGRAM GENERATION ===
+When a user asks for a diagram or flowchart, produce exactly one valid Mermaid code block.
+Use simple syntax. For flowcharts start with flowchart TD.
+Use unique node IDs, quote node labels with double quotes, and put connections on separate lines.
+Every arrow must have a source and destination. Never emit malformed placeholders or incomplete arrows.
+Do not use HTML tags in node labels. Check that every connection is complete before answering.
+Example:
+\`\`\`mermaid
+flowchart TD
+    A["Your Device"] --> B["Router"]
+    B --> C["Internet"]
+    C --> D["Website Server"]
+\`\`\`
+`;
 
 export default async function handler(req) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -466,117 +769,272 @@ export default async function handler(req) {
   catch { return json({ error: 'Invalid request body' }, 400); }
 
   const contents = Array.isArray(body?.contents) ? body.contents : [];
-  const userId = body?.userId || '';
-  const conversationId = body?.conversationId || '';
+  const userId = typeof body?.userId === 'string' ? body.userId.slice(0, 200) : '';
   const activeMode = body?.mode || 'fast';
-
-  const generationConfig = (body?.generationConfig && typeof body.generationConfig === 'object')
-    ? body.generationConfig
-    : { temperature: 0.7 };
-
-  if (!contents.length) return json({ error: 'Invalid request: contents missing' }, 400);
-  const userText = getLatestUserText(contents);
-  if (!userText) return json({ error: 'Invalid request: user message missing' }, 400);
-
-  const [memories, shouldSearch] = await Promise.all([
-    fetchMemories(userId, userText),
-    askSearchDecision(userText)
-  ]);
-
-  let searchResults = [];
-  if (shouldSearch) {
-    searchResults = await quantumSearch(userText);
-  }
-
   const clientInstruction = body?.systemInstruction?.parts?.[0]?.text || '';
-  const memoryContext = buildMemoryContext(memories);
-  const searchContext = buildSearchContext(searchResults);
+  const userText = getLatestUserText(contents);
 
-  const finalSystemInstruction = `
-${clientInstruction}
+  const conversationId = body?.conversationId || body?.conversation_id || body?.chatId || body?.chat_id || '';
 
-CURRENT DATE: October 15, 2026.
-${memoryContext}
-${searchContext}
-${diagramInstruction}
+  if (!contents.length || !userText) {
+    return json({ error: 'Invalid request' }, 400);
+  }
 
-=========== CRITICAL RULES (MUST FOLLOW) ===========
+  // 🚨 BOUNCER: CHECK IF USER IS BLOCKED OR OVER LIMIT 🚨
+  if (userId && process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) {
+    const sbHeaders = { apikey: process.env.SUPABASE_SECRET_KEY, Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}` };
 
-1. LANGUAGE ENFORCEMENT:
-   - If the user's system instruction specifies an AI RESPONSE LANGUAGE (e.g., "respond ONLY in Urdu"), you MUST respond ONLY in that language for the ENTIRE response — no exceptions, no mixing.
-   - If no language is specified, match the user's language automatically.
-   - Never switch language mid-response.
-
-2. CONVERSATION CONTINUITY (VERY IMPORTANT):
-   - After answering the user's question, ALWAYS end with ONE short, natural follow-up question to keep the conversation going.
-   - The follow-up must be relevant and helpful.
-   - Keep it to 1 line max. Never skip this unless the user's question was a trivial one-liner (like "what's 2+2").
-   - Examples:
-     * "Do you want to know more about X?"
-     * "Should I also explain Y?"
-     * "Kya aap X ke baare mein bhi jaanna chahenge?"
-     * "Would you like a step-by-step breakdown?"
-   - Make it feel natural, not forced.
-
-3. ACCURACY:
-   - Use web search results when provided. Cite as [1], [2], etc.
-   - Do not invent facts. If unsure, say so.
-   - For math/physics: show working step-by-step.
-   - For coding: provide complete, runnable code.
-   - When asked for a diagram, use a \`\`\`mermaid code block.
-`;
-
-  const radoxChain = RADOX_MODELS[activeMode] || RADOX_MODELS.fast;
-  const openaiMessages = contentsToMessages(contents);
-  let lastError = null;
-
-  for (const model of radoxChain) {
     try {
-      console.log(`Trying Radox: ${model}`);
-      const radoxRes = await callRadoxAI(model, openaiMessages, finalSystemInstruction, generationConfig.temperature);
-      const stream = await streamRadoxToClient(radoxRes, searchResults);
-      return new Response(stream, {
-        status: 200,
-        headers: {
-          ...CORS_HEADERS,
-          'Content-Type': 'text/event-stream; charset=utf-8',
-          'Cache-Control': 'no-cache, no-transform',
-          'X-Provider': 'radox',
-          'X-Model-Used': model
+      // 1. Check Ban Status
+      const banRes = await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/blocked_users?user_id=eq.${encodeURIComponent(userId)}`, { headers: sbHeaders }, 5000);
+      const bans = await banRes.json();
+
+      if (Array.isArray(bans) && bans.length > 0) {
+        const ban = bans[0];
+        if (ban.ban_type === 'permanent') {
+          return json({ error: `Your account is permanently banned for violating the rules/spam.` }, 403);
+        } else if (ban.ban_type === 'temporary') {
+          const expireTime = new Date(ban.expires_at).getTime();
+          if (Date.now() < expireTime) {
+            const remainingHours = Math.ceil((expireTime - Date.now()) / (1000 * 60 * 60));
+            return json({ error: `Your account is banned for ${remainingHours} hours.\nReason: ${ban.reason || 'violating rules/spam'}` }, 403);
+          }
         }
-      });
-    } catch (error) {
-      lastError = error;
-      console.error(`Radox ${model} failed:`, error?.message || error);
+      }
+
+      // 2. Check Daily Limit
+      const today = new Date().toISOString().split('T')[0];
+      const limitRes = await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/user_limits?user_id=eq.${encodeURIComponent(userId)}`, { headers: sbHeaders }, 5000);
+      const limits = await limitRes.json();
+
+      if (Array.isArray(limits) && limits.length > 0) {
+        let userLimit = limits[0];
+
+        if (userLimit.last_reset_date !== today) {
+          await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/user_limits?user_id=eq.${encodeURIComponent(userId)}`, {
+            method: 'PATCH', headers: { ...sbHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_usage: 0, last_reset_date: today })
+          }, 5000);
+          userLimit.current_usage = 0;
+        }
+
+        if (userLimit.current_usage >= userLimit.daily_limit) {
+          return json({ error: `You have reached your message limit that is set by the admins for you, please be patient and wait for your limits to reset.` }, 429);
+        }
+
+        // Increment Usage
+        await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/user_limits?user_id=eq.${encodeURIComponent(userId)}`, {
+          method: 'PATCH', headers: { ...sbHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ current_usage: userLimit.current_usage + 1 })
+        }, 5000);
+      }
+    } catch (e) {
+      console.log("Bouncer Check Error:", e.message);
     }
   }
 
-  console.log('All Radox failed. Trying Gemini fallback...');
-  const geminiChain = GEMINI_MODEL_CHAIN[activeMode] || GEMINI_MODEL_CHAIN.fast;
+  // Save User Message
+  await saveConversationEvent(userId, conversationId, 'user', userText);
 
-  for (const model of geminiChain) {
-    try {
-      console.log(`Trying Gemini: ${model}`);
-      const geminiRes = await callGemini(model, contents, finalSystemInstruction, generationConfig);
-      const stream = await streamGeminiToClient(geminiRes, searchResults);
-      return new Response(stream, {
-        status: 200,
-        headers: {
-          ...CORS_HEADERS,
-          'Content-Type': 'text/event-stream; charset=utf-8',
-          'Cache-Control': 'no-cache, no-transform',
-          'X-Provider': 'gemini-fallback',
-          'X-Model-Used': model
-        }
-      });
-    } catch (error) {
-      lastError = error;
-      console.error(`Gemini ${model} failed:`, error?.message || error);
-    }
+  // Identity Shield
+  const identityReply = getIdentityResponse(userText, clientInstruction);
+  if (identityReply) {
+    await saveConversationEvent(userId, conversationId, 'assistant', identityReply);
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
+        send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
+        send({ type: 'chunk', text: identityReply });
+        send({ type: 'done' });
+        controller.close();
+      }
+    });
+    return new Response(stream, { status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' } });
   }
 
-  return json({
-    error: 'All AI models failed',
-    details: lastError?.message || 'Unknown server error'
-  }, 500);
+  const generationConfig = (body?.generationConfig && typeof body.generationConfig === 'object') ? body.generationConfig : { temperature: 0.7 };
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = obj => controller.enqueue(encoder.encode(sseEvent(obj)));
+      const scrubber = makeScrubber(send);
+
+      try {
+        send({ type: 'status', status: 'Thinking...', stage: 'thinking' });
+
+        const [memories, shouldSearchDecision] = await Promise.all([
+          fetchMemories(userId, userText),
+          Promise.resolve(isCurrentTimeQuestion(userText) ? false : askSearchDecision(userText))
+        ]);
+        const shouldSearch = !isCurrentTimeQuestion(userText) && (shouldSearchDecision || looksLikeFreshInfoQuestion(userText));
+
+        let searchResults = [];
+        if (shouldSearch) {
+          send({ type: 'status', status: 'Searching the web...', stage: 'searching' });
+          searchResults = await quantumSearch(userText);
+          const srcEvt = sourcesEventForClient(searchResults);
+          if (srcEvt) send({ type: 'sources', sources: srcEvt });
+          send({ type: 'status', status: 'Analyzing results...', stage: 'analyzing' });
+        }
+
+        const memoryContext = buildMemoryContext(memories);
+        const searchContext = buildSearchContext(searchResults);
+        const currentDateTime = getCurrentDateTimeContext();
+
+        const finalInstruction = IDENTITY_ENFORCEMENT + '\n\n' + clientInstruction + '\n\n' + currentDateTime + '\n' + memoryContext + '\n' + searchContext + '\n' + FORMAT_INSTRUCTION + '\n' + DIAGRAM_INSTRUCTION + '\n' +
+          '=== 🔴 CURRENT INFORMATION RULES ===\n' +
+          '- NEVER use internal training data for releases, news, or current events.\n' +
+          '- You MUST rely STRICTLY on the provided WEB SEARCH RESULTS.\n' +
+          '- If empty, say: "Mujhe iski latest information nahi mil rahi."\n' +
+          '- Cite sources as [1], [2].\n' +
+          '=== GENERAL RULES ===\n' +
+          '- Be accurate and helpful.\n' +
+          '- Follow the user\'s requested language.\n' +
+          '- End with ONE short follow-up question.\n';
+
+        send({ type: 'status', status: 'Writing answer...', stage: 'writing' });
+
+        const isDiagram = isDiagramRequest(userText);
+        if (isDiagram) {
+          send({ type: 'status', status: 'Creating and checking diagram...', stage: 'writing' });
+          try {
+            const diagramText = await generateDiagramWithRepair(contents, finalInstruction, generationConfig);
+            send({ type: 'chunk', text: diagramText });
+            await saveConversationEvent(userId, conversationId, 'assistant', diagramText);
+          } catch (diagramError) {
+            const errMsg = 'I could not generate a valid diagram after three attempts. Please try a simpler diagram request.';
+            send({ type: 'chunk', text: errMsg });
+            await saveConversationEvent(userId, conversationId, 'assistant', errMsg);
+          }
+          send({ type: 'done' });
+          controller.close();
+          return;
+        }
+
+        let lastError = null;
+        let succeeded = false;
+
+        if (!isDiagram) {
+          const radoxChain = RADOX_MODELS[activeMode] || RADOX_MODELS.fast;
+          const openaiMessages = contentsToMessages(contents);
+
+          for (const model of radoxChain) {
+            try {
+              const radoxRes = await callRadoxAI(model, openaiMessages, finalInstruction, generationConfig.temperature);
+              if (!radoxRes.body) throw new Error('No stream body');
+
+              const reader = radoxRes.body.getReader();
+              const decoder = new TextDecoder();
+              let buffer = '';
+              let fullAiResponse = '';
+
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) { buffer += decoder.decode(); break; }
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (!trimmed.startsWith('data:')) continue;
+                  const raw = trimmed.substring(5).trim();
+                  if (!raw || raw === '[DONE]') continue;
+                  try {
+                    const parsed = JSON.parse(raw);
+                    const delta = parsed.choices?.[0]?.delta?.content;
+                    if (delta) { scrubber.push(delta); fullAiResponse += delta; }
+                  } catch {}
+                }
+              }
+              if (buffer.trim().startsWith('data:')) {
+                const raw = buffer.trim().slice(5).trim();
+                if (raw && raw !== '[DONE]') {
+                  try {
+                    const parsed = JSON.parse(raw);
+                    const delta = parsed.choices?.[0]?.delta?.content;
+                    if (delta) { scrubber.push(delta); fullAiResponse += delta; }
+                  } catch {}
+                }
+              }
+              scrubber.flush();
+              await saveConversationEvent(userId, conversationId, 'assistant', fullAiResponse);
+              send({ type: 'done' });
+              succeeded = true;
+              controller.close();
+              return;
+            } catch (error) {
+              lastError = error;
+            }
+          }
+        }
+
+        if (!succeeded) {
+          const geminiChain = GEMINI_MODEL_CHAIN[activeMode] || GEMINI_MODEL_CHAIN.fast;
+          for (const model of geminiChain) {
+            try {
+              const geminiRes = await callGemini(model, contents, finalInstruction, generationConfig);
+              if (!geminiRes.body) throw new Error('No stream body');
+
+              const reader = geminiRes.body.getReader();
+              const decoder = new TextDecoder();
+              let buffer = '';
+              let fullAiResponse = '';
+
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) { buffer += decoder.decode(); break; }
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (!trimmed.startsWith('data:')) continue;
+                  const raw = trimmed.substring(5).trim();
+                  if (!raw || raw === '[DONE]') continue;
+                  try {
+                    const parsed = JSON.parse(raw);
+                    const text = extractModelText(parsed);
+                    if (text) { scrubber.push(text); fullAiResponse += text; }
+                  } catch {}
+                }
+              }
+              if (buffer.trim().startsWith('data:')) {
+                const raw = buffer.trim().slice(5).trim();
+                if (raw && raw !== '[DONE]') {
+                  try {
+                    const parsed = JSON.parse(raw);
+                    const finalText = extractModelText(parsed);
+                    if (finalText) { scrubber.push(finalText); fullAiResponse += finalText; }
+                  } catch {}
+                }
+              }
+              scrubber.flush();
+              await saveConversationEvent(userId, conversationId, 'assistant', fullAiResponse);
+              send({ type: 'done' });
+              succeeded = true;
+              controller.close();
+              return;
+            } catch (error) {
+              lastError = error;
+            }
+          }
+        }
+
+        scrubber.flush();
+        send({ type: 'error', error: lastError?.message || 'All models failed' });
+        controller.close();
+
+      } catch (error) {
+        send({ type: 'error', error: error?.message || 'Server error' });
+        controller.close();
+      }
+    }
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: { ...CORS_HEADERS, 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' }
+  });
 }
