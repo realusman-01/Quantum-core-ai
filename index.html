@@ -1714,11 +1714,11 @@ function formatAIText(text) {
 }
 
 // 🧠 DEEPSEEK STYLE THINKING PARSER
-function renderMarkdown(text){
-  if(!window.marked)return escapeHTML(text);
+function renderMarkdown(text) {
+  if (!window.marked) return escapeHTML(text);
   
   text = formatAIText(text);
-
+  
   // Extract <thought> block if present
   let thoughtHtml = "";
   const thoughtRegex = /<thought>([\s\S]*?)<\/thought>/i;
@@ -1728,7 +1728,7 @@ function renderMarkdown(text){
     const thoughtContent = thoughtMatch[1].trim();
     // Calculate reading time (approx 50 words per 5 seconds)
     const wordCount = thoughtContent.split(/\s+/).length;
-    const seconds = Math.max(1, Math.round(wordCount / 10)); 
+    const seconds = Math.max(1, Math.round(wordCount / 10));
     
     thoughtHtml = `
       <div class="think-box">
@@ -2173,41 +2173,53 @@ async function processStream(response,botElement,userPrompt,botRef){
     if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
   }
 
-  function scheduleRender(){
-    if(rafId)return;
-    const now=performance.now();
-    const delay=Math.max(0,MIN_RENDER_INTERVAL-(now-lastRenderTime));
-    rafId=setTimeout(function(){
-      rafId=null;
-      lastRenderTime=performance.now();
-      requestAnimationFrame(function(){
-        let displayText = scrubClient(fullText);
+  function scheduleRender() {
+  if (rafId) return;
+  const now = performance.now();
+  const delay = Math.max(0, MIN_RENDER_INTERVAL - (now - lastRenderTime));
+  rafId = setTimeout(function() {
+    rafId = null;
+    lastRenderTime = performance.now();
+    requestAnimationFrame(function() {
+      let displayText = scrubClient(fullText);
+      
+      // 🧠 LIVE STREAMING THINKING LOGIC
+      const thinkStart = displayText.indexOf('<thought>');
+      const thinkEnd = displayText.indexOf('</thought>');
+      
+      if (thinkStart !== -1) {
+        if (thinkStartTime === null) thinkStartTime = Date.now();
         
-        // 🧠 LIVE STREAMING THINKING LOGIC
-        const thinkStart = displayText.indexOf('<thought>');
-        const thinkEnd = displayText.indexOf('</thought>');
-        
-        if (thinkStart !== -1) {
-          if (thinkStartTime === null) thinkStartTime = Date.now();
+        if (thinkEnd === -1) {
+          // 🔴 STILL THINKING — collapsed by default, smooth DOM updates
+          const thoughtContent = displayText.substring(thinkStart + 9).trim();
+          const elapsed = Math.floor((Date.now() - thinkStartTime) / 1000);
           
-          if (thinkEnd === -1) {
-            // Still thinking
-            const thoughtContent = displayText.substring(thinkStart + 9).trim();
-            const elapsed = Math.floor((Date.now() - thinkStartTime) / 1000);
+          let thinkBox = botElement.querySelector('.think-box.live-thinking');
+          if (!thinkBox) {
             botElement.innerHTML = `
-              <div class="think-box">
-                <div class="think-header" style="color:#a78bfa;">
-                  <i class="fa-solid fa-spinner fa-spin"></i> Thinking... (${elapsed}s)
+              <div class="think-box live-thinking collapsed">
+                <div class="think-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                  <i class="fa-solid fa-spinner fa-spin"></i> <span class="think-time">Thinking... (${elapsed}s)</span>
                 </div>
-                <div class="think-content">${escapeHTML(thoughtContent)}</div>
+                <div class="think-content"></div>
               </div>
             `;
-          } else {
-            // Thinking done, show collapsed + answer
-            const thoughtContent = displayText.substring(thinkStart + 9, thinkEnd).trim();
-            const finalAnswer = displayText.substring(thinkEnd + 10).trim();
-            const elapsed = Math.max(1, Math.floor((Date.now() - thinkStartTime) / 1000));
-            
+            thinkBox = botElement.querySelector('.think-box.live-thinking');
+          }
+          const timeEl = thinkBox.querySelector('.think-time');
+          const contentEl = thinkBox.querySelector('.think-content');
+          const timeText = `Thinking... (${elapsed}s)`;
+          if (timeEl && timeEl.textContent !== timeText) timeEl.textContent = timeText;
+          if (contentEl && contentEl.textContent !== thoughtContent) contentEl.textContent = thoughtContent;
+        } else {
+          // 🟢 THINKING DONE — collapsed box + streaming answer (no re-render of box)
+          const thoughtContent = displayText.substring(thinkStart + 9, thinkEnd).trim();
+          const finalAnswer = displayText.substring(thinkEnd + 10).trim();
+          const elapsed = Math.max(1, Math.floor((Date.now() - thinkStartTime) / 1000));
+          
+          let answerContainer = botElement.querySelector('.final-answer-container');
+          if (!answerContainer) {
             botElement.innerHTML = `
               <div class="think-box collapsed">
                 <div class="think-header" onclick="this.parentElement.classList.toggle('collapsed')">
@@ -2215,18 +2227,23 @@ async function processStream(response,botElement,userPrompt,botRef){
                 </div>
                 <div class="think-content">${escapeHTML(thoughtContent)}</div>
               </div>
-              ${renderMarkdown(finalAnswer)}
+              <div class="final-answer-container"></div>
             `;
+            answerContainer = botElement.querySelector('.final-answer-container');
           }
-        } else {
-          botElement.innerHTML = renderStreamText(displayText);
+          if (answerContainer) {
+            answerContainer.innerHTML = renderStreamText(finalAnswer);
+          }
         }
-        
-        if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
-        if(autoScrollEnabled){chatBox.scrollTop=chatBox.scrollHeight;}
-      });
-    },delay);
-  }
+      } else {
+        botElement.innerHTML = renderStreamText(displayText);
+      }
+      
+      if (window.renderMathInElement) { try { renderMathInElement(botElement, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }], throwOnError: false }); } catch (e) {} }
+      if (autoScrollEnabled) { chatBox.scrollTop = chatBox.scrollHeight; }
+    });
+  }, delay);
+}
 
   while(true){
     const result=await reader.read();
@@ -2283,8 +2300,9 @@ async function processStream(response,botElement,userPrompt,botRef){
       return;
     }
 
-    // Final render (Thinking logic finalized)
-    botElement.innerHTML = renderMarkdown(displayText);
+  // Final render (Thinking logic finalized) — pass actual elapsed time for consistency
+const finalElapsed = thinkStartTime ? Math.max(1, Math.floor((Date.now() - thinkStartTime) / 1000)) : null;
+botElement.innerHTML = renderMarkdown(displayText, finalElapsed);
 
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
     renderAllMermaids(botElement);
