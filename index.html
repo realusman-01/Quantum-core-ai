@@ -383,8 +383,7 @@ body.select-locked .msg-wrap.select-active *{-webkit-user-select:text !important
 #call-reconnect.show{display:flex;}
 #call-reconnect .spinner{width:36px;height:36px;border-width:4px;border-color:rgba(255,255,255,0.3);border-top-color:#fff;}
 @media(max-width:500px){
-  /* Mermaid ka raw code hamesha hide rahe, sirf diagram ya error box dikhe */
-.code-wrapper[data-mermaid="1"] {
+  .code-wrapper[data-mermaid="1"] {
   display: none !important;
 }
 .drawer{width:305px;}
@@ -1618,7 +1617,6 @@ async function renderAllMermaids(container) {
       wrapper.parentNode.insertBefore(placeholder, wrapper);
       
       const newId = "mermaid_" + Date.now() + "_" + (idx++);
-      // Preserve source syntax. Remove only accidental outer Markdown fences.
       let cleanedCode = String(code || "").replace(/\r\n?/g, "\n").trim();
       cleanedCode = cleanedCode.replace(/^```(?:mermaid)?\s*/i, "").replace(/\s*```$/, "").trim();
       try {
@@ -1636,7 +1634,6 @@ async function renderAllMermaids(container) {
         placeholder.replaceWith(div);
       } catch (mermaidError) {
         console.warn("Mermaid render failed:", mermaidError);
-        // 🧨 Red Bomb Popup Delete karo
         const errElem = document.getElementById("d" + newId);
         if (errElem) errElem.remove();
         const errElem2 = document.getElementById(newId);
@@ -1673,7 +1670,6 @@ function copyMermaidCode(btn){
 
 /* ============ MARKDOWN ============ */
 function formatAIText(text) {
-  // 1. Fix code blocks that are completely inline (e.g. ```python print("hi") ```)
   text = text.replace(/```([a-z]+)\s+([\s\S]*?)\s*```/gi, function(match, lang, code) {
     let formattedCode = code.trim();
     if (lang.toLowerCase() === 'python' && !formattedCode.includes('\n')) {
@@ -1685,13 +1681,11 @@ function formatAIText(text) {
         .replace(/#\s/g, '\n# ').replace(/\binput\s*\(/g, '\ninput(').replace(/\bfloat\s*\(/g, '\nfloat(')
         .trim();
     } else if (lang.toLowerCase() === 'mermaid') {
-      // Mermaid is a syntax-sensitive language. Never rewrite arrows or node lines here.
       formattedCode = formattedCode.trim();
     }
     return '\n```' + lang + '\n' + formattedCode + '\n```\n';
   });
 
-  // 2. Fix MISSING backticks
   text = text.replace(/(?:^|\s)(python|mermaid)\s+((?:def|import|from|class|print|#|flowchart|graph|sequenceDiagram|mindmap|classDiagram|stateDiagram|erDiagram)[\s\S]*?)(?=(?:\n\n|###|This program|What kind|Let me know|Would you|Feel free|Do you|I hope|Here is|How it works|You can|You need|To run|Just copy|$))/gis, function(match, lang, code) {
     let formattedCode = code.trim();
     if (lang.toLowerCase() === 'python') {
@@ -1704,7 +1698,6 @@ function formatAIText(text) {
         .replace(/\n\s+/g, '\n')
         .trim();
     } else if (lang.toLowerCase() === 'mermaid') {
-      // Preserve Mermaid source exactly; automatic newline insertion breaks valid syntax.
       formattedCode = formattedCode.trim();
     }
     return '\n```' + lang + '\n' + formattedCode + '\n```\n';
@@ -1724,26 +1717,21 @@ renderer.code = function(obj) {
   let rawText = obj.text;
   const language = (obj.lang || "code").toLowerCase().replace(/[^a-z0-9+#-]/g, "");
   
-  // 🚨 UNIVERSAL CODE FIXER (Sab languages ke liye)
   if (language !== "mermaid" && !rawText.includes("flowchart") && !rawText.includes("sequenceDiagram")) {
     
-    // 1. Strings ke andar aayi ghalat newlines hatao (e.g. "Hello \n World" -> "Hello World")
     rawText = rawText.replace(/(["'`])([^"'`]*?)\1/g, function(match) {
       return match.replace(/\n\s*/g, ' ');
     });
     
-    // 2. Braces aur Semicolons ke baad newline (C, C++, JS, Java, PHP)
     if (["javascript", "js", "c", "cpp", "c++", "java", "php", "csharp", "cs", "css"].includes(language)) {
       rawText = rawText.replace(/([{};])/g, '$1\n');
       rawText = rawText.replace(/([^ \n])\s+(function|class|const|let|var|if|for|while|switch|import|export|return|public|private)\s+/g, '$1\n$2 ');
     }
     
-    // 3. SQL ke liye newlines
     if (language === "sql") {
       rawText = rawText.replace(/\s+(SELECT|FROM|WHERE|INSERT INTO|UPDATE|DELETE FROM|CREATE TABLE|ALTER TABLE|GROUP BY|ORDER BY|JOIN|LEFT JOIN|RIGHT JOIN)\s+/gi, '\n$1 ');
     }
     
-    // 4. Python ke liye newlines aur indentation
     if (language === "python" || rawText.includes("def ") || rawText.includes("import ")) {
       rawText = rawText.replace(/=\s*\n\s*/g, '= ');
       rawText = rawText.replace(/\(\s*\n\s*/g, '(');
@@ -1752,16 +1740,13 @@ renderer.code = function(obj) {
       rawText = rawText.replace(/:\s*(?!\n)/g, ':\n    ');
     }
     
-    // 5. HTML ke liye newlines (Tags ke beech)
     if (language === "html" || language === "xml") {
       rawText = rawText.replace(/(<[^>]+>)/g, '\n$1\n');
     }
     
-    // 6. Extra khaali lines hatao
     rawText = rawText.replace(/\n{3,}/g, '\n\n').trim();
   }
   
-  // Mermaid check
   const mermaidKeywords = /^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
   const looksLikeMermaid = mermaidKeywords.test(rawText.trim());
   
@@ -1919,27 +1904,29 @@ async function sendMessage(overrideText){
   finally{setGenerating(false);abortController=null;}
 }
 
-function showErrorInMessage(msgEl, error) {
-  const errStr = String(error.message || error);
-  let errMsg = "⚠️ Something went wrong. ";
+function showErrorInMessage(msgEl,error){
+  const errStr=String(error.message||error);
+  let errMsg="⚠️ Something went wrong. ";
   
-  // Custom Backend Errors (Ban/Limit)
-  if (errStr.includes("banned for") || errStr.includes("permanently banned") || errStr.includes("reached your message limit")) {
+  // 🚨 CUSTOM BACKEND ERRORS (BAN / LIMIT)
+  if (errStr.includes("banned") || errStr.includes("limit") || errStr.includes("violating the rules")) {
     const cleanMsg = errStr.replace(/^API \d+: /, ''); // Remove "API 403:" if present
-    msgEl.innerHTML = `<div style="color:var(--danger); font-weight:bold; padding:14px; background:rgba(239,68,68,0.1); border-radius:10px; border:1px solid var(--danger); line-height: 1.5;">${cleanMsg.replace(/\n/g, '<br>')}</div>`;
+    // 👇 Yahan future mein Timer set hone par 'Please wait X hours' wala message bhi easily add ho sakta hai
+    msgEl.innerHTML = `<div style="color:#f87171; font-weight:600; padding:16px; background:rgba(239,68,68,0.1); border-radius:12px; border:1.5px solid #ef4444; line-height: 1.6; font-size: 13.5px; box-shadow: 0 4px 15px rgba(239,68,68,0.1);">${cleanMsg.replace(/\n/g, '<br>')}</div>`;
     return;
   }
-  
+
   // Normal Errors
-  if (errStr.indexOf("503") !== -1 || errStr.indexOf("overloaded") !== -1) errMsg = "⚠️ AI server is currently busy. Please try again in 30 seconds.";
-  else if (errStr.indexOf("429") !== -1 || errStr.indexOf("quota") !== -1) errMsg = "⚠️ Daily quota reached. Please try again tomorrow.";
-  else if (errStr.indexOf("413") !== -1 || errStr.indexOf("too large") !== -1 || errStr.indexOf("PAYLOAD") !== -1 || errStr.indexOf("TOO_LARGE") !== -1) errMsg = "⚠️ This chat has gotten too long. Please start a new chat.";
-  else if (errStr.indexOf("Failed to fetch") !== -1 || errStr.indexOf("NetworkError") !== -1) errMsg = "⚠️ Network error. Check your internet connection.";
-  else if (errStr.indexOf("400") !== -1) errMsg = "⚠️ Invalid request. Try clearing and resending.";
-  else errMsg = "⚠️ Server error. Please try again.";
+  if(errStr.indexOf("503")!==-1||errStr.indexOf("overloaded")!==-1)errMsg="⚠️ AI server is currently busy. Please try again in 30 seconds.";
+  else if(errStr.indexOf("429")!==-1||errStr.indexOf("quota")!==-1)errMsg="⚠️ Daily quota reached. Please try again tomorrow.";
+  else if(errStr.indexOf("413")!==-1||errStr.indexOf("too large")!==-1||errStr.indexOf("PAYLOAD")!==-1||errStr.indexOf("TOO_LARGE")!==-1)errMsg="⚠️ Chat bohot lambi ho gayi hai. Nayi chat shuru karein.";
+  else if(errStr.indexOf("Failed to fetch")!==-1||errStr.indexOf("NetworkError")!==-1)errMsg="⚠️ Network error. Check your internet connection.";
+  else if(errStr.indexOf("400")!==-1)errMsg="⚠️ Invalid request. Try clearing and resending.";
+  else errMsg="⚠️ Server error. Please try again.";
   
-  msgEl.innerHTML = '<span style="color:var(--danger)">' + errMsg + '</span> <button class="code-btn" style="display:inline-flex;margin-left:6px;" onclick="retryLastMessage()">Retry</button>';
+  msgEl.innerHTML='<span style="color:var(--danger)">'+errMsg+'</span> <button class="code-btn" style="display:inline-flex;margin-left:6px;" onclick="retryLastMessage()">Retry</button>';
 }
+
 function retryLastMessage(){
   const chat=getCurrentChat();if(!chat)return;
   let lastUser=-1;
@@ -2106,15 +2093,18 @@ async function streamAIResponse(botElement,userPrompt,signal,imageOverride,botRe
   }
   const payload={contents:contents,systemInstruction:{parts:[{text:finalInstruction}]},generationConfig:{temperature:aiTemperature},mode:activeMode,userId:QUANTUM_USER_ID,conversationId:currentChatId};
   const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:signal});
-  if (!response.ok) {
-  let errData;
-  try { errData = await response.json(); } catch (e) {}
-  if (errData && errData.error) {
-    throw new Error(errData.error); // Throw exact backend message
+  
+  // 🚨 IMPORTANT FIX: Parse JSON Error to get exact backend message
+  if(!response.ok){
+    let errData;
+    try { errData = await response.json(); } catch(e) {}
+    if (errData && errData.error) {
+      throw new Error(errData.error); 
+    }
+    const err=await response.text();
+    throw new Error("API "+response.status+": "+err.substring(0,200));
   }
-  const err = await response.text();
-  throw new Error("API " + response.status + ": " + err.substring(0, 200));
-}
+  
   await processStream(response,botElement,userPrompt,botRef);
 }
 
@@ -2127,19 +2117,13 @@ async function processStream(response,botElement,userPrompt,botRef){
   const MIN_RENDER_INTERVAL=30;
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
-  // 🛡️ CLIENT-SIDE SCRUBBER (Double Protection)
   function scrubClient(text) {
     if(!text) return text;
     let t = String(text);
-    
-    // Double Naam Fix
     t = t.replace(/(Quantum Core AI)(\s*Quantum Core AI)+/gi, "Quantum Core AI");
     t = t.replace(/Quantum Core AIQuantum Core AI/gi, "Quantum Core AI");
-    
-    // Anthropic / Claude / GPT Fix
     t = t.replace(/\b(Anthropic|OpenAI|Google|Meta|Microsoft|Claude|ChatGPT|DeepSeek|Gemini|GPT|Sonnet|Opus|Haiku)\s*ne\s+(banaya|train kiya|develop kiya)/gi, "Usman Saleem ne banaya");
     t = t.replace(/(Quantum Core AI)\s+(Sonnet|Opus|Haiku|Fable|Mythos|GPT|Gemini|Claude|Flash|Pro|Luna|Terra|Sol)[- ]?\d*\.?\d*/gi, "$1");
-    
     return t;
   }
 
