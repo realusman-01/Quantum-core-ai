@@ -938,7 +938,7 @@ export default async function handler(req) {
           '=== 🔴 CURRENT INFORMATION RULES ===\n' +
           '- NEVER use internal training data for releases, news, or current events.\n' +
           '- You MUST rely STRICTLY on the provided WEB SEARCH RESULTS.\n' +
-          '- If empty, say: "Mujhe iski latest information nahi mil rahi."\n' +
+          '- If empty, say: "I could not find the latest information."\n' +
           '- Cite sources as [1], [2].\n' +
           '=== GENERAL RULES ===\n' +
           '- Be accurate and helpful.\n' +
@@ -1013,6 +1013,10 @@ export default async function handler(req) {
                 }
               }
               scrubber.flush();
+              // 🛡️ Empty response check — fallback to next model if empty
+              if (!fullAiResponse.trim()) {
+                throw new Error(`Radox ${model} returned empty response`);
+              }
               // 🧠 Strip <thought> blocks before saving to Supabase
               await saveConversationEvent(userId, conversationId, 'assistant', stripThoughts(fullAiResponse));
               send({ type: 'done' });
@@ -1066,6 +1070,10 @@ export default async function handler(req) {
                 }
               }
               scrubber.flush();
+              // 🛡️ Empty response check
+              if (!fullAiResponse.trim()) {
+                throw new Error(`Gemini ${model} returned empty response`);
+              }
               // 🧠 Strip <thought> blocks before saving to Supabase
               await saveConversationEvent(userId, conversationId, 'assistant', stripThoughts(fullAiResponse));
               send({ type: 'done' });
