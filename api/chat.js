@@ -27,7 +27,10 @@ const CORS_HEADERS = {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': 'application/json'
+    }
   });
 }
 
@@ -38,8 +41,12 @@ function sseEvent(data) {
 async function fetchWithTimeout(url, options = {}, timeout = 15000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
+
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
   } finally {
     clearTimeout(timer);
   }
@@ -47,20 +54,31 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
 
 function getLatestUserText(contents) {
   if (!Array.isArray(contents)) return '';
+
   for (let i = contents.length - 1; i >= 0; i--) {
     const m = contents[i];
+
     if (m && m.role === 'user' && Array.isArray(m.parts)) {
-      const text = m.parts.map(p => typeof p?.text === 'string' ? p.text : '').join(' ').trim();
+      const text = m.parts
+        .map(p => typeof p?.text === 'string' ? p.text : '')
+        .join(' ')
+        .trim();
+
       if (text) return text;
     }
   }
+
   return '';
 }
 
 function isDiagramRequest(text) {
   if (!text) return false;
   const t = String(text).toLowerCase();
-  const keywords = ['diagram', 'flowchart', 'flow chart', 'chart', 'visual', 'mindmap', 'graph', 'mermaid', 'draw a', 'draw the', 'naksha', 'chitra'];
+  const keywords = [
+    'diagram', 'flowchart', 'flow chart', 'chart',
+    'visual', 'mindmap', 'graph', 'mermaid',
+    'draw a', 'draw the', 'naksha', 'chitra'
+  ];
   return keywords.some(k => t.includes(k));
 }
 
@@ -102,26 +120,37 @@ function scrubIdentity(text) {
 function makeScrubber(send) {
   let heldBack = '';
   const HOLD_BACK = 40;
+
   return {
     push(text) {
       if (!text) return;
       heldBack += text;
       if (heldBack.length < 50) return;
+
       const safeLen = heldBack.length - HOLD_BACK;
       let splitAt = safeLen;
       const spaceIdx = heldBack.lastIndexOf(' ', safeLen);
       const newlineIdx = heldBack.lastIndexOf('\n', safeLen);
       const bestIdx = Math.max(spaceIdx, newlineIdx);
-      if (bestIdx > safeLen - 25 && bestIdx > 0) splitAt = bestIdx + 1;
+
+      if (bestIdx > safeLen - 25 && bestIdx > 0) {
+        splitAt = bestIdx + 1;
+      }
+
       const toSend = heldBack.slice(0, splitAt);
       heldBack = heldBack.slice(splitAt);
       const scrubbed = scrubIdentity(toSend);
-      if (scrubbed) send({ type: 'chunk', text: scrubbed });
+
+      if (scrubbed) {
+        send({ type: 'chunk', text: scrubbed });
+      }
     },
     flush() {
       if (heldBack) {
         const scrubbed = scrubIdentity(heldBack);
-        if (scrubbed) send({ type: 'chunk', text: scrubbed });
+        if (scrubbed) {
+          send({ type: 'chunk', text: scrubbed });
+        }
         heldBack = '';
       }
     }
@@ -129,59 +158,100 @@ function makeScrubber(send) {
 }
 
 async function saveConversationEvent(userId, conversationId, role, content) {
-  if (!userId || !content || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return;
+  if (!userId || !content) {
+    return;
+  }
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
+    return;
+  }
 
   const safeUserId = String(userId).slice(0, 200);
   const safeContent = String(content).trim().slice(0, 10000);
   const safeConvId = conversationId ? String(conversationId).slice(0, 200) : "default_chat";
 
   try {
-    await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/conversation_events`, {
+    const response = await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/conversation_events`, {
       method: 'POST',
       headers: {
         apikey: process.env.SUPABASE_SECRET_KEY,
         Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
         'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
+        'Prefer': 'return=representation'
       },
-      body: JSON.stringify({ user_id: safeUserId, conversation_id: safeConvId, role, content: safeContent })
+      body: JSON.stringify({
+        user_id: safeUserId,
+        conversation_id: safeConvId,
+        role: role === 'assistant' ? 'assistant' : 'user',
+        content: safeContent
+      })
     }, 8000);
 
+    const responseText = await response.text();
+    
+    if (!response.ok) {
+      console.error(`[Supabase Error] Status ${response.status}:`, responseText);
+      return;
+    }
+
     if (role === 'user') {
-      const pendingRes = await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/dream_jobs?user_id=eq.${encodeURIComponent(safeUserId)}&status=eq.pending&select=id&limit=1`, {
-        method: 'GET',
-        headers: { apikey: process.env.SUPABASE_SECRET_KEY, Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}` }
-      }, 6000);
+      const pendingRes = await fetchWithTimeout(
+        `${process.env.SUPABASE_URL}/rest/v1/dream_jobs?user_id=eq.${encodeURIComponent(safeUserId)}&status=eq.pending&select=id&limit=1`,
+        {
+          method: 'GET',
+          headers: {
+            apikey: process.env.SUPABASE_SECRET_KEY,
+            Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`
+          }
+        }, 6000
+      );
+      
       const pending = await pendingRes.json();
+
       if (!Array.isArray(pending) || pending.length === 0) {
         await fetchWithTimeout(`${process.env.SUPABASE_URL}/rest/v1/dream_jobs`, {
           method: 'POST',
-          headers: { apikey: process.env.SUPABASE_SECRET_KEY, Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          headers: {
+            apikey: process.env.SUPABASE_SECRET_KEY,
+            Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
           body: JSON.stringify({ user_id: safeUserId, status: 'pending' })
         }, 6000);
       }
     }
   } catch (error) {
-    console.error(`[Supabase Error] Failed to save event:`, error?.message || error);
+    console.error(`[Supabase Network Error]`, error?.message || error);
   }
 }
 
 async function fetchMemories(userId, userText) {
   if (!userId || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return [];
+
   try {
     const url = `${process.env.SUPABASE_URL}/rest/v1/memories?user_id=eq.${encodeURIComponent(userId)}&select=*&order=importance.desc&limit=100`;
-    const response = await fetchWithTimeout(url, { headers: { apikey: process.env.SUPABASE_SECRET_KEY, Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}` } }, 6000);
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        apikey: process.env.SUPABASE_SECRET_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`
+      }
+    }, 6000);
+
     if (!response.ok) return [];
     const memories = await response.json();
     if (!Array.isArray(memories) || !memories.length) return [];
 
     const importantOnes = memories.filter(m => Number(m.importance) >= 0.7).slice(0, 6);
-    const words = String(userText || '').toLowerCase().split(/\s+/).filter(w => w.length >= 4);
+    const text = String(userText || '').toLowerCase();
+    const words = text.split(/\s+/).filter(w => w.length >= 4);
 
     const scored = memories.map(memory => {
       const searchable = [memory.memory_key, memory.memory_type, memory.content].filter(Boolean).join(' ').toLowerCase();
       let score = 0;
-      for (const w of words) if (searchable.includes(w)) score++;
+      for (const w of words) {
+        if (searchable.includes(w)) score++;
+      }
       score += Number(memory.importance || 0) * 0.5;
       return { memory, score };
     });
@@ -192,10 +262,16 @@ async function fetchMemories(userId, userText) {
     const seen = new Set();
     const merged = [];
     for (const m of [...importantOnes, ...matched]) {
-      if (m && m.id && !seen.has(m.id)) { seen.add(m.id); merged.push(m); }
+      if (m && m.id && !seen.has(m.id)) {
+        seen.add(m.id);
+        merged.push(m);
+      }
     }
     return merged.slice(0, 15);
-  } catch (e) { return []; }
+  } catch (e) {
+    console.error('Memory error:', e?.message || e);
+    return [];
+  }
 }
 
 function buildMemoryContext(memories) {
@@ -214,18 +290,35 @@ function buildMemoryContext(memories) {
 function getCurrentDateTimeContext() {
   const now = new Date();
   const timeZone = 'Asia/Karachi';
-  const date = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(now);
-  const time = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZoneName: 'short' }).format(now);
-  return `CURRENT LOCAL DATE/TIME (Asia/Karachi): ${date}, ${time}.`;
+  const date = new Intl.DateTimeFormat('en-US', {
+    timeZone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  }).format(now);
+  const time = new Intl.DateTimeFormat('en-US', {
+    timeZone, hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZoneName: 'short'
+  }).format(now);
+  const iso = new Intl.DateTimeFormat('sv-SE', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).format(now).replace(' ', 'T');
+  return `CURRENT LOCAL DATE/TIME (Asia/Karachi): ${date}, ${time}. Local timestamp: ${iso}. This value is generated at request time; do not use a hard-coded date.`;
 }
 
 function isCurrentTimeQuestion(text) {
-  return /\b(what time is it|current time|time right now|time now|what is the date|today.s date|current date|date today|aaj ki date|abhi time|abhi kitne bajay)\b/.test(String(text || '').toLowerCase());
+  const t = String(text || '').toLowerCase();
+  return /\b(what time is it|current time|time right now|time now|what is the date|today.s date|current date|date today|aaj ki date|abhi time|abhi kitne bajay|kitna time hua)\b/.test(t);
 }
 
 function looksLikeFreshInfoQuestion(text) {
   const t = String(text || '').toLowerCase();
-  const patterns = ['latest','today',"today's",'right now','currently','current','this week','this month','recent','recently','newest','news','update','updates','2026','2025','price today','weather','score','scores','result','results','release date','released','available now','who won','current president','current prime minister','aaj','abhi','kab','kab release','kya hua','breaking','live','as of today','this year','stock price','exchange rate','latest version','current version','current status','real-time','real time','season', 'episode', 'kab aayega', 'kab aayegi', 'release ho', 'aayega kya', 'aaya kya', 'new season', 'new episode'];
+  const patterns = [
+    'latest','today',"today's",'right now','currently','current','this week','this month',
+    'recent','recently','newest','news','update','updates','2026','2025','price today',
+    'weather','score','scores','result','results','release date','released','available now',
+    'who won','current president','current prime minister','aaj','abhi','kab','kab release',
+    'kya hua','breaking','live','as of today','this year','stock price','exchange rate',
+    'latest version','current version','current status','real-time','real time',
+    'season', 'episode', 'kab aayega', 'kab aayegi', 'release ho', 'aayega kya', 'aaya kya', 'new season', 'new episode'
+  ];
   return patterns.some(p => t.includes(p));
 }
 
@@ -242,7 +335,10 @@ function extractModelText(data) {
   if (Array.isArray(data)) return data.map(extractModelText).filter(Boolean).join('');
   if (data.text) return data.text;
   if (Array.isArray(data.candidates)) {
-    return data.candidates.map(c => (c?.content?.parts || []).map(p => p?.text || '').join('')).join('');
+    return data.candidates.map(c => {
+      const parts = c?.content?.parts || [];
+      return parts.map(p => p?.text || '').join('');
+    }).join('');
   }
   return '';
 }
@@ -256,17 +352,28 @@ async function askSearchDecision(userText) {
   try {
     const res = await fetchWithTimeout(RADOX_API, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
         model: RADOX_DECISION_MODEL,
-        messages: [{ role: 'system', content: 'Reply ONLY "YES" or "NO".' }, { role: 'user', content: `Does this need current/live web info? "${userText}"` }],
-        temperature: 0, max_tokens: 5, stream: false
+        messages: [
+          { role: 'system', content: 'Reply ONLY "YES" or "NO".' },
+          { role: 'user', content: `Does this need current/live web info? "${userText}"` }
+        ],
+        temperature: 0,
+        max_tokens: 5,
+        stream: false
       })
     }, 6000);
     if (!res.ok) return false;
     const data = await res.json();
-    return (data?.choices?.[0]?.message?.content || '').trim().toUpperCase().startsWith('YES');
-  } catch (e) { return false; }
+    const answer = (data?.choices?.[0]?.message?.content || '').trim().toUpperCase();
+    return answer.startsWith('YES');
+  } catch (e) {
+    return false;
+  }
 }
 
 async function tavilySearch(query) {
@@ -276,17 +383,38 @@ async function tavilySearch(query) {
     const res = await fetchWithTimeout('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key: key, query, search_depth: 'basic', topic: 'general', max_results: 6, include_answer: false, include_raw_content: false })
+      body: JSON.stringify({
+        api_key: key,
+        query,
+        search_depth: 'basic',
+        topic: 'general',
+        max_results: 6,
+        include_answer: false,
+        include_raw_content: false
+      })
     }, 10000);
     if (!res.ok) return { results: [], error: 'Tavily HTTP ' + res.status };
     const data = await res.json();
-    return { results: (Array.isArray(data.results) ? data.results : []).map(r => ({ title: r.title || '', url: r.url || '', content: r.content || r.snippet || '' })).filter(r => r.title || r.url || r.content), error: null };
-  } catch (err) { return { results: [], error: err?.message || 'Tavily search failed' }; }
+    const results = (Array.isArray(data.results) ? data.results : []).map(r => ({
+      title: r.title || '',
+      url: r.url || '',
+      content: r.content || r.snippet || ''
+    })).filter(r => r.title || r.url || r.content);
+    return { results, error: null };
+  } catch (err) {
+    return { results: [], error: err?.message || 'Tavily search failed' };
+  }
 }
 
 async function quantumSearch(query) {
   if (!query) return [];
-  const settled = await Promise.allSettled([tavilySearch(query), duckDuckGoSearch(query), wikipediaSearch(query), wikidataSearch(query), googleNewsSearch(query)]);
+  const settled = await Promise.allSettled([
+    tavilySearch(query),
+    duckDuckGoSearch(query),
+    wikipediaSearch(query),
+    wikidataSearch(query),
+    googleNewsSearch(query)
+  ]);
   const names = ['Tavily Web Search', 'DuckDuckGo', 'Wikipedia', 'Wikidata', 'News'];
   const allResults = [];
   settled.forEach((r, i) => {
@@ -305,15 +433,24 @@ async function quantumSearch(query) {
 
 async function duckDuckGoSearch(query) {
   try {
-    const res = await fetchWithTimeout(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`, { headers: { 'User-Agent': 'QuantumCore/1.0' } }, 8000);
+    const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
+    const res = await fetchWithTimeout(url, { headers: { 'User-Agent': 'QuantumCore/1.0' } }, 8000);
     if (!res.ok) return { results: [], error: 'HTTP ' + res.status };
     const data = await res.json();
     const results = [];
-    if (data.AbstractText && data.AbstractURL) results.push({ title: data.Heading || query, url: data.AbstractURL, content: data.AbstractText });
-    if (data.Answer && data.AbstractURL) results.push({ title: 'Answer', url: data.AbstractURL, content: String(data.Answer) });
+    if (data.AbstractText && data.AbstractURL) {
+      results.push({ title: data.Heading || query, url: data.AbstractURL, content: data.AbstractText });
+    }
+    if (data.Answer && data.AbstractURL) {
+      results.push({ title: 'Answer', url: data.AbstractURL, content: String(data.Answer) });
+    }
     (data.RelatedTopics || []).slice(0, 5).forEach(t => {
       if (t.Text && t.FirstURL) results.push({ title: t.Text.slice(0, 90), url: t.FirstURL, content: t.Text });
-      else if (t.Topics && Array.isArray(t.Topics)) t.Topics.slice(0, 2).forEach(st => { if (st.Text && st.FirstURL) results.push({ title: st.Text.slice(0, 90), url: st.FirstURL, content: st.Text }); });
+      else if (t.Topics && Array.isArray(t.Topics)) {
+        t.Topics.slice(0, 2).forEach(st => {
+          if (st.Text && st.FirstURL) results.push({ title: st.Text.slice(0, 90), url: st.FirstURL, content: st.Text });
+        });
+      }
     });
     return { results, error: null };
   } catch (err) { return { results: [], error: err.message }; }
@@ -321,14 +458,21 @@ async function duckDuckGoSearch(query) {
 
 async function wikipediaSearch(query) {
   try {
-    const res = await fetchWithTimeout(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=3&origin=*`, { headers: { 'User-Agent': 'QuantumCore/1.0' } }, 8000);
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=3&origin=*`;
+    const res = await fetchWithTimeout(searchUrl, { headers: { 'User-Agent': 'QuantumCore/1.0' } }, 8000);
     if (!res.ok) return { results: [], error: 'HTTP ' + res.status };
     const data = await res.json();
     const searchResults = (data.query && data.query.search) || [];
-    const results = searchResults.map(r => ({ title: r.title || '', url: 'https://en.wikipedia.org/wiki/' + encodeURIComponent(r.title), content: (r.snippet || '').replace(/<[^>]+>/g, '') }));
+    const results = searchResults.map(r => ({
+      title: r.title || '',
+      url: 'https://en.wikipedia.org/wiki/' + encodeURIComponent(r.title),
+      content: (r.snippet || '').replace(/<[^>]+>/g, '')
+    }));
     if (searchResults.length > 0) {
+      const topTitle = searchResults[0].title;
       try {
-        const sumRes = await fetchWithTimeout(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(searchResults[0].title)}`, { headers: { 'User-Agent': 'QuantumCore/1.0' } }, 6000);
+        const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topTitle)}`;
+        const sumRes = await fetchWithTimeout(summaryUrl, { headers: { 'User-Agent': 'QuantumCore/1.0' } }, 6000);
         if (sumRes.ok) {
           const sumData = await sumRes.json();
           if (sumData.extract) {
@@ -344,17 +488,23 @@ async function wikipediaSearch(query) {
 
 async function wikidataSearch(query) {
   try {
-    const res = await fetchWithTimeout(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&limit=3&origin=*`, { headers: { 'User-Agent': 'QuantumCore/1.0' } }, 8000);
+    const url = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&limit=3&origin=*`;
+    const res = await fetchWithTimeout(url, { headers: { 'User-Agent': 'QuantumCore/1.0' } }, 8000);
     if (!res.ok) return { results: [], error: 'HTTP ' + res.status };
     const data = await res.json();
-    const results = (data.search || []).slice(0, 3).map(r => ({ title: r.label || r.id || '', url: r.concepturi || `https://www.wikidata.org/wiki/${r.id}`, content: (r.description || '') + (r.aliases && r.aliases.length ? ' (aliases: ' + r.aliases.slice(0, 3).join(', ') + ')' : '') })).filter(r => r.content);
+    const results = (data.search || []).slice(0, 3).map(r => ({
+      title: r.label || r.id || '',
+      url: r.concepturi || `https://www.wikidata.org/wiki/${r.id}`,
+      content: (r.description || '') + (r.aliases && r.aliases.length ? ' (aliases: ' + r.aliases.slice(0, 3).join(', ') + ')' : '')
+    })).filter(r => r.content);
     return { results, error: null };
   } catch (err) { return { results: [], error: err.message }; }
 }
 
 async function googleNewsSearch(query) {
   try {
-    const res = await fetchWithTimeout(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QuantumCore/1.0)' } }, 8000);
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+    const res = await fetchWithTimeout(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QuantumCore/1.0)' } }, 8000);
     if (!res.ok) return { results: [], error: 'HTTP ' + res.status };
     const xml = await res.text();
     const items = [];
@@ -366,7 +516,13 @@ async function googleNewsSearch(query) {
       const link = (itemXml.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '';
       const pubDate = (itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || '';
       const description = (itemXml.match(/<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/) || [])[1] || '';
-      if (title) items.push({ title: title.replace(/<[^>]+>/g, '').trim(), url: link.trim(), content: (pubDate ? '[' + pubDate + '] ' : '') + description.replace(/<[^>]+>/g, '').slice(0, 300) });
+      if (title) {
+        items.push({
+          title: title.replace(/<[^>]+>/g, '').trim(),
+          url: link.trim(),
+          content: (pubDate ? '[' + pubDate + '] ' : '') + description.replace(/<[^>]+>/g, '').slice(0, 300)
+        });
+      }
     }
     return { results: items, error: null };
   } catch (err) { return { results: [], error: err.message }; }
@@ -374,12 +530,18 @@ async function googleNewsSearch(query) {
 
 function buildSearchContext(results) {
   if (!results || !results.length) return '';
-  return `\n\nWEB SEARCH RESULTS:\n${results.map((r, i) => `\n[${i + 1}] [${r.source || 'Web'}]\nTitle: ${r.title || ''}\nURL: ${r.url || ''}\nContent: ${r.content || ''}\n`).join('\n')}\n\nUse the web results when relevant. Cite sources as [1], [2], etc.`;
+  return `\n\nWEB SEARCH RESULTS:\n${results.map((r, i) =>
+    `\n[${i + 1}] [${r.source || 'Web'}]\nTitle: ${r.title || ''}\nURL: ${r.url || ''}\nContent: ${r.content || ''}\n`
+  ).join('\n')}\n\nUse the web results when relevant. Cite sources as [1], [2], etc.`;
 }
 
 function sourcesEventForClient(searchResults) {
   if (!searchResults || !searchResults.length) return null;
-  return searchResults.slice(0, 10).map(r => ({ title: r.title || '', url: r.url || '', source: r.source || 'Web' }));
+  return searchResults.slice(0, 10).map(r => ({
+    title: r.title || '',
+    url: r.url || '',
+    source: r.source || 'Web'
+  }));
 }
 
 async function callRadoxAI(model, messages, systemPrompt, temperature) {
@@ -387,10 +549,22 @@ async function callRadoxAI(model, messages, systemPrompt, temperature) {
   if (!key) throw new Error('RADOX_API_KEY not configured');
   const res = await fetchWithTimeout(RADOX_API, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages: [{ role: 'system', content: systemPrompt }, ...messages], temperature: typeof temperature === 'number' ? temperature : 0.7, max_tokens: 8192, stream: true })
+    headers: {
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      temperature: typeof temperature === 'number' ? temperature : 0.7,
+      max_tokens: 8192,
+      stream: true
+    })
   }, 60000);
-  if (!res.ok) throw new Error(`Radox ${model} HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Radox ${model} HTTP ${res.status}: ${err.substring(0, 200)}`);
+  }
   return res;
 }
 
@@ -401,9 +575,16 @@ async function callGemini(model, contents, systemInstruction, generationConfig) 
   const res = await fetchWithTimeout(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents, systemInstruction: { parts: [{ text: systemInstruction }] }, generationConfig })
+    body: JSON.stringify({
+      contents,
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      generationConfig
+    })
   }, 60000);
-  if (!res.ok) throw new Error(`Gemini ${model} HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini ${model} HTTP ${res.status}: ${err.substring(0, 200)}`);
+  }
   return res;
 }
 
@@ -416,21 +597,33 @@ function extractMermaidBlock(text) {
 }
 
 function validateMermaid(code) {
-  if (!code || code.length > 20000) return { valid: false, error: 'Diagram is empty or too large.' };
+  if (!code || code.length > 20000) {
+    return { valid: false, error: 'Diagram is empty or too large.' };
+  }
   const lines = code.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  if (!lines.length || !/^(flowchart|graph)\s+(TD|TB|BT|RL|LR)\b/i.test(lines[0])) return { valid: false, error: 'The first line must be flowchart TD.' };
+  if (!lines.length || !/^(flowchart|graph)\s+(TD|TB|BT|RL|LR)\b/i.test(lines[0])) {
+    return { valid: false, error: 'The first line must be flowchart TD (or another valid direction).' };
+  }
   let hasConnection = false;
   for (const line of lines.slice(1)) {
     if (line.startsWith('%%')) continue;
-    if (/(-->|---|-.->|==>|<--|<-->)(\s*)$/.test(line)) return { valid: false, error: 'Incomplete arrow: ' + line };
+    if (/(-->|---|-.->|==>|<--|<-->)(\s*)$/.test(line)) {
+      return { valid: false, error: 'Incomplete arrow: ' + line };
+    }
     const openSquare = (line.match(/\[/g) || []).length;
     const closeSquare = (line.match(/\]/g) || []).length;
-    if (openSquare !== closeSquare) return { valid: false, error: 'Unbalanced square brackets: ' + line };
+    if (openSquare !== closeSquare) {
+      return { valid: false, error: 'Unbalanced square brackets: ' + line };
+    }
     if (/-->|---|-.->|==>|<--|<-->/.test(line)) {
       hasConnection = true;
       const sides = line.split(/-->|---|-.->|==>|<--|<-->/);
-      if (sides.length < 2 || !sides[0].trim() || !sides[1].trim()) return { valid: false, error: 'Invalid connection: ' + line };
-      if (/\]\s+[A-Za-z_][A-Za-z0-9_]*\s*(-->|---|-.->|==>)/.test(line)) return { valid: false, error: 'Keep nodes on separate lines: ' + line };
+      if (sides.length < 2 || !sides[0].trim() || !sides[1].trim()) {
+        return { valid: false, error: 'Invalid connection: ' + line };
+      }
+      if (/\]\s+[A-Za-z_][A-Za-z0-9_]*\s*(-->|---|-.->|==>)/.test(line)) {
+        return { valid: false, error: 'Keep node definitions and connections on separate lines: ' + line };
+      }
     }
   }
   if (!hasConnection) return { valid: false, error: 'No node connections were found.' };
@@ -450,8 +643,12 @@ async function generateDiagramWithRepair(contents, systemInstruction, generation
   let previousText = '';
 
   for (let attempt = 0; attempt < attempts.length; attempt++) {
-    const nextContents = attempt === 0 ? contents : [...contents, { role: 'model', parts: [{ text: previousText.slice(0, 10000) }] }, { role: 'user', parts: [{ text: attempts[attempt] + (attempt === 1 ? lastError + '\nReturn the complete corrected Mermaid code block only.' : '') }] }];
-    const url = `${GEMINI_API}${model}:generateContent?key=${encodeURIComponent(key)}`;
+    const nextContents = attempt === 0 ? contents : [
+      ...contents,
+      { role: 'model', parts: [{ text: previousText.slice(0, 10000) }] },
+      { role: 'user', parts: [{ text: attempts[attempt] + (attempt === 1 ? lastError + '\nReturn the complete corrected Mermaid code block only.' : '') }] }
+    ];
+     const url = `${GEMINI_API}${model}:generateContent?key=${encodeURIComponent(key)}`;
     const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -462,7 +659,7 @@ async function generateDiagramWithRepair(contents, systemInstruction, generation
       })
     }, 60000);
     if (!response.ok) {
-      lastError = `Gemini HTTP ${response.status}`;
+      lastError = `Gemini HTTP ${response.status}: ${(await response.text()).slice(0, 180)}`;
       previousText = '';
       continue;
     }
@@ -509,15 +706,41 @@ function contentsToMessages(contents) {
   return messages;
 }
 
+/* =========================================================
+   IDENTITY + FORMAT INSTRUCTIONS
+   ========================================================= */
 const IDENTITY_ENFORCEMENT = `IDENTITY AND TRANSPARENCY
 - Your product name is Quantum Core AI, an application built by Usman Saleem.
-- If asked who built the app, say it was built by Usman Saleem.`;
+- Do not claim that the app was trained from scratch or that it has no relationship to third-party AI providers.
+- If asked which model/provider powers a response, be transparent: the app can route requests through the providers/models configured by its server, and the exact model may vary by request. Do not guess a specific model unless runtime information confirms it.
+- If asked who built the app, say it was built by Usman Saleem.
+- Follow the user's requested language and answer naturally.`;
 
 const FORMAT_INSTRUCTION = `
 🚨🚨🚨 SYSTEM FAILURE WARNING: PROFESSIONAL FORMATTING IS MANDATORY 🚨🚨🚨
-1. 🔴 PROFESSIONAL MARKDOWN (USE FREQUENTLY): **Bold**, *Italics*, Tables, Blockquotes.
-2. 🔴 UNIVERSAL CODE FORMATTING: Use newlines. NEVER output code in a single line. Wrap code in triple backticks.
+
+1. 🔴 PROFESSIONAL MARKDOWN (USE FREQUENTLY):
+   - **Bold** for emphasis.
+   - *Italics* for subtle emphasis or foreign words.
+   - __Underline__ for important terms (if supported).
+   - ~~Strikethrough~~ for deleted text.
+   - Use \`inline code\` for commands or short syntax.
+   - Use \`> \` for Blockquotes (great for quotes or important warnings).
+   - Use Markdown Tables for comparisons.
+   - Use Headings (##, ###) with a SPACE after the hashtag.
+
+2. 🔴 UNIVERSAL CODE FORMATTING:
+   - You MUST use proper newlines and indentation for ANY language.
+   - NEVER output code in a single line. 
+   - Wrap code in triple backticks with the language name.
+   ✅ CORRECT (Python):
+   \`\`\`python
+   def main():
+       print("Hello")
+   \`\`\`
+
 3. LISTS: Start on a new line with "- " or "1. ".
+
 IF YOU BREAK THESE RULES, THE SYSTEM WILL CRASH.
 `;
 
@@ -527,6 +750,14 @@ When a user asks for a diagram or flowchart, produce exactly one valid Mermaid c
 Use simple syntax. For flowcharts start with flowchart TD.
 Use unique node IDs, quote node labels with double quotes, and put connections on separate lines.
 Every arrow must have a source and destination. Never emit malformed placeholders or incomplete arrows.
+Do not use HTML tags in node labels. Check that every connection is complete before answering.
+Example:
+\`\`\`mermaid
+flowchart TD
+    A["Your Device"] --> B["Router"]
+    B --> C["Internet"]
+    C --> D["Website Server"]
+\`\`\`
 `;
 
 export default async function handler(req) {
@@ -542,6 +773,7 @@ export default async function handler(req) {
   const activeMode = body?.mode || 'fast';
   const clientInstruction = body?.systemInstruction?.parts?.[0]?.text || '';
   const userText = getLatestUserText(contents);
+  
   const conversationId = body?.conversationId || body?.conversation_id || body?.chatId || body?.chat_id || '';
 
   if (!contents.length || !userText) {
@@ -560,11 +792,12 @@ export default async function handler(req) {
       if (Array.isArray(bans) && bans.length > 0) {
         const ban = bans[0];
         if (ban.ban_type === 'permanent') {
-          return json({ error: `🚫 Aapko permanently ban kar diya gaya hai. Reason: ${ban.reason || 'Rules violation'}` }, 403);
+          return json({ error: `Your account is permanently banned for violating the rules/spam.` }, 403);
         } else if (ban.ban_type === 'temporary') {
           const expireTime = new Date(ban.expires_at).getTime();
           if (Date.now() < expireTime) {
-            return json({ error: `⏳ Aap temporarily banned hain. Unban time: ${new Date(ban.expires_at).toLocaleString()}` }, 403);
+            const remainingHours = Math.ceil((expireTime - Date.now()) / (1000 * 60 * 60));
+            return json({ error: `Your account is banned for ${remainingHours} hours.\nReason: ${ban.reason || 'violating rules/spam'}` }, 403);
           }
         }
       }
@@ -586,7 +819,7 @@ export default async function handler(req) {
         }
 
         if (userLimit.current_usage >= userLimit.daily_limit) {
-          return json({ error: `🛑 Aapki daily limit (${userLimit.daily_limit} messages) khatam ho chuki hai. Kal wapis aayein.` }, 429);
+          return json({ error: `You have reached your message limit that is set by the admins for you, please be patient and wait for your limits to reset.` }, 429);
         }
 
         // Increment Usage
