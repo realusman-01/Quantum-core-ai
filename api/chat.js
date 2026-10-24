@@ -117,6 +117,32 @@ function scrubIdentity(text) {
   return text == null ? text : String(text);
 }
 
+// 🧠 Strip <thought>...</thought> blocks (complete + incomplete) — used for DB save + context cleanup
+function stripThoughts(text) {
+  if (text == null) return text;
+  return String(text)
+    .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+    .replace(/<thought>[\s\S]*$/gi, '')
+    .trim();
+}
+
+// 🧠 Strip thoughts from Gemini-style `contents` array (only from assistant/model messages)
+function stripThoughtsFromContents(contents) {
+  if (!Array.isArray(contents)) return contents;
+  return contents.map(m => {
+    if (!m || m.role !== 'model' || !Array.isArray(m.parts)) return m;
+    return {
+      ...m,
+      parts: m.parts.map(p => {
+        if (p && typeof p.text === 'string') {
+          return { ...p, text: stripThoughts(p.text) };
+        }
+        return p;
+      })
+    };
+  });
+}
+
 function makeScrubber(send) {
   let heldBack = '';
   const HOLD_BACK = 40;
@@ -692,7 +718,11 @@ function contentsToMessages(contents) {
         imageMime = p.inlineData.mimeType || 'image/jpeg';
       }
     }
-    const textContent = textParts.join('\n').trim();
+    let textContent = textParts.join('\n').trim();
+    // 🧠 Strip historical <thought> blocks from assistant messages to keep context clean
+    if (role === 'assistant') {
+      textContent = stripThoughts(textContent);
+    }
     if (imageData) {
       const contentArray = [];
       if (textContent) contentArray.push({ type: 'text', text: textContent });
@@ -903,7 +933,8 @@ export default async function handler(req) {
         const searchContext = buildSearchContext(searchResults);
         const currentDateTime = getCurrentDateTimeContext();
 
-        const finalInstruction = IDENTITY_ENFORCEMENT + '\n\n' + clientInstruction + '\n\n' + currentDateTime + '\n' + memoryContext + '\n' + searchContext + '\n' + FORMAT_INSTRUCTION + '\n' + DIAGRAM_INSTRUCTION + '\n' +
+        // 🧠 THINKING_INSTRUCTION is now included so the model uses <thought> tags
+        const finalInstruction = IDENTITY_ENFORCEMENT + '\n\n' + clientInstruction + '\n\n' + THINKING_INSTRUCTION + '\n\n' + currentDateTime + '\n' + memoryContext + '\n' + searchContext + '\n' + FORMAT_INSTRUCTION + '\n' + DIAGRAM_INSTRUCTION + '\n' +
           '=== 🔴 CURRENT INFORMATION RULES ===\n' +
           '- NEVER use internal training data for releases, news, or current events.\n' +
           '- You MUST rely STRICTLY on the provided WEB SEARCH RESULTS.\n' +
@@ -920,9 +951,12 @@ export default async function handler(req) {
         if (isDiagram) {
           send({ type: 'status', status: 'Creating and checking diagram...', stage: 'writing' });
           try {
-            const diagramText = await generateDiagramWithRepair(contents, finalInstruction, generationConfig);
+            // 🧠 Strip historical thoughts from contents before diagram generation
+            const cleanedContents = stripThoughtsFromContents(contents);
+            const diagramText = await generateDiagramWithRepair(cleanedContents, finalInstruction, generationConfig);
             send({ type: 'chunk', text: diagramText });
-            await saveConversationEvent(userId, conversationId, 'assistant', diagramText);
+            // 🧠 Strip thoughts from DB save
+            await saveConversationEvent(userId, conversationId, 'assistant', stripThoughts(diagramText));
           } catch (diagramError) {
             const errMsg = 'I could not generate a valid diagram after three attempts. Please try a simpler diagram request.';
             send({ type: 'chunk', text: errMsg });
@@ -979,7 +1013,8 @@ export default async function handler(req) {
                 }
               }
               scrubber.flush();
-              await saveConversationEvent(userId, conversationId, 'assistant', fullAiResponse);
+              // 🧠 Strip <thought> blocks before saving to Supabase
+              await saveConversationEvent(userId, conversationId, 'assistant', stripThoughts(fullAiResponse));
               send({ type: 'done' });
               succeeded = true;
               controller.close();
@@ -1031,7 +1066,8 @@ export default async function handler(req) {
                 }
               }
               scrubber.flush();
-              await saveConversationEvent(userId, conversationId, 'assistant', fullAiResponse);
+              // 🧠 Strip <thought> blocks before saving to Supabase
+              await saveConversationEvent(userId, conversationId, 'assistant', stripThoughts(fullAiResponse));
               send({ type: 'done' });
               succeeded = true;
               controller.close();
