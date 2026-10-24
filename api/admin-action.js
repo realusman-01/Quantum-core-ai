@@ -66,13 +66,23 @@ export default async function handler(req) {
       return new Response(JSON.stringify({ success: true, msg: `Limit set to ${limit}` }), { status: 200 });
     }
 
-    // 5. DELETE MEMORY
+    // 5. RESET LIMIT (NEW)
+    if (action === 'reset_limit') {
+      const today = new Date().toISOString().split('T')[0];
+      await fetch(`${SUPABASE_URL}/rest/v1/user_limits?user_id=eq.${userId}`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ current_usage: 0, last_reset_date: today })
+      });
+      return new Response(JSON.stringify({ success: true, msg: 'User limit reset successfully' }), { status: 200 });
+    }
+
+    // 6. DELETE MEMORY
     if (action === 'delete_memory') {
       await fetch(`${SUPABASE_URL}/rest/v1/memories?id=eq.${memoryId}`, { method: 'DELETE', headers });
       return new Response(JSON.stringify({ success: true, msg: 'Memory Deleted from AI' }), { status: 200 });
     }
 
-    // 6. UPDATE MEMORY
+    // 7. UPDATE MEMORY
     if (action === 'update_memory') {
       await fetch(`${SUPABASE_URL}/rest/v1/memories?id=eq.${memoryId}`, {
         method: 'PATCH', headers,
