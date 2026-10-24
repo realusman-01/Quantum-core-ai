@@ -2355,10 +2355,10 @@ botElement.innerHTML = renderMarkdown(displayText, finalElapsed);
         });
       }else{setTimeout(function(){if(liveVoiceActive||callActive){updateLiveVoiceStatus("🎤 Listening...");startLiveListening();}},800);}
     }
-  }else{
-    botElement.innerText="No response received.";
-    if(liveVoiceActive||callActive)setTimeout(startLiveListening,800);
-  }
+  } else {
+  botElement.innerHTML = '<span style="color:var(--danger)">⚠️ AI returned an empty response. This might happen during peak hours. Please click retry.</span> <button class="code-btn" style="display:inline-flex;margin-left:6px;" onclick="retryLastMessage()"><i class="fa-solid fa-rotate"></i> Retry</button>';
+  if (liveVoiceActive || callActive) setTimeout(startLiveListening, 800);
+}
 }
 
 async function updateSmartTitle(prompt){
