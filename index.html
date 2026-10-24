@@ -1919,16 +1919,26 @@ async function sendMessage(overrideText){
   finally{setGenerating(false);abortController=null;}
 }
 
-function showErrorInMessage(msgEl,error){
-  const errStr=String(error.message||error);
-  let errMsg="⚠️ Something went wrong. ";
-  if(errStr.indexOf("503")!==-1||errStr.indexOf("overloaded")!==-1)errMsg="⚠️ AI server is currently busy. Please try again in 30 seconds.";
-  else if(errStr.indexOf("429")!==-1||errStr.indexOf("quota")!==-1)errMsg="⚠️ Daily quota reached. Please try again tomorrow.";
-  else if(errStr.indexOf("413")!==-1||errStr.indexOf("too large")!==-1||errStr.indexOf("PAYLOAD")!==-1||errStr.indexOf("TOO_LARGE")!==-1)errMsg="⚠️ Chat bohot lambi ho gayi hai. Nayi chat shuru karein.";
-  else if(errStr.indexOf("Failed to fetch")!==-1||errStr.indexOf("NetworkError")!==-1)errMsg="⚠️ Network error. Check your internet connection.";
-  else if(errStr.indexOf("400")!==-1)errMsg="⚠️ Invalid request. Try clearing and resending.";
-  else errMsg="⚠️ Server error. Please try again.";
-  msgEl.innerHTML='<span style="color:var(--danger)">'+errMsg+'</span> <button class="code-btn" style="display:inline-flex;margin-left:6px;" onclick="retryLastMessage()">Retry</button>';
+function showErrorInMessage(msgEl, error) {
+  const errStr = String(error.message || error);
+  let errMsg = "⚠️ Something went wrong. ";
+  
+  // Custom Backend Errors (Ban/Limit)
+  if (errStr.includes("banned for") || errStr.includes("permanently banned") || errStr.includes("reached your message limit")) {
+    const cleanMsg = errStr.replace(/^API \d+: /, ''); // Remove "API 403:" if present
+    msgEl.innerHTML = `<div style="color:var(--danger); font-weight:bold; padding:14px; background:rgba(239,68,68,0.1); border-radius:10px; border:1px solid var(--danger); line-height: 1.5;">${cleanMsg.replace(/\n/g, '<br>')}</div>`;
+    return;
+  }
+  
+  // Normal Errors
+  if (errStr.indexOf("503") !== -1 || errStr.indexOf("overloaded") !== -1) errMsg = "⚠️ AI server is currently busy. Please try again in 30 seconds.";
+  else if (errStr.indexOf("429") !== -1 || errStr.indexOf("quota") !== -1) errMsg = "⚠️ Daily quota reached. Please try again tomorrow.";
+  else if (errStr.indexOf("413") !== -1 || errStr.indexOf("too large") !== -1 || errStr.indexOf("PAYLOAD") !== -1 || errStr.indexOf("TOO_LARGE") !== -1) errMsg = "⚠️ This chat has gotten too long. Please start a new chat.";
+  else if (errStr.indexOf("Failed to fetch") !== -1 || errStr.indexOf("NetworkError") !== -1) errMsg = "⚠️ Network error. Check your internet connection.";
+  else if (errStr.indexOf("400") !== -1) errMsg = "⚠️ Invalid request. Try clearing and resending.";
+  else errMsg = "⚠️ Server error. Please try again.";
+  
+  msgEl.innerHTML = '<span style="color:var(--danger)">' + errMsg + '</span> <button class="code-btn" style="display:inline-flex;margin-left:6px;" onclick="retryLastMessage()">Retry</button>';
 }
 function retryLastMessage(){
   const chat=getCurrentChat();if(!chat)return;
@@ -2096,7 +2106,15 @@ async function streamAIResponse(botElement,userPrompt,signal,imageOverride,botRe
   }
   const payload={contents:contents,systemInstruction:{parts:[{text:finalInstruction}]},generationConfig:{temperature:aiTemperature},mode:activeMode,userId:QUANTUM_USER_ID,conversationId:currentChatId};
   const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:signal});
-  if(!response.ok){const err=await response.text();throw new Error("API "+response.status+": "+err.substring(0,200));}
+  if (!response.ok) {
+  let errData;
+  try { errData = await response.json(); } catch (e) {}
+  if (errData && errData.error) {
+    throw new Error(errData.error); // Throw exact backend message
+  }
+  const err = await response.text();
+  throw new Error("API " + response.status + ": " + err.substring(0, 200));
+}
   await processStream(response,botElement,userPrompt,botRef);
 }
 
