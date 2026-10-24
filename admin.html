@@ -62,27 +62,24 @@
   .stat-card h3 { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
   .stat-card .value { font-size: 28px; font-weight: 800; color: var(--primary); }
 
-  /* Tables */
+  /* Data Sections */
   .data-section { display: none; background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 20px; animation: slideUp 0.4s ease; }
   .data-section.active { display: block; }
   
-  .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 700px; } 
+  /* Desktop Table */
+  .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
+  table { width: 100%; min-width: 800px; border-collapse: collapse; }
   th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
   th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; background: var(--bg); }
   td { color: #e2e8f0; }
-  
-  /* Long Text Handling */
-  .text-wrap { white-space: normal; max-width: 350px; word-break: break-word; }
 
-  /* Badges */
+  /* Badges & Buttons */
   .badge { padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; white-space: nowrap; }
   .badge-user { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
   .badge-bot { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
   .badge-banned { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
   .badge-limited { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
 
-  /* Buttons */
   .action-btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; color: white; margin-right: 6px; margin-bottom: 5px; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px; }
   .action-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
   .btn-ban { background: var(--danger); }
@@ -114,6 +111,7 @@
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   #toast.error { background: var(--danger); }
 
+  /* 📱 MOBILE CARD VIEW (Fixes Squished Text) */
   @media (max-width: 768px) {
     body { flex-direction: column; }
     .sidebar { width: 100%; padding: 10px; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); align-items: center; min-height: 60px; }
@@ -123,6 +121,47 @@
     .main-content { padding: 15px; height: calc(100vh - 60px); overflow-y: auto; }
     .stats-grid { grid-template-columns: 1fr; }
     .header h2 { font-size: 20px; }
+
+    /* Hide Desktop Table Header */
+    thead { display: none; }
+    table, tbody, tr, td { display: block; width: 100%; box-sizing: border-box; }
+    
+    /* Convert Rows to Cards */
+    tr { 
+      background: var(--bg); 
+      border: 1px solid var(--border); 
+      border-radius: 12px; 
+      margin-bottom: 15px; 
+      padding: 15px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    
+    td { 
+      border: none; 
+      padding: 8px 0; 
+      text-align: right; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center;
+      border-bottom: 1px dashed var(--border);
+    }
+    td:last-child { border-bottom: none; padding-bottom: 0; text-align: right; display: block; margin-top: 10px;}
+    
+    /* Add Labels to Data */
+    td::before { 
+      content: attr(data-label); 
+      font-weight: 600; 
+      color: var(--muted); 
+      text-transform: uppercase; 
+      font-size: 11px; 
+      margin-right: 15px;
+      text-align: left;
+    }
+
+    /* Special handling for long text */
+    td.text-wrap { display: block; text-align: left; }
+    td.text-wrap::before { display: block; margin-bottom: 5px; }
+    .action-btn { width: 100%; justify-content: center; margin-bottom: 8px; }
   }
 </style>
 </head>
@@ -132,7 +171,7 @@
 <div id="login-screen">
   <div class="login-box">
     <h2><i class="fa-solid fa-shield-halved" style="color:var(--primary)"></i> QUANTUM ADMIN</h2>
-    <p style="color:var(--muted); margin-bottom:20px; font-size:13px;">Enter your secret password to access the control room.</p>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px;">Enter your secret password.</p>
     <div id="login-error" style="color:var(--danger); font-size:13px; margin-bottom:10px; display:none; font-weight:600;">Incorrect Password!</div>
     <input type="password" id="admin-pass" placeholder="Enter Admin Password" onkeypress="if(event.key === 'Enter') checkPassword()">
     <button onclick="checkPassword()">Unlock Dashboard</button>
@@ -152,13 +191,12 @@
 <!-- MAIN CONTENT -->
 <div class="main-content" id="main-content" style="display:none;">
   
-  <!-- DASHBOARD -->
   <div id="tab-dashboard" class="data-section active">
     <div class="header">
-      <h2>Dashboard Overview</h2>
+      <h2>Dashboard</h2>
       <button class="refresh-btn" id="refresh-btn" onclick="fetchData()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
     </div>
-    <div class="error" id="error-msg" style="color:var(--danger); margin-bottom:15px; display:none;"></div>
+    <div class="error" id="error-msg" style="color:var(--danger); margin-bottom:15px; display:none; background:rgba(239,68,68,0.1); padding:10px; border-radius:8px; border:1px solid var(--danger);"></div>
     <div class="stats-grid">
       <div class="stat-card"><h3>Total Events</h3><div class="value" id="stat-events">-</div></div>
       <div class="stat-card"><h3>Total Memories</h3><div class="value" id="stat-memories">-</div></div>
@@ -166,7 +204,6 @@
     </div>
   </div>
 
-  <!-- USER MANAGEMENT -->
   <div id="tab-users" class="data-section">
     <div class="header"><h2>User Control</h2></div>
     <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Manage bans, unbans, and limits.</p>
@@ -178,10 +215,9 @@
     </div>
   </div>
 
-  <!-- MEMORY CONTROL -->
   <div id="tab-memories" class="data-section">
-    <div class="header"><h2>AI Memory Control</h2></div>
-    <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Edit or Delete what the AI remembers about users.</p>
+    <div class="header"><h2>Memory Control</h2></div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Edit or Delete what the AI remembers.</p>
     <div class="table-wrapper">
       <table>
         <thead><tr><th>USER ID</th><th>TYPE</th><th>CONTENT</th><th>ACTIONS</th></tr></thead>
@@ -190,7 +226,6 @@
     </div>
   </div>
 
-  <!-- LIVE LOGS -->
   <div id="tab-events" class="data-section">
     <div class="header"><h2>Live Logs</h2></div>
     <div class="table-wrapper">
@@ -233,12 +268,9 @@
 <div id="toast">Action Successful</div>
 
 <script>
-  // ==========================================
-  // 🔴 YAHAN APNI DETAILS DAALO 🔴 (BAR BAR CHECK KAREIN)
-  // ==========================================
+  // 🔴 YAHAN APNI DETAILS DAALO 🔴
   const SUPABASE_URL = "https://lxykguzcbduihevdnqxo.supabase.co"; 
   const SUPABASE_ANON_KEY = "sb_publishable_MB2IQunxTua-G4oLkweSWw_qDOZalQg"; 
-  // ==========================================
 
   let adminPassword = ""; 
   let globalBans = [];
@@ -335,6 +367,7 @@
     modalUserId = null;
   }
 
+  // 🚨 FIXED BUG: Data save karke modal band karna
   async function confirmModal() {
     if (!modalAction || !modalUserId) return;
     const inputVal = document.getElementById('modal-input').value;
@@ -343,8 +376,12 @@
       showToast("Please enter a value", true); return;
     }
     
+    // 🔥 SAVE BEFORE CLOSING
+    const actionToRun = modalAction;
+    const userToRun = modalUserId;
+    
     closeModal();
-    await executeAction(modalAction, modalUserId, inputVal);
+    await executeAction(actionToRun, userToRun, inputVal);
   }
 
   async function fetchData() {
@@ -420,11 +457,11 @@
 
         return `
           <tr style="animation: slideUp 0.3s ease ${i * 0.05}s both;">
-            <td><small>${uId}</small></td>
-            <td>${statusBadge}</td>
-            <td>${limitInfo ? limitInfo.daily_limit + ' msgs' : 'Default'}</td>
-            <td><strong style="color:var(--primary);">~${estTokens}</strong></td>
-            <td>${actionBtns}</td>
+            <td data-label="User ID"><small>${uId}</small></td>
+            <td data-label="Status">${statusBadge}</td>
+            <td data-label="Daily Limit">${limitInfo ? limitInfo.daily_limit + ' msgs' : 'Default'}</td>
+            <td data-label="Est. Tokens"><strong style="color:var(--primary);">~${estTokens}</strong></td>
+            <td data-label="Actions">${actionBtns}</td>
           </tr>
         `;
       }).join('') : '<tr><td colspan="5" style="text-align:center; color:var(--muted);">No users found.</td></tr>';
@@ -432,12 +469,12 @@
       // Render Memories
       document.getElementById('memories-table-body').innerHTML = memories.length ? memories.map((m, i) => `
         <tr style="animation: slideUp 0.3s ease ${i * 0.05}s both;">
-          <td><small>${m.user_id.slice(0, 15)}...</small></td>
-          <td><span class="badge badge-user">${m.memory_type || 'Memory'}</span></td>
-          <td class="text-wrap">${m.content}</td>
-          <td>
-            <button class="action-btn btn-edit" onclick="openEditMemory('${m.id}')"><i class="fa-solid fa-pen"></i></button>
-            <button class="action-btn btn-delete" onclick="deleteMemory('${m.id}')"><i class="fa-solid fa-trash"></i></button>
+          <td data-label="User ID"><small>${m.user_id.slice(0, 15)}...</small></td>
+          <td data-label="Type"><span class="badge badge-user">${m.memory_type || 'Memory'}</span></td>
+          <td data-label="Content" class="text-wrap">${m.content}</td>
+          <td data-label="Actions">
+            <button class="action-btn btn-edit" onclick="openEditMemory('${m.id}')"><i class="fa-solid fa-pen"></i> Edit</button>
+            <button class="action-btn btn-delete" onclick="deleteMemory('${m.id}')"><i class="fa-solid fa-trash"></i> Delete</button>
           </td>
         </tr>
       `).join('') : '<tr><td colspan="4" style="text-align:center; color:var(--muted);">No memories found.</td></tr>';
@@ -445,9 +482,9 @@
       // Render Events
       document.getElementById('events-table-body').innerHTML = events.length ? events.map((e, i) => `
         <tr style="animation: slideUp 0.3s ease ${i * 0.05}s both;">
-          <td><small>${e.user_id ? e.user_id.slice(0,15) : 'N/A'}...</small></td>
-          <td><span class="badge ${e.role === 'user' ? 'badge-user' : 'badge-bot'}">${e.role.toUpperCase()}</span></td>
-          <td class="text-wrap">${e.content ? e.content.replace(/</g, "&lt;") : ''}</td>
+          <td data-label="User ID"><small>${e.user_id ? e.user_id.slice(0,15) : 'N/A'}...</small></td>
+          <td data-label="Role"><span class="badge ${e.role === 'user' ? 'badge-user' : 'badge-bot'}">${e.role.toUpperCase()}</span></td>
+          <td data-label="Content" class="text-wrap">${e.content ? e.content.replace(/</g, "&lt;") : ''}</td>
         </tr>
       `).join('') : '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No events found.</td></tr>';
 
@@ -537,7 +574,7 @@
 
   async function deleteMemory(id) {
     modalAction = 'delete_memory';
-    modalUserId = 'MEMORY'; // Dummy user ID
+    modalUserId = 'MEMORY'; 
     currentEditMemoryId = id;
     
     document.getElementById('modal-title').innerText = "Delete Memory";
@@ -568,7 +605,7 @@
     }
   }
 
-  // Override confirm for memory deletion
+  // 🚨 OVERRIDE: Handles Memory Deletion specifically
   const originalConfirmModal = confirmModal;
   confirmModal = async function() {
     if (modalAction === 'delete_memory' && modalUserId === 'MEMORY') {
