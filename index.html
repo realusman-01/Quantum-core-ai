@@ -397,6 +397,13 @@ body.select-locked .msg-wrap.select-active *{-webkit-user-select:text !important
 .call-ctrl{width:52px;height:52px;font-size:18px;}
 #call-controls{gap:12px;padding:20px 16px 32px;}
 }
+/* 🧠 THINKING BLOCK (DeepSeek Style) */
+.think-box{background:rgba(139, 92, 246, 0.05);border-left:4px solid #8b5cf6;border-radius:12px;margin-bottom:12px;overflow:hidden;transition:all .3s ease;border-top:1px solid rgba(139, 92, 246, 0.1);border-right:1px solid rgba(139, 92, 246, 0.1);border-bottom:1px solid rgba(139, 92, 246, 0.1);}
+.think-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(139, 92, 246, 0.1);color:#a78bfa;font-size:12px;font-weight:800;cursor:pointer;user-select:none;letter-spacing:0.5px;}
+.think-header i{font-size:12px;transition:transform .3s ease;}
+.think-box.collapsed .think-header i{transform:rotate(-90deg);}
+.think-content{padding:14px;color:var(--muted);font-size:13px;line-height:1.7;border-top:1px solid rgba(139, 92, 246, 0.15);white-space:pre-wrap;font-style:italic;}
+.think-box.collapsed .think-content{display:none;}
 </style>
 </head>
 
@@ -1668,7 +1675,7 @@ function copyMermaidCode(btn){
   copyText(code);
 }
 
-/* ============ MARKDOWN ============ */
+/* ============ MARKDOWN & THINKING ============ */
 function formatAIText(text) {
   text = text.replace(/```([a-z]+)\s+([\s\S]*?)\s*```/gi, function(match, lang, code) {
     let formattedCode = code.trim();
@@ -1706,69 +1713,94 @@ function formatAIText(text) {
   return text;
 }
 
+// 🧠 DEEPSEEK STYLE THINKING PARSER
 function renderMarkdown(text){
   if(!window.marked)return escapeHTML(text);
   
   text = formatAIText(text);
 
+  // Extract <thought> block if present
+  let thoughtHtml = "";
+  const thoughtRegex = /<thought>([\s\S]*?)<\/thought>/i;
+  const thoughtMatch = text.match(thoughtRegex);
+  
+  if (thoughtMatch) {
+    const thoughtContent = thoughtMatch[1].trim();
+    // Calculate reading time (approx 50 words per 5 seconds)
+    const wordCount = thoughtContent.split(/\s+/).length;
+    const seconds = Math.max(1, Math.round(wordCount / 10)); 
+    
+    thoughtHtml = `
+      <div class="think-box">
+        <div class="think-header" onclick="this.parentElement.classList.toggle('collapsed')">
+          <i class="fa-solid fa-chevron-down"></i> Thought for ${seconds} seconds
+        </div>
+        <div class="think-content">${escapeHTML(thoughtContent)}</div>
+      </div>
+    `;
+    
+    // Remove thought block from main text
+    text = text.replace(thoughtRegex, '').trim();
+  }
+
   const renderer=new marked.Renderer();
   renderer.link=function(obj){const href=obj.href,text=obj.text,title=obj.title;const safeText=text||href;const tAttr=title?' title="'+escapeHTML(title)+'"':'';return '<a href="'+escapeHTML(href)+'"'+tAttr+' rel="noopener noreferrer">'+safeText+'</a>';};
-renderer.code = function(obj) {
-  let rawText = obj.text;
-  const language = (obj.lang || "code").toLowerCase().replace(/[^a-z0-9+#-]/g, "");
-  
-  if (language !== "mermaid" && !rawText.includes("flowchart") && !rawText.includes("sequenceDiagram")) {
+  renderer.code = function(obj) {
+    let rawText = obj.text;
+    const language = (obj.lang || "code").toLowerCase().replace(/[^a-z0-9+#-]/g, "");
     
-    rawText = rawText.replace(/(["'`])([^"'`]*?)\1/g, function(match) {
-      return match.replace(/\n\s*/g, ' ');
-    });
-    
-    if (["javascript", "js", "c", "cpp", "c++", "java", "php", "csharp", "cs", "css"].includes(language)) {
-      rawText = rawText.replace(/([{};])/g, '$1\n');
-      rawText = rawText.replace(/([^ \n])\s+(function|class|const|let|var|if|for|while|switch|import|export|return|public|private)\s+/g, '$1\n$2 ');
+    if (language !== "mermaid" && !rawText.includes("flowchart") && !rawText.includes("sequenceDiagram")) {
+      
+      rawText = rawText.replace(/(["'`])([^"'`]*?)\1/g, function(match) {
+        return match.replace(/\n\s*/g, ' ');
+      });
+      
+      if (["javascript", "js", "c", "cpp", "c++", "java", "php", "csharp", "cs", "css"].includes(language)) {
+        rawText = rawText.replace(/([{};])/g, '$1\n');
+        rawText = rawText.replace(/([^ \n])\s+(function|class|const|let|var|if|for|while|switch|import|export|return|public|private)\s+/g, '$1\n$2 ');
+      }
+      
+      if (language === "sql") {
+        rawText = rawText.replace(/\s+(SELECT|FROM|WHERE|INSERT INTO|UPDATE|DELETE FROM|CREATE TABLE|ALTER TABLE|GROUP BY|ORDER BY|JOIN|LEFT JOIN|RIGHT JOIN)\s+/gi, '\n$1 ');
+      }
+      
+      if (language === "python" || rawText.includes("def ") || rawText.includes("import ")) {
+        rawText = rawText.replace(/=\s*\n\s*/g, '= ');
+        rawText = rawText.replace(/\(\s*\n\s*/g, '(');
+        rawText = rawText.replace(/,\s*\n\s*/g, ', ');
+        rawText = rawText.replace(/(?:^|\s)(def\s+|class\s+|import\s+|from\s+|if\s+|elif\s+|else\s*:|for\s+|while\s+|try\s*:|except\s*:|finally\s*:)/g, '\n$1');
+        rawText = rawText.replace(/:\s*(?!\n)/g, ':\n    ');
+      }
+      
+      if (language === "html" || language === "xml") {
+        rawText = rawText.replace(/(<[^>]+>)/g, '\n$1\n');
+      }
+      
+      rawText = rawText.replace(/\n{3,}/g, '\n\n').trim();
     }
     
-    if (language === "sql") {
-      rawText = rawText.replace(/\s+(SELECT|FROM|WHERE|INSERT INTO|UPDATE|DELETE FROM|CREATE TABLE|ALTER TABLE|GROUP BY|ORDER BY|JOIN|LEFT JOIN|RIGHT JOIN)\s+/gi, '\n$1 ');
+    const mermaidKeywords = /^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
+    const looksLikeMermaid = mermaidKeywords.test(rawText.trim());
+    
+    if (language === "mermaid" || (language === "code" && looksLikeMermaid)) {
+      return '<div class="code-wrapper" data-mermaid="1"><div class="code-head"><span class="code-lang">MERMAID DIAGRAM</span><div class="code-actions"></div></div><pre><code class="language-mermaid hljs">' + escapeHTML(rawText) + '</code></pre></div>';
     }
     
-    if (language === "python" || rawText.includes("def ") || rawText.includes("import ")) {
-      rawText = rawText.replace(/=\s*\n\s*/g, '= ');
-      rawText = rawText.replace(/\(\s*\n\s*/g, '(');
-      rawText = rawText.replace(/,\s*\n\s*/g, ', ');
-      rawText = rawText.replace(/(?:^|\s)(def\s+|class\s+|import\s+|from\s+|if\s+|elif\s+|else\s*:|for\s+|while\s+|try\s*:|except\s*:|finally\s*:)/g, '\n$1');
-      rawText = rawText.replace(/:\s*(?!\n)/g, ':\n    ');
+    let highlighted = "";
+    try {
+      if (language && window.hljs && hljs.getLanguage(language)) highlighted = hljs.highlight(rawText, { language: language }).value;
+      else if (window.hljs) highlighted = hljs.highlightAuto(rawText).value;
+      else highlighted = escapeHTML(rawText);
+    } catch (e) { highlighted = escapeHTML(rawText); }
+    
+    const encoded = encodeURIComponent(rawText);
+    let runBtn = "";
+    if (language === "python" || rawText.includes("def ")) {
+      runBtn = '<button class="code-btn" data-code="' + encoded + '" onclick="runPythonCode(this)"><i class="fa-solid fa-play"></i> Run</button>';
     }
     
-    if (language === "html" || language === "xml") {
-      rawText = rawText.replace(/(<[^>]+>)/g, '\n$1\n');
-    }
-    
-    rawText = rawText.replace(/\n{3,}/g, '\n\n').trim();
-  }
-  
-  const mermaidKeywords = /^\s*(graph|flowchart|sequenceDiagram|mindmap|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|journey|gitGraph|quadrantChart|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)\b/i;
-  const looksLikeMermaid = mermaidKeywords.test(rawText.trim());
-  
-  if (language === "mermaid" || (language === "code" && looksLikeMermaid)) {
-    return '<div class="code-wrapper" data-mermaid="1"><div class="code-head"><span class="code-lang">MERMAID DIAGRAM</span><div class="code-actions"></div></div><pre><code class="language-mermaid hljs">' + escapeHTML(rawText) + '</code></pre></div>';
-  }
-  
-  let highlighted = "";
-  try {
-    if (language && window.hljs && hljs.getLanguage(language)) highlighted = hljs.highlight(rawText, { language: language }).value;
-    else if (window.hljs) highlighted = hljs.highlightAuto(rawText).value;
-    else highlighted = escapeHTML(rawText);
-  } catch (e) { highlighted = escapeHTML(rawText); }
-  
-  const encoded = encodeURIComponent(rawText);
-  let runBtn = "";
-  if (language === "python" || rawText.includes("def ")) {
-    runBtn = '<button class="code-btn" data-code="' + encoded + '" onclick="runPythonCode(this)"><i class="fa-solid fa-play"></i> Run</button>';
-  }
-  
-  return '<div class="code-wrapper"><div class="code-head"><span class="code-lang">' + escapeHTML(language || "code") + '</span><div class="code-actions">' + runBtn + '<button class="code-btn" style="background:transparent;border:1px solid rgba(255,255,255,0.2)" data-code="' + encoded + '" onclick="copyCodeFromButton(this)"><i class="fa-solid fa-copy"></i> Copy</button></div></div><pre><code class="hljs">' + highlighted + '</code></pre><div class="code-output"></div></div>';
-};
+    return '<div class="code-wrapper"><div class="code-head"><span class="code-lang">' + escapeHTML(language || "code") + '</span><div class="code-actions">' + runBtn + '<button class="code-btn" style="background:transparent;border:1px solid rgba(255,255,255,0.2)" data-code="' + encoded + '" onclick="copyCodeFromButton(this)"><i class="fa-solid fa-copy"></i> Copy</button></div></div><pre><code class="hljs">' + highlighted + '</code></pre><div class="code-output"></div></div>';
+  };
   
   let html=marked.parse(text,{renderer:renderer,breaks:true});
   
@@ -1780,7 +1812,8 @@ renderer.code = function(obj) {
     const match=prefixes.find(function(prefix){return plain.startsWith(prefix);});
     if(match){const box=document.createElement("div");box.className="key-point";box.innerHTML='<div class="key-point-title">📌 '+escapeHTML(match.replace(":",""))+'</div>'+p.innerHTML;p.replaceWith(box);}
   });
-  return temp.innerHTML;
+  
+  return thoughtHtml + temp.innerHTML;
 }
 function renderStreamText(text){
   if(!text)return "";
@@ -2113,6 +2146,7 @@ async function processStream(response,botElement,userPrompt,botRef){
   const decoder=new TextDecoder("utf-8");
   let buffer="",fullText="",rafId=null,lastRenderTime=0;
   let sourcesList = [];
+  let thinkStartTime = null;
   const MIN_RENDER_INTERVAL=30;
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
@@ -2126,24 +2160,15 @@ async function processStream(response,botElement,userPrompt,botRef){
     return t;
   }
 
-  function renderStageIcon(stage){
-    if(stage==="thinking") return '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>';
-    if(stage==="searching") return '<i class="fa-solid fa-magnifying-glass" style="animation:pulseSearch 1.4s infinite;"></i>';
-    if(stage==="analyzing") return '<i class="fa-solid fa-brain"></i>';
-    if(stage==="writing") return '<i class="fa-solid fa-pen-fancy"></i>';
-    return '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>';
-  }
-  function renderStageTitle(stage){
-    let base = t.thinking || "Thinking";
-    if(stage==="searching") base = t.searching || "Searching the web";
-    else if(stage==="analyzing") base = t.analyzing || "Analyzing";
-    else if(stage==="writing") base = t.writing || "Writing answer";
-    return base + '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
-  }
   function renderStage(stage){
+    let icon = '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>';
+    if(stage==="searching") icon = '<i class="fa-solid fa-magnifying-glass" style="animation:pulseSearch 1.4s infinite;"></i>';
+    if(stage==="analyzing") icon = '<i class="fa-solid fa-brain"></i>';
+    if(stage==="writing") icon = '<i class="fa-solid fa-pen-fancy"></i>';
+    
     botElement.innerHTML = '<div class="thinking-stage">' +
-      '<div class="stage-icon'+(stage==="searching"?" pulse":"")+'">'+renderStageIcon(stage)+'</div>' +
-      '<div class="stage-text"><div class="stage-title">'+renderStageTitle(stage)+'</div></div>' +
+      '<div class="stage-icon'+(stage==="searching"?" pulse":"")+'">'+icon+'</div>' +
+      '<div class="stage-text"><div class="stage-title">Thinking<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div></div>' +
     '</div>';
     if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
   }
@@ -2156,12 +2181,53 @@ async function processStream(response,botElement,userPrompt,botRef){
       rafId=null;
       lastRenderTime=performance.now();
       requestAnimationFrame(function(){
-        botElement.innerHTML=renderStreamText(scrubClient(fullText));
+        let displayText = scrubClient(fullText);
+        
+        // 🧠 LIVE STREAMING THINKING LOGIC
+        const thinkStart = displayText.indexOf('<thought>');
+        const thinkEnd = displayText.indexOf('</thought>');
+        
+        if (thinkStart !== -1) {
+          if (thinkStartTime === null) thinkStartTime = Date.now();
+          
+          if (thinkEnd === -1) {
+            // Still thinking
+            const thoughtContent = displayText.substring(thinkStart + 9).trim();
+            const elapsed = Math.floor((Date.now() - thinkStartTime) / 1000);
+            botElement.innerHTML = `
+              <div class="think-box">
+                <div class="think-header" style="color:#a78bfa;">
+                  <i class="fa-solid fa-spinner fa-spin"></i> Thinking... (${elapsed}s)
+                </div>
+                <div class="think-content">${escapeHTML(thoughtContent)}</div>
+              </div>
+            `;
+          } else {
+            // Thinking done, show collapsed + answer
+            const thoughtContent = displayText.substring(thinkStart + 9, thinkEnd).trim();
+            const finalAnswer = displayText.substring(thinkEnd + 10).trim();
+            const elapsed = Math.max(1, Math.floor((Date.now() - thinkStartTime) / 1000));
+            
+            botElement.innerHTML = `
+              <div class="think-box collapsed">
+                <div class="think-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                  <i class="fa-solid fa-chevron-down"></i> Thought for ${elapsed} seconds
+                </div>
+                <div class="think-content">${escapeHTML(thoughtContent)}</div>
+              </div>
+              ${renderMarkdown(finalAnswer)}
+            `;
+          }
+        } else {
+          botElement.innerHTML = renderStreamText(displayText);
+        }
+        
         if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
         if(autoScrollEnabled){chatBox.scrollTop=chatBox.scrollHeight;}
       });
     },delay);
   }
+
   while(true){
     const result=await reader.read();
     if(result.done)break;
@@ -2182,12 +2248,11 @@ async function processStream(response,botElement,userPrompt,botRef){
           else if(s.indexOf("analy")!==-1 || s.indexOf("verif")!==-1) stage="analyzing";
           else if(s.indexOf("writ")!==-1 || s.indexOf("answer")!==-1) stage="writing";
           else if(s.indexOf("think")!==-1) stage="thinking";
-          renderStage(stage);
+          if(!fullText) renderStage(stage);
           continue;
         }
         if(parsed.type==="sources" && Array.isArray(parsed.sources)){sourcesList = parsed.sources;continue;}
         if(parsed.type==="chunk" && parsed.text){
-          if(!fullText) renderStage("writing");
           fullText+=parsed.text;
           scheduleRender();
           continue;
@@ -2195,15 +2260,18 @@ async function processStream(response,botElement,userPrompt,botRef){
         if(parsed.type==="error"){throw new Error(parsed.error||parsed.details||"Server error");}
         if(parsed.type==="done"){continue;}
         const chunk=parsed.candidates&&parsed.candidates[0]&&parsed.candidates[0].content&&parsed.candidates[0].content.parts&&parsed.candidates[0].content.parts[0]&&parsed.candidates[0].content.parts[0].text;
-        if(chunk){if(!fullText) renderStage("writing");fullText+=chunk;scheduleRender();}
+        if(chunk){fullText+=chunk;scheduleRender();}
       }catch(e){
         if(e&&e.message&&(e.message.indexOf("Server error")!==-1||e.message.indexOf("All Gemini")!==-1))throw e;
       }
     }
   }
   if(rafId){clearTimeout(rafId);rafId=null;}
+  
   if(fullText.trim()){
-    const imagePrompt=extractImagePrompt(fullText);
+    let displayText = scrubClient(fullText);
+    const imagePrompt=extractImagePrompt(displayText);
+    
     if(imagePrompt){
       const latestChat=getCurrentChat();
       if(latestChat)latestChat.messages.push({role:"bot",content:fullText,image:null});
@@ -2214,7 +2282,10 @@ async function processStream(response,botElement,userPrompt,botRef){
       if(liveVoiceActive||callActive)updateLiveVoiceStatus("🎤 Listening...");
       return;
     }
-    botElement.innerHTML=renderMarkdown(scrubClient(fullText));
+
+    // Final render (Thinking logic finalized)
+    botElement.innerHTML = renderMarkdown(displayText);
+
     if(window.renderMathInElement){try{renderMathInElement(botElement,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
     renderAllMermaids(botElement);
 
@@ -2257,7 +2328,7 @@ async function processStream(response,botElement,userPrompt,botRef){
     scheduleSave();renderChatList();
     if(autoScrollEnabled)chatBox.scrollTop=chatBox.scrollHeight;
     if(liveVoiceActive||callActive){
-      const speakText=fullText.replace(/\[IMAGE_GEN\][^\n]*/g,"").replace(/\[IMAGE_DATA\][^\s]+/g,"Image.").replace(/```mermaid[\s\S]*?```/g,"Diagram shown.").trim();
+      const speakText=fullText.replace(/\[IMAGE_GEN\][^\n]*/g,"").replace(/\[IMAGE_DATA\][^\s]+/g,"Image.").replace(/<thought>[\s\S]*?<\/thought>/gi,"").replace(/```mermaid[\s\S]*?```/g,"Diagram shown.").trim();
       updateLiveVoiceStatus("🔊 Speaking...");
       if(speakText){
         toggleSpeech(speakText,null,function(){
@@ -2445,6 +2516,7 @@ function toggleSpeech(text, button, onEnd){
     .replace(/\[IMAGE_GEN\][^\n]*/g,"")
     .replace(/\[IMAGE_DATA\][^\s]+/g,"Image.")
     .replace(/\[PDF_DATA\][^|]*\|[^|]*\|[\s\S]*?(?=\n\n|$)/g,"PDF content.")
+    .replace(/<thought>[\s\S]*?<\/thought>/gi,"")
     .replace(/```mermaid[\s\S]*?```/g,"Diagram shown.")
     .replace(/```[\s\S]*?```/g,"Code omitted.")
     .replace(/`([^`]+)`/g,"$1")
