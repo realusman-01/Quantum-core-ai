@@ -3,188 +3,83 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>Quantum Admin - Control Room</title>
+<title>Admin Panel - Quantum Core AI</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #050810;
-    --card-bg: #111625; /* Solid color instead of blur for speed */
-    --primary: #3b82f6;
-    --text: #f8fafc;
-    --muted: #94a3b8;
-    --border: #1e2942;
-    --danger: #ef4444;
-    --success: #10b981;
-    --warning: #f59e0b;
+    --bg: #0a0e1a; --card: #151b2e; --primary: #3b82f6; --text: #f8fafc;
+    --muted: #94a3b8; --border: #1e2942; --danger: #ef4444;
+    --success: #10b981; --warning: #f59e0b;
   }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
   
-  * { 
-    box-sizing: border-box; 
-    margin: 0; 
-    padding: 0; 
-    font-family: 'Inter', sans-serif;
-    -webkit-tap-highlight-color: transparent; /* 🛠️ Removes Blue Touch Effect */
-  }
-  
-  body { 
-    background: var(--bg); 
-    color: var(--text); 
-    display: flex; 
-    height: 100vh; 
-    overflow: hidden; 
-  }
-
-  /* Animations (Lighter for performance) */
-  @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes spin { 100% { transform: rotate(360deg); } }
-  @keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-
-  /* Login Screen */
+  /* Login */
   #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-  .login-box { 
-    background: var(--card-bg); padding: 40px 30px; border-radius: 16px; border: 1px solid var(--border); 
-    text-align: center; width: 90%; max-width: 400px; animation: fadeInUp 0.4s ease;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  }
-  .login-box h2 { color: var(--primary); margin-bottom: 20px; font-size: 24px; font-weight: 800; letter-spacing: 1px; }
-  .login-box input { width: 100%; padding: 14px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 10px; margin-bottom: 20px; font-size: 16px; outline: none; }
-  .login-box input:focus { border-color: var(--primary); }
-  .login-box button { 
-    width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; 
-    font-weight: 800; cursor: pointer; font-size: 16px; transition: 0.2s; 
-  }
-  .login-box button:hover { background: #2563eb; }
+  .login-box { background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid var(--border); text-align: center; width: 90%; max-width: 350px; }
+  .login-box h2 { color: var(--primary); margin-bottom: 20px; }
+  .login-box input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 15px; outline: none; }
+  .login-box button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
   /* Sidebar */
-  .sidebar { 
-    width: 260px; background: var(--card-bg); border-right: 1px solid var(--border); 
-    display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; z-index: 10;
-  }
-  .sidebar h1 { font-size: 20px; color: var(--text); margin-bottom: 30px; letter-spacing: 2px; text-align: center; font-weight: 800;}
-  .sidebar h1 span { color: var(--primary); }
-  .nav-item { 
-    padding: 14px 18px; margin-bottom: 10px; border-radius: 10px; cursor: pointer; color: var(--muted); 
-    font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 12px;
-  }
-  .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
-  .nav-item.active { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); }
-  .logout-btn { margin-top: auto; color: var(--danger); border: 1px solid var(--danger); padding: 12px; border-radius: 10px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.2s; }
-  .logout-btn:hover { background: var(--danger); color: white; }
+  .sidebar { width: 250px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
+  .sidebar h1 { font-size: 18px; color: var(--primary); margin-bottom: 30px; letter-spacing: 2px; text-align: center; }
+  .nav-item { padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+  .nav-item:hover, .nav-item.active { background: var(--primary); color: white; }
+  .logout-btn { margin-top: auto; color: var(--danger); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; font-weight: bold; }
 
   /* Main Content */
-  .main-content { 
-    flex: 1; 
-    padding: 25px; 
-    overflow-y: auto; 
-    display: flex; 
-    flex-direction: column; 
-    min-height: 0; 
-  }
-  .main-content::-webkit-scrollbar { width: 5px; }
-  .main-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  .main-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .refresh-btn { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; cursor: pointer; }
   
-  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; animation: fadeInUp 0.3s ease; }
-  .header h2 { font-size: 24px; font-weight: 800; }
-  .refresh-btn { 
-    background: var(--card-bg); color: var(--text); border: 1px solid var(--border); padding: 10px 18px; 
-    border-radius: 10px; cursor: pointer; transition: 0.2s; font-weight: 600; display: flex; align-items: center; gap: 8px;
-  }
-  .refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
-  .refresh-btn i { transition: 0.4s; }
-  .refresh-btn.loading i { animation: spin 1s infinite; }
-  
-  /* Stats Cards */
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
-  .stat-card { 
-    background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); 
-    position: relative; overflow: hidden; animation: fadeInUp 0.4s ease backwards;
-  }
-  .stat-card:nth-child(1) { animation-delay: 0.1s; }
-  .stat-card:nth-child(2) { animation-delay: 0.2s; }
-  .stat-card:nth-child(3) { animation-delay: 0.3s; }
-  .stat-card:hover { border-color: var(--primary); }
-  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); }
-  .stat-card.danger::before { background: var(--danger); }
-  .stat-card h3 { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
-  .stat-card .value { font-size: 32px; font-weight: 800; color: var(--text); }
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+  .stat-card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+  .stat-card h3 { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; }
+  .stat-card .value { font-size: 28px; font-weight: bold; color: var(--primary); }
 
   /* Tables */
-  .data-section { 
-    display: none; 
-    background: var(--card-bg); 
-    border-radius: 12px; 
-    border: 1px solid var(--border); 
-  }
-  .data-section.active { display: block; animation: fadeInUp 0.3s ease; }
-  
+  .data-section { display: none; background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+  .data-section.active { display: block; }
   .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  
-  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
-  th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; background: #0d121f; }
-  tr:hover { background: rgba(255,255,255,0.02); }
-  td { color: #e2e8f0; }
-  
-  .badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }
-  .badge-user { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
-  .badge-bot { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
-  .badge-banned { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-  .badge-limited { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
-  
-  /* Action Buttons */
-  .action-btn { 
-    padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; 
-    color: white; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; margin: 2px;
-  }
-  .btn-ban { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-  .btn-ban:hover { background: var(--danger); color: white; }
-  .btn-unban { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-  .btn-unban:hover { background: var(--success); color: white; }
-  .btn-limit { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-  .btn-limit:hover { background: var(--warning); color: #000; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 600px; }
+  th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; }
+  td { word-break: break-word; }
 
-  .error-box { color: #f87171; background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 8px; border: 1px solid var(--danger); margin-bottom: 20px; display: none; font-weight: 600; }
+  /* Badges & Buttons */
+  .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+  .badge-user { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+  .badge-bot { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+  .badge-banned { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+  .badge-limited { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
 
-  /* Custom Modals */
+  .action-btn { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; color: white; margin-right: 5px; margin-bottom: 5px; }
+  .btn-ban { background: var(--danger); }
+  .btn-unban { background: var(--success); }
+  .btn-limit { background: var(--warning); color: #000; }
+  .btn-edit { background: var(--primary); }
+  .btn-delete { background: var(--danger); }
+
+  /* Modal */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 10000; }
   .modal-overlay.active { display: flex; }
-  .modal-box { background: var(--card-bg); padding: 25px; border-radius: 16px; border: 1px solid var(--border); width: 90%; max-width: 350px; animation: modalPop 0.2s ease-out; box-shadow: 0 15px 40px rgba(0,0,0,0.6); }
-  .modal-box h3 { font-size: 18px; margin-bottom: 10px; color: var(--text); }
-  .modal-box p { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
-  .modal-box input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 20px; font-size: 15px; outline: none; }
-  .modal-box input:focus { border-color: var(--primary); }
+  .modal-box { background: var(--card); padding: 25px; border-radius: 16px; border: 1px solid var(--border); width: 90%; max-width: 400px; }
+  .modal-box h3 { margin-bottom: 15px; color: var(--primary); }
+  .modal-box textarea { width: 100%; height: 100px; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 8px; margin-bottom: 15px; outline: none; font-size: 14px; resize: vertical; }
   .modal-actions { display: flex; gap: 10px; }
-  .modal-actions button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 14px;}
-  .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
-  .btn-confirm { background: var(--primary); color: white; }
-  .btn-confirm:hover { background: #2563eb; }
+  .modal-actions button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+  .btn-cancel { background: var(--border); color: white; }
+  .btn-save { background: var(--primary); color: white; }
 
-  /* Toast Popup */
-  #toast {
-    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-    background: var(--warning); color: #000; padding: 12px 20px; border-radius: 10px;
-    font-weight: 800; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    opacity: 0; pointer-events: none; transition: 0.3s; z-index: 99999;
-  }
-  #toast.show { opacity: 1; bottom: 40px; }
-  #toast.success { background: var(--success); color: white; }
-  #toast.danger { background: var(--danger); color: white; }
-
-  /* Mobile */
   @media (max-width: 768px) {
     body { flex-direction: column; }
-    .sidebar { 
-      width: 100%; padding: 10px; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); 
-      align-items: center; background: var(--card-bg); min-height: 60px; 
-    }
+    .sidebar { width: 100%; padding: 10px; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); }
     .sidebar h1 { display: none; }
-    .nav-item { margin-bottom: 0; margin-right: 8px; white-space: nowrap; padding: 8px 15px; font-size: 13px; border-radius: 20px; }
-    .logout-btn { margin-top: 0; margin-left: auto; padding: 8px 15px; font-size: 12px; border-radius: 20px; white-space: nowrap; }
-    
-    .main-content { padding: 15px; height: calc(100vh - 60px); overflow-y: auto; }
-    .stats-grid { grid-template-columns: 1fr; }
-    .header h2 { font-size: 20px; }
+    .nav-item { margin-bottom: 0; margin-right: 10px; white-space: nowrap; padding: 8px 12px; font-size: 13px; }
+    .logout-btn { margin-top: 0; margin-left: auto; padding: 8px 12px; font-size: 12px; }
+    .main-content { padding: 15px; height: calc(100vh - 60px); }
   }
 </style>
 </head>
@@ -193,9 +88,8 @@
 <!-- LOGIN SCREEN -->
 <div id="login-screen">
   <div class="login-box">
-    <h2><i class="fa-solid fa-shield-halved" style="color:var(--primary)"></i> QUANTUM ADMIN</h2>
-    <p style="color:var(--muted); margin-bottom:20px; font-size:13px;">Enter your secret password to access the control room.</p>
-    <div id="login-error" style="color:var(--danger); font-size:13px; margin-bottom:10px; display:none; font-weight:600;">Incorrect Password!</div>
+    <h2><i class="fa-solid fa-shield-halved"></i> ADMIN LOGIN</h2>
+    <div id="login-error" style="color:var(--danger); font-size:13px; margin-bottom:10px; display:none;">Incorrect Password!</div>
     <input type="password" id="admin-pass" placeholder="Enter Admin Password" onkeypress="if(event.key === 'Enter') checkPassword()">
     <button onclick="checkPassword()">Unlock Dashboard</button>
   </div>
@@ -203,123 +97,97 @@
 
 <!-- SIDEBAR -->
 <div class="sidebar" id="sidebar" style="display:none;">
-  <h1>QUANTUM <span>ADMIN</span></h1>
+  <h1>QUANTUM ADMIN</h1>
   <div class="nav-item active" onclick="switchTab('dashboard', this)"><i class="fa-solid fa-chart-pie"></i> Dashboard</div>
   <div class="nav-item" onclick="switchTab('users', this)"><i class="fa-solid fa-users-gear"></i> User Control</div>
+  <div class="nav-item" onclick="switchTab('memories', this)"><i class="fa-solid fa-brain"></i> Memory Control</div>
   <div class="nav-item" onclick="switchTab('events', this)"><i class="fa-solid fa-comments"></i> Live Logs</div>
-  <div class="nav-item" onclick="switchTab('memories', this)"><i class="fa-solid fa-brain"></i> AI Memories</div>
   <div class="logout-btn" onclick="logout()"><i class="fa-solid fa-power-off"></i> Logout</div>
 </div>
 
 <!-- MAIN CONTENT -->
 <div class="main-content" id="main-content" style="display:none;">
   
-  <!-- DASHBOARD TAB -->
+  <!-- DASHBOARD -->
   <div id="tab-dashboard" class="data-section active">
     <div class="header">
       <h2>Dashboard Overview</h2>
-      <button class="refresh-btn" id="refresh-btn" onclick="fetchData()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+      <button class="refresh-btn" onclick="fetchData()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
     </div>
-    <div class="error-box" id="error-msg"></div>
-    
+    <div class="error" id="error-msg" style="color:var(--danger); margin-bottom:15px; display:none;"></div>
     <div class="stats-grid">
-      <div class="stat-card">
-        <h3>Total Live Events</h3>
-        <div class="value" id="stat-events">-</div>
-      </div>
-      <div class="stat-card">
-        <h3>AI Memories Built</h3>
-        <div class="value" id="stat-memories">-</div>
-      </div>
-      <div class="stat-card danger">
-        <h3>Banned Users</h3>
-        <div class="value" id="stat-banned" style="color:var(--danger);">-</div>
-      </div>
+      <div class="stat-card"><h3>Total Events</h3><div class="value" id="stat-events">-</div></div>
+      <div class="stat-card"><h3>Total Memories</h3><div class="value" id="stat-memories">-</div></div>
+      <div class="stat-card"><h3>Banned Users</h3><div class="value" id="stat-banned" style="color:var(--danger);">-</div></div>
     </div>
   </div>
 
-  <!-- USER MANAGEMENT TAB -->
+  <!-- USER MANAGEMENT -->
   <div id="tab-users" class="data-section">
-    <div class="header" style="padding: 15px 15px 0 15px;">
-      <h2>User Control</h2>
-    </div>
-    <p style="color:var(--muted); font-size:13px; padding: 0 15px 10px 15px;">Manage bans, unbans, and daily limits here.</p>
+    <div class="header"><h2>User Control</h2></div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Manage bans, unbans, and limits.</p>
     <div class="table-wrapper">
       <table>
         <thead><tr><th>User ID</th><th>Status</th><th>Daily Limit</th><th>Est. Tokens</th><th>Actions</th></tr></thead>
-        <tbody id="users-table-body"><tr><td colspan="5" style="text-align:center; padding:20px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</td></tr></tbody>
+        <tbody id="users-table-body"><tr><td colspan="5" style="text-align:center;">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <!-- EVENTS TAB -->
-  <div id="tab-events" class="data-section">
-    <div class="header" style="padding: 15px 15px 0 15px;">
-      <h2>Live Logs</h2>
+  <!-- MEMORY CONTROL -->
+  <div id="tab-memories" class="data-section">
+    <div class="header"><h2>AI Memory Control</h2></div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:15px;">Edit or Delete what the AI remembers about users.</p>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>User ID</th><th>Type</th><th>Content</th><th>Actions</th></tr></thead>
+        <tbody id="memories-table-body"><tr><td colspan="4" style="text-align:center;">Loading...</td></tr></tbody>
+      </table>
     </div>
+  </div>
+
+  <!-- LIVE LOGS -->
+  <div id="tab-events" class="data-section">
+    <div class="header"><h2>Live Logs</h2></div>
     <div class="table-wrapper">
       <table>
         <thead><tr><th>User ID</th><th>Role</th><th>Content</th></tr></thead>
-        <tbody id="events-table-body"><tr><td colspan="3" style="text-align:center; padding:20px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- MEMORIES TAB -->
-  <div id="tab-memories" class="data-section">
-    <div class="header" style="padding: 15px 15px 0 15px;">
-      <h2>AI Memories (Dreaming)</h2>
-    </div>
-    <div class="table-wrapper">
-      <table>
-        <thead><tr><th>User ID</th><th>Type</th><th>Memory Content</th></tr></thead>
-        <tbody id="memories-table-body"><tr><td colspan="3" style="text-align:center; padding:20px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</td></tr></tbody>
+        <tbody id="events-table-body"><tr><td colspan="3" style="text-align:center;">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
 
 </div>
 
-<!-- CUSTOM MODAL -->
-<div id="action-modal" class="modal-overlay">
+<!-- EDIT MEMORY MODAL -->
+<div id="memory-modal" class="modal-overlay">
   <div class="modal-box">
-    <h3 id="modal-title">Action</h3>
-    <p id="modal-desc">Please enter a value below.</p>
-    <input type="number" id="modal-input" placeholder="Enter value...">
+    <h3>Edit Memory</h3>
+    <textarea id="memory-edit-input" placeholder="Enter new memory content..."></textarea>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-confirm" id="modal-confirm-btn" onclick="submitModalAction()">Confirm</button>
+      <button class="btn-cancel" onclick="closeMemoryModal()">Cancel</button>
+      <button class="btn-save" onclick="saveMemory()">Save Changes</button>
     </div>
   </div>
 </div>
-
-<!-- TOAST POPUP -->
-<div id="toast">This user is not banned</div>
 
 <script>
-  // ==========================================
-  // 🔴 YAHAN APNI DETAILS DAALO 🔴
-  // ==========================================
-  const SUPABASE_URL = "https://lxykguzcbduihevdnqxo.supabase.co"; // Apna URL
-  const SUPABASE_ANON_KEY = "sb_publishable_MB2IQunxTua-G4oLkweSWw_qDOZalQg"; // Apni Anon Key
-  // ==========================================
+  const SUPABASE_URL = "https://lxykguzcbduihevdnqxo.supabase.co"; 
+  const SUPABASE_ANON_KEY = "sb_publishable_MB2IQunxTua-G4oLkweSWw_qDOZalQg"; 
 
   let adminPassword = ""; 
-  let currentAction = null;
-  let currentUserId = null;
-  let globalBans = []; 
+  let globalBans = [];
+  let currentEditMemoryId = null;
 
   async function checkPassword() {
     const pass = document.getElementById('admin-pass').value;
     if (!pass) return;
-
     const btn = document.querySelector('.login-box button');
-    btn.innerText = "Authenticating...";
+    btn.innerText = "Checking...";
 
     try {
       const response = await fetch('/api/admin-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: pass })
       });
       const data = await response.json();
@@ -328,7 +196,6 @@
         adminPassword = pass; 
         localStorage.setItem('qc_admin_auth', 'true');
         sessionStorage.setItem('qc_admin_pass_temp', pass);
-        
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('sidebar').style.display = 'flex';
         document.getElementById('main-content').style.display = 'flex';
@@ -339,7 +206,7 @@
         btn.innerText = "Unlock Dashboard";
       }
     } catch (error) {
-      showToast("Server error: " + error.message, "danger");
+      alert("Server error: " + error.message);
       btn.innerText = "Unlock Dashboard";
     }
   }
@@ -365,32 +232,16 @@
     navEl.classList.add('active');
   }
 
-  function showToast(msg, type = 'warning') {
-    const toast = document.getElementById('toast');
-    toast.innerText = msg;
-    toast.className = 'show ' + type;
-    setTimeout(() => { toast.className = ''; }, 3000);
-  }
-
   async function fetchData() {
     const errorEl = document.getElementById('error-msg');
-    const refreshBtn = document.getElementById('refresh-btn');
     errorEl.style.display = 'none';
-    refreshBtn.classList.add('loading');
     
-    if (SUPABASE_URL.includes("YOUR_PROJECT") || SUPABASE_ANON_KEY.includes("YOUR_ANON")) {
-      errorEl.innerText = "Error: Supabase URL or Key is missing!";
-      errorEl.style.display = 'block';
-      refreshBtn.classList.remove('loading');
-      return;
-    }
-
     const headers = { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` };
 
     try {
       const [eventsRes, memRes, bansRes, limitsRes] = await Promise.all([
         fetch(`${SUPABASE_URL}/rest/v1/conversation_events?select=*&order=created_at.desc&limit=50`, { headers }),
-        fetch(`${SUPABASE_URL}/rest/v1/memories?select=*&order=created_at.desc&limit=20`, { headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/memories?select=*&order=created_at.desc&limit=50`, { headers }),
         fetch(`${SUPABASE_URL}/rest/v1/blocked_users?select=*`, { headers }),
         fetch(`${SUPABASE_URL}/rest/v1/user_limits?select=*`, { headers })
       ]);
@@ -402,6 +253,7 @@
       
       globalBans = bans; 
 
+      // Stats
       document.getElementById('stat-events').innerText = events.length || 0;
       document.getElementById('stat-memories').innerText = memories.length || 0;
       document.getElementById('stat-banned').innerText = bans.length || 0;
@@ -411,7 +263,7 @@
       const limitUsers = limits.map(l => l.user_id);
       const uniqueUsers = [...new Set([...eventUsers, ...banUsers, ...limitUsers])].filter(Boolean);
 
-      // RENDER USERS TABLE
+      // Render Users
       document.getElementById('users-table-body').innerHTML = uniqueUsers.length ? uniqueUsers.map(uId => {
         const banInfo = bans.find(b => b.user_id === uId);
         const limitInfo = limits.find(l => l.user_id === uId);
@@ -425,13 +277,12 @@
           statusBadge = `<span class="badge badge-limited">Limited (${limitInfo.current_usage}/${limitInfo.daily_limit})</span>`;
         }
 
-        // Unban Button (Always present)
-        actionBtns += `<button class="action-btn btn-unban" onclick="promptAction('unban', '${uId}')"><i class="fa-solid fa-unlock"></i> Unban</button>`;
+        actionBtns += `<button class="action-btn btn-unban" onclick="handleAction('unban', '${uId}')"><i class="fa-solid fa-unlock"></i> Unban</button>`;
 
         if (!banInfo) {
-          actionBtns += `<button class="action-btn btn-ban" onclick="promptAction('ban_permanent', '${uId}')">Ban</button>`;
-          actionBtns += `<button class="action-btn btn-ban" onclick="promptAction('ban_temporary', '${uId}')">Temp</button>`;
-          actionBtns += `<button class="action-btn btn-limit" onclick="promptAction('set_limit', '${uId}')">Limit</button>`;
+          actionBtns += `<button class="action-btn btn-ban" onclick="handleAction('ban_permanent', '${uId}')">Ban</button>`;
+          actionBtns += `<button class="action-btn btn-ban" onclick="handleAction('ban_temporary', '${uId}')">Temp</button>`;
+          actionBtns += `<button class="action-btn btn-limit" onclick="handleAction('set_limit', '${uId}')">Limit</button>`;
         }
 
         const userEvents = events.filter(e => e.user_id === uId);
@@ -448,6 +299,20 @@
         `;
       }).join('') : '<tr><td colspan="5" style="text-align:center; color:var(--muted);">No users found.</td></tr>';
 
+      // Render Memories (NEW!)
+      document.getElementById('memories-table-body').innerHTML = memories.length ? memories.map(m => `
+        <tr>
+          <td><small>${m.user_id}</small></td>
+          <td><span class="badge badge-user">${m.memory_type || 'Memory'}</span></td>
+          <td>${m.content}</td>
+          <td>
+            <button class="action-btn btn-edit" onclick="openEditMemory('${m.id}', \`${m.content.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)"><i class="fa-solid fa-pen"></i></button>
+            <button class="action-btn btn-delete" onclick="deleteMemory('${m.id}')"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        </tr>
+      `).join('') : '<tr><td colspan="4" style="text-align:center; color:var(--muted);">No memories found.</td></tr>';
+
+      // Render Events
       document.getElementById('events-table-body').innerHTML = events.length ? events.map(e => `
         <tr>
           <td><small>${e.user_id ? e.user_id.slice(0,12) : 'N/A'}...</small></td>
@@ -456,107 +321,94 @@
         </tr>
       `).join('') : '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No events found.</td></tr>';
 
-      document.getElementById('memories-table-body').innerHTML = memories.length ? memories.map(m => `
-        <tr>
-          <td><small>${m.user_id ? m.user_id.slice(0,12) : 'N/A'}...</small></td>
-          <td><span style="color:var(--primary);font-weight:800;">${m.memory_type || 'N/A'}</span></td>
-          <td style="white-space: normal; max-width: 300px;">${m.content ? m.content.replace(/</g, "&lt;") : ''}</td>
-        </tr>
-      `).join('') : '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No memories found.</td></tr>';
-
     } catch (err) {
       errorEl.innerText = "Fetch Error: " + err.message;
       errorEl.style.display = 'block';
-    } finally {
-      refreshBtn.classList.remove('loading');
     }
   }
 
-  function promptAction(action, userId) {
-    // Check if user is actually banned
-    if (action === 'unban') {
-      const isBanned = globalBans.some(b => b.user_id === userId);
-      if (!isBanned) {
-        showToast("This user is not banned", "warning");
-        return;
-      }
-      executeAction(action, userId, "Are you sure you want to unban this user?", null);
-      return;
-    }
+  // 🚨 EDIT MEMORY LOGIC
+  function openEditMemory(id, content) {
+    currentEditMemoryId = id;
+    document.getElementById('memory-edit-input').value = content;
+    document.getElementById('memory-modal').classList.add('active');
+  }
 
-    currentAction = action;
-    currentUserId = userId;
+  function closeMemoryModal() {
+    document.getElementById('memory-modal').classList.remove('active');
+    currentEditMemoryId = null;
+  }
+
+  async function saveMemory() {
+    const newContent = document.getElementById('memory-edit-input').value.trim();
+    if (!newContent || !currentEditMemoryId) return;
     
-    const modal = document.getElementById('action-modal');
-    const title = document.getElementById('modal-title');
-    const desc = document.getElementById('modal-desc');
-    const input = document.getElementById('modal-input');
-
-    if (action === 'ban_permanent') {
-      executeAction(action, userId, "Are you sure you want to PERMANENTLY ban this user?", null);
-    } 
-    else if (action === 'ban_temporary') {
-      title.innerText = "Temporary Ban";
-      desc.innerText = "How many hours should the user be banned for?";
-      input.value = "24";
-      input.style.display = 'block';
-      modal.classList.add('active');
-    }
-    else if (action === 'set_limit') {
-      title.innerText = "Set Daily Limit";
-      desc.innerText = "How many messages per day is allowed?";
-      input.value = "50";
-      input.style.display = 'block';
-      modal.classList.add('active');
-    }
-  }
-
-  function closeModal() {
-    document.getElementById('action-modal').classList.remove('active');
-    currentAction = null;
-    currentUserId = null;
-  }
-
-  function submitModalAction() {
-    const val = document.getElementById('modal-input').value;
-    if (!val) return;
+    const btn = document.querySelector('.btn-save');
+    btn.innerText = "Saving...";
     
-    if (currentAction === 'ban_temporary') {
-      executeAction(currentAction, currentUserId, null, { durationHours: parseInt(val), reason: "Temporary Cool Down" });
-    } else if (currentAction === 'set_limit') {
-      executeAction(currentAction, currentUserId, null, { limit: parseInt(val) });
-    }
+    await sendAdminAction('update_memory', null, { memoryId: currentEditMemoryId, newContent: newContent });
+    btn.innerText = "Save Changes";
+    closeMemoryModal();
+    fetchData();
   }
 
-  async function executeAction(action, userId, confirmMsg, extraPayload = {}) {
-    if (confirmMsg && !confirm(confirmMsg)) return;
+  async function deleteMemory(id) {
+    if (!confirm("Are you sure you want to permanently delete this memory from the AI's brain?")) return;
+    await sendAdminAction('delete_memory', null, { memoryId: id });
+    fetchData();
+  }
 
-    // 🛠️ FIX: Agar password session se gayab ho jaye toh dobara maango
+  // 🚨 GENERAL ADMIN ACTIONS
+  async function handleAction(action, userId) {
     if (!adminPassword) {
       adminPassword = prompt("Session expired. Enter Admin Password to confirm:");
-      if (!adminPassword) return; // Agar cancel kar de
-      sessionStorage.setItem('qc_admin_pass_temp', adminPassword); // Save for later
+      if (!adminPassword) return;
+      sessionStorage.setItem('qc_admin_pass_temp', adminPassword);
     }
 
-    const payload = { password: adminPassword, action: action, userId: userId, ...extraPayload };
+    let payload = { password: adminPassword, action: action, userId: userId };
+    
+    if (action === 'ban_permanent') {
+      if(!confirm(`Are you sure you want to PERMANENTLY ban user: ${userId}?`)) return;
+    } 
+    else if (action === 'ban_temporary') {
+      const hours = prompt("How many hours for the temporary ban? (e.g., 24)", "24");
+      if (!hours) return;
+      payload.durationHours = parseInt(hours);
+      payload.reason = "Temporary Cool Down";
+    }
+    else if (action === 'set_limit') {
+      const limit = prompt("Set daily message limit? (e.g., 50)", "50");
+      if (!limit) return;
+      payload.limit = parseInt(limit);
+    }
+    else if (action === 'unban') {
+      if(!confirm(`Are you sure you want to unban user: ${userId}?`)) return;
+    }
+
+    await sendAdminAction(action, userId, payload);
+  }
+
+  async function sendAdminAction(action, userId, extraPayload = {}) {
+    if (!adminPassword) return;
+    
+    let payload = { password: adminPassword, action: action, userId: userId, ...extraPayload };
 
     try {
       const res = await fetch('/api/admin-action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       
       const data = await res.json();
       if (data.success) {
-        showToast(`Success: ${data.msg}`, "success");
-        closeModal();
+        alert(`Success: ${data.msg}`);
         fetchData(); 
       } else {
-        showToast("Failed: " + (data.error || "Unknown error"), "danger");
+        alert("Failed: " + (data.error || "Unknown error"));
       }
     } catch (e) {
-      showToast("Network Error: " + e.message, "danger");
+      alert("Network Error: " + e.message);
     }
   }
 </script>
